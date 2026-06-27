@@ -10,6 +10,9 @@ const PROJECT_LINE_PATTERN =
 
 export const SOLUTION_FOLDER_TYPE_GUID = "{2150E333-8FDC-42A3-9474-1A3956D46DE8}";
 
+/** Project type GUID for SDK-style C# (.csproj) projects. */
+export const CSHARP_PROJECT_TYPE_GUID = "{9A19103F-16F7-4668-BE54-9A1E7A4F7556}";
+
 /**
  * Parses a .sln file's text content and returns every `Project(...)` entry found,
  * including solution-folder pseudo-entries (filtering those out is the caller's job).
@@ -52,6 +55,28 @@ export function parseNestedProjects(slnText: string): Map<string, string> {
   }
 
   return nesting;
+}
+
+const SOLUTION_CONFIGS_SECTION_PATTERN =
+  /GlobalSection\(SolutionConfigurationPlatforms\)\s*=\s*preSolution([\s\S]*?)EndGlobalSection/i;
+const SOLUTION_CONFIG_LINE_PATTERN = /^\s*([^=\r\n]+?)\s*=/gm;
+
+const DEFAULT_SOLUTION_CONFIGS = ["Debug|Any CPU", "Release|Any CPU"];
+
+/**
+ * Parses the `GlobalSection(SolutionConfigurationPlatforms)` block and returns its
+ * configuration names (e.g. `"Debug|Any CPU"`). Each line has the form
+ * `Debug|Any CPU = Debug|Any CPU`, so the left-hand side is the config name.
+ * Falls back to `["Debug|Any CPU", "Release|Any CPU"]` when the section is absent or empty.
+ */
+export function parseSolutionConfigurations(slnText: string): string[] {
+  const sectionMatch = SOLUTION_CONFIGS_SECTION_PATTERN.exec(slnText);
+  if (!sectionMatch) {
+    return [...DEFAULT_SOLUTION_CONFIGS];
+  }
+
+  const configs = [...sectionMatch[1].matchAll(SOLUTION_CONFIG_LINE_PATTERN)].map((m) => m[1].trim());
+  return configs.length > 0 ? configs : [...DEFAULT_SOLUTION_CONFIGS];
 }
 
 export interface ProjectNode {

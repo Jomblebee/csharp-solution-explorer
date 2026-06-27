@@ -6,19 +6,28 @@ import { buildClassFileContent, buildNamespace } from "./csharpTemplates.js";
 import { basenameWithoutExtension, SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
 import {
   buildSolutionTree,
+  CSHARP_PROJECT_TYPE_GUID,
   parseNestedProjects,
+  parseSolutionConfigurations,
   parseSolutionFile,
   SOLUTION_FOLDER_TYPE_GUID,
   SolutionTreeNode,
 } from "./slnParser.js";
 import {
   addNestedProjectRelation,
+  addProjectConfigurationPlatforms,
   addProjectEntry,
   removeNestedProjectRelation,
   removeProjectEntry,
   renameProjectEntry,
 } from "./slnWriter.js";
-import { addSlnxFolderEntry, removeSlnxProjectEntry, renameSlnxProjectEntry } from "./slnxWriter.js";
+import {
+  addSlnxFolderEntry,
+  addSlnxProjectEntry,
+  removeSlnxProjectEntry,
+  renameSlnxProjectEntry,
+} from "./slnxWriter.js";
+import { parseSlnxFile } from "./slnxParser.js";
 import {
   FileTreeItem,
   FolderTreeItem,
@@ -40,6 +49,8 @@ import {
   MOVE_TO_SOLUTION_FOLDER_COMMAND_ID,
   MOVE_SOLUTION_FOLDER_COMMAND_ID,
   REMOVE_FROM_SOLUTION_FOLDER_COMMAND_ID,
+  ADD_EXISTING_PROJECT_COMMAND_ID,
+  REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID,
   SolutionFolderInfo,
 } from "./types.js";
 
@@ -78,6 +89,12 @@ export function registerSolutionExplorerCommands(
     ),
     vscode.commands.registerCommand(MOVE_SOLUTION_FOLDER_COMMAND_ID, (item: SolutionFolderTreeItem) =>
       withErrorHandling(() => moveSolutionFolder(item, provider)),
+    ),
+    vscode.commands.registerCommand(ADD_EXISTING_PROJECT_COMMAND_ID, (item: unknown) =>
+      withErrorHandling(() => addExistingProject(item, provider)),
+    ),
+    vscode.commands.registerCommand(REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID, (item: ProjectTreeItem) =>
+      withErrorHandling(() => removeProjectFromSolution(item, provider)),
     ),
     vscode.commands.registerCommand(BUILD_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => buildProject(item)),
     vscode.commands.registerCommand(RUN_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => runProject(item)),
@@ -426,6 +443,112 @@ async function removeFromSolutionFolder(item: ProjectTreeItem, provider: Solutio
   const slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(item.info.solutionUri));
   const newSlnText = removeNestedProjectRelation(slnText, item.info.guid);
   await vscode.workspace.fs.writeFile(item.info.solutionUri, new TextEncoder().encode(newSlnText));
+  provider.refresh();
+}
+
+async function addExistingProject(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  let solutionUri: vscode.Uri | undefined;
+  // For .sln this is the parent solution folder's GUID; for .slnx it is the parent folder's name.
+  let parentFolder: string | undefined;
+  if (item instanceof SolutionTreeItem) {
+    solutionUri = item.info.uri;
+  } else if (item instanceof SolutionFolderTreeItem) {
+    solutionUri = item.info.solutionUri;
+    parentFolder = item.info.guid;
+  } else {
+    return;
+  }
+
+  if (!solutionUri) {
+    throw new Error("Solution file not found");
+  }
+
+  const selection = await vscode.window.showOpenDialog({
+    canSelectMany: false,
+    openLabel: "Add Project",
+    filters: { "C# Project": ["csproj"] },
+  });
+  if (!selection || selection.length === 0) {
+    return;
+  }
+  const csprojUri = selection[0];
+
+  const solutionDir = vscode.Uri.joinPath(solutionUri, "..");
+  const relativePath = toPosixRelative(solutionDir.fsPath, csprojUri.fsPath);
+  const original = new TextDecoder().decode(await vscode.workspace.fs.readFile(solutionUri));
+  const isSlnx = solutionUri.fsPath.toLowerCase().endsWith(".slnx");
+
+  const existingPaths = isSlnx
+    ? collectSlnxProjectPaths(parseSlnxFile(original))
+    : parseSolutionFile(original).map((ref) => ref.relativePath);
+  if (existingPaths.some((p) => p.toLowerCase() === relativePath.toLowerCase())) {
+    vscode.window.showWarningMessage(`'${relativePath}' is already part of this solution.`);
+    return;
+  }
+
+  let updated: string;
+  if (isSlnx) {
+    updated = addSlnxProjectEntry(original, relativePath, parentFolder);
+  } else {
+    const name = basenameWithoutExtension(csprojUri.fsPath);
+    const guid = generateSlnGuid();
+    updated = addProjectEntry(original, CSHARP_PROJECT_TYPE_GUID, name, relativePath, guid);
+    updated = addProjectConfigurationPlatforms(updated, guid, parseSolutionConfigurations(original));
+    if (parentFolder) {
+      updated = addNestedProjectRelation(updated, guid, parentFolder);
+    }
+  }
+
+  await vscode.workspace.fs.writeFile(solutionUri, new TextEncoder().encode(updated));
+  provider.refresh();
+}
+
+function collectSlnxProjectPaths(nodes: SolutionTreeNode[]): string[] {
+  const paths: string[] = [];
+  for (const node of nodes) {
+    if (node.kind === "project") {
+      paths.push(node.relativePath);
+    } else {
+      paths.push(...collectSlnxProjectPaths(node.children));
+    }
+  }
+  return paths;
+}
+
+async function removeProjectFromSolution(item: ProjectTreeItem, provider: SolutionTreeDataProvider): Promise<void> {
+  if (!item.info.solutionUri) {
+    throw new Error("Project is not part of a solution");
+  }
+
+  const confirmation = await vscode.window.showWarningMessage(
+    `Remove '${item.info.name}' from the solution? The project files will be kept on disk.`,
+    { modal: true },
+    "Remove",
+  );
+  if (confirmation !== "Remove") {
+    return;
+  }
+
+  const solutionUri = item.info.solutionUri;
+  const solutionDir = vscode.Uri.joinPath(solutionUri, "..");
+  const relativePath = toPosixRelative(solutionDir.fsPath, item.info.uri.fsPath);
+  const slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(solutionUri));
+
+  let newSlnText: string;
+  if (solutionUri.fsPath.toLowerCase().endsWith(".slnx")) {
+    newSlnText = removeSlnxProjectEntry(slnText, relativePath);
+  } else {
+    const guid =
+      item.info.guid ??
+      parseSolutionFile(slnText).find((ref) => ref.relativePath.toLowerCase() === relativePath.toLowerCase())
+        ?.projectGuid;
+    if (!guid) {
+      return;
+    }
+    newSlnText = removeProjectEntry(slnText, guid);
+  }
+
+  await vscode.workspace.fs.writeFile(solutionUri, new TextEncoder().encode(newSlnText));
   provider.refresh();
 }
 

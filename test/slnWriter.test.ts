@@ -4,6 +4,7 @@ import {
   removeProjectEntry,
   renameProjectEntry,
   addProjectEntry,
+  addProjectConfigurationPlatforms,
   addNestedProjectRelation,
   removeNestedProjectRelation,
 } from "../src/solutionExplorer/slnWriter.js";
@@ -205,6 +206,66 @@ describe("addNestedProjectRelation", () => {
 
     const nesting = parseNestedProjects(result);
     assert.equal(nesting.get("{11111111-1111-1111-1111-111111111111}"), "{99999999-9999-9999-9999-999999999999}");
+  });
+});
+
+describe("addProjectConfigurationPlatforms", () => {
+  const NEW_GUID = "{44444444-4444-4444-4444-444444444444}";
+
+  it("appends ActiveCfg and Build.0 lines per config to the existing section", () => {
+    const result = addProjectConfigurationPlatforms(sampleSolution(), NEW_GUID, [
+      "Debug|Any CPU",
+      "Release|Any CPU",
+    ]);
+
+    assert.ok(result.includes(`\t\t${NEW_GUID}.Debug|Any CPU.ActiveCfg = Debug|Any CPU`));
+    assert.ok(result.includes(`\t\t${NEW_GUID}.Debug|Any CPU.Build.0 = Debug|Any CPU`));
+    assert.ok(result.includes(`\t\t${NEW_GUID}.Release|Any CPU.ActiveCfg = Release|Any CPU`));
+    assert.ok(result.includes(`\t\t${NEW_GUID}.Release|Any CPU.Build.0 = Release|Any CPU`));
+    // The pre-existing entries must be untouched.
+    assert.ok(result.includes("{22222222-2222-2222-2222-222222222222}.Debug|Any CPU.ActiveCfg = Debug|Any CPU"));
+  });
+
+  it("keeps the new lines inside the ProjectConfigurationPlatforms section", () => {
+    const result = addProjectConfigurationPlatforms(sampleSolution(), NEW_GUID, ["Debug|Any CPU"]);
+
+    const sectionStart = result.indexOf("GlobalSection(ProjectConfigurationPlatforms)");
+    const sectionEnd = result.indexOf("EndGlobalSection", sectionStart);
+    const newLine = result.indexOf(`${NEW_GUID}.Debug|Any CPU.ActiveCfg`);
+    assert.ok(newLine > sectionStart && newLine < sectionEnd);
+  });
+
+  it("creates the section before EndGlobal when it doesn't exist", () => {
+    const slnWithoutConfigs = [
+      "Microsoft Visual Studio Solution File, Format Version 12.00",
+      `Project("${CSHARP_SDK_TYPE_GUID}") = "App", "App/App.csproj", "{11111111-1111-1111-1111-111111111111}"`,
+      "EndProject",
+      "Global",
+      "EndGlobal",
+    ].join("\n");
+
+    const result = addProjectConfigurationPlatforms(slnWithoutConfigs, NEW_GUID, ["Debug|Any CPU"]);
+
+    assert.ok(result.includes("GlobalSection(ProjectConfigurationPlatforms) = postSolution"));
+    assert.ok(result.includes(`${NEW_GUID}.Debug|Any CPU.ActiveCfg = Debug|Any CPU`));
+    const sectionStart = result.indexOf("GlobalSection(ProjectConfigurationPlatforms)");
+    assert.ok(sectionStart < result.indexOf("EndGlobal"));
+  });
+
+  it("preserves CRLF line endings", () => {
+    const result = addProjectConfigurationPlatforms(
+      sampleSolution().split("\n").join("\r\n"),
+      NEW_GUID,
+      ["Debug|Any CPU"],
+    );
+
+    assert.ok(result.includes("\r\n"));
+    assert.ok(result.includes(`${NEW_GUID}.Debug|Any CPU.ActiveCfg = Debug|Any CPU`));
+  });
+
+  it("is a no-op when no configs are given", () => {
+    const original = sampleSolution();
+    assert.equal(addProjectConfigurationPlatforms(original, NEW_GUID, []), original);
   });
 });
 

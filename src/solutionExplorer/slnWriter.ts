@@ -118,6 +118,49 @@ export function addNestedProjectRelation(slnText: string, childGuid: string, par
 }
 
 /**
+ * Adds `ActiveCfg` and `Build.0` entries for the given project GUID to
+ * `GlobalSection(ProjectConfigurationPlatforms) = postSolution`, one pair per configuration
+ * (e.g. `Debug|Any CPU`). Creates the section before the closing `EndGlobal` if it doesn't exist.
+ */
+export function addProjectConfigurationPlatforms(
+  slnText: string,
+  projectGuid: string,
+  configs: string[],
+): string {
+  if (configs.length === 0) {
+    return slnText;
+  }
+
+  const newline = slnText.includes("\r\n") ? "\r\n" : "\n";
+  const entryLines = configs.flatMap((cfg) => [
+    `\t\t${projectGuid}.${cfg}.ActiveCfg = ${cfg}`,
+    `\t\t${projectGuid}.${cfg}.Build.0 = ${cfg}`,
+  ]);
+
+  const sectionPattern =
+    /GlobalSection\(ProjectConfigurationPlatforms\)\s*=\s*postSolution([\s\S]*?)EndGlobalSection/i;
+  const match = sectionPattern.exec(slnText);
+
+  if (match) {
+    const endGlobalSectionLine = slnText.indexOf("EndGlobalSection", match.index);
+    const insertion = entryLines.join(newline) + newline;
+    return slnText.slice(0, endGlobalSectionLine) + insertion + slnText.slice(endGlobalSectionLine);
+  }
+
+  const endGlobalPattern = /^\s*EndGlobal\s*$/m;
+  const endGlobalMatch = endGlobalPattern.exec(slnText);
+  if (!endGlobalMatch) {
+    throw new Error("Could not find EndGlobal section in solution file");
+  }
+
+  const section =
+    `\tGlobalSection(ProjectConfigurationPlatforms) = postSolution${newline}` +
+    entryLines.join(newline) +
+    `${newline}\tEndGlobalSection${newline}`;
+  return slnText.slice(0, endGlobalMatch.index) + section + slnText.slice(endGlobalMatch.index);
+}
+
+/**
  * Removes the nesting relation for the given child GUID from `GlobalSection(NestedProjects)`.
  * Does nothing if the child is not nested or if the section doesn't exist.
  */

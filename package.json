@@ -90,6 +90,16 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.addExistingProject",
+        "title": "Add Existing Project...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.removeProjectFromSolution",
+        "title": "Remove from Solution",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.buildProject",
         "title": "Build Project",
         "category": "C# Solution Explorer"
@@ -111,12 +121,12 @@
       "view/item/context": [
         {
           "command": "csharpSolutionExplorer.newClass",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.project)",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
           "group": "1_new"
         },
         {
           "command": "csharpSolutionExplorer.newFolder",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.project)",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
           "group": "1_new"
         },
         {
@@ -125,33 +135,43 @@
           "group": "1_new"
         },
         {
+          "command": "csharpSolutionExplorer.addExistingProject",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem == csharpSolutionExplorer.solutionFolder)",
+          "group": "1_new"
+        },
+        {
           "command": "csharpSolutionExplorer.buildProject",
-          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
           "group": "2_build"
         },
         {
           "command": "csharpSolutionExplorer.runProject",
-          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
           "group": "2_build"
         },
         {
           "command": "csharpSolutionExplorer.rename",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem == csharpSolutionExplorer.project || viewItem == csharpSolutionExplorer.solutionFolder)",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solutionFolder)",
           "group": "7_modification"
         },
         {
           "command": "csharpSolutionExplorer.delete",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem == csharpSolutionExplorer.project || viewItem == csharpSolutionExplorer.solutionFolder)",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solutionFolder)",
+          "group": "7_modification"
+        },
+        {
+          "command": "csharpSolutionExplorer.removeProjectFromSolution",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
           "group": "7_modification"
         },
         {
           "command": "csharpSolutionExplorer.moveToSolutionFolder",
-          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
           "group": "8_nesting"
         },
         {
           "command": "csharpSolutionExplorer.removeFromSolutionFolder",
-          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project.nested",
           "group": "8_nesting"
         },
         {

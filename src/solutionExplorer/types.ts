@@ -11,6 +11,8 @@ export const DELETE_COMMAND_ID = "csharpSolutionExplorer.delete";
 export const MOVE_TO_SOLUTION_FOLDER_COMMAND_ID = "csharpSolutionExplorer.moveToSolutionFolder";
 export const REMOVE_FROM_SOLUTION_FOLDER_COMMAND_ID = "csharpSolutionExplorer.removeFromSolutionFolder";
 export const MOVE_SOLUTION_FOLDER_COMMAND_ID = "csharpSolutionExplorer.moveSolutionFolder";
+export const ADD_EXISTING_PROJECT_COMMAND_ID = "csharpSolutionExplorer.addExistingProject";
+export const REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID = "csharpSolutionExplorer.removeProjectFromSolution";
 export const BUILD_PROJECT_COMMAND_ID = "csharpSolutionExplorer.buildProject";
 export const RUN_PROJECT_COMMAND_ID = "csharpSolutionExplorer.runProject";
 

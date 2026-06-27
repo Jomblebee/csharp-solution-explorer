@@ -83,6 +83,52 @@ export function addSlnxFolderEntry(slnxText: string, folderName: string, parentF
 }
 
 /**
+ * Inserts a new `<Project Path="..." />` element into a .slnx file. When `parentFolderName` is given
+ * the project is nested inside that solution folder (matched by its `/Name/`); an inline-empty parent
+ * is expanded across lines to receive the child. Otherwise the project is added at the solution root,
+ * before `</Solution>`. Preserves original line endings. No-op if the insertion point cannot be located.
+ */
+export function addSlnxProjectEntry(slnxText: string, projectPath: string, parentFolderName?: string): string {
+  const newline = slnxText.includes("\r\n") ? "\r\n" : "\n";
+  const lines = slnxText.split(/\r\n|\n/);
+  const projectLine = (indent: string) => `${indent}<Project Path="${projectPath}" />`;
+
+  if (!parentFolderName) {
+    const closeIdx = lines.findIndex((line) => line.includes("</Solution>"));
+    if (closeIdx === -1) {
+      return slnxText;
+    }
+    lines.splice(closeIdx, 0, projectLine(`${leadingIndent(lines[closeIdx])}  `));
+    return lines.join(newline);
+  }
+
+  const parentIdx = findFolderOpenLine(lines, `/${parentFolderName}/`.toLowerCase());
+  if (parentIdx === -1) {
+    return slnxText;
+  }
+
+  const parentIndent = leadingIndent(lines[parentIdx]);
+  let depth = 0;
+  for (let i = parentIdx; i < lines.length; i++) {
+    depth += netFolderDepth(lines[i]);
+    if (depth !== 0) {
+      continue;
+    }
+    if (i === parentIdx) {
+      // Inline-empty parent (`<Folder Name="/x/"></Folder>`): expand it to hold the child.
+      const parentLine = lines[parentIdx];
+      const openTag = parentLine.slice(0, parentLine.indexOf(">") + 1);
+      lines.splice(parentIdx, 1, openTag, projectLine(`${parentIndent}  `), `${parentIndent}</Folder>`);
+    } else {
+      lines.splice(i, 0, projectLine(`${parentIndent}  `));
+    }
+    return lines.join(newline);
+  }
+
+  return slnxText;
+}
+
+/**
  * Removes the <Project Path="..."> line whose Path attribute matches projectPath
  * (case-insensitive). Preserves original line endings. No-op if path is not found.
  */

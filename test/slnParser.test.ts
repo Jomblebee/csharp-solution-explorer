@@ -1,6 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildSolutionTree, parseNestedProjects, parseSolutionFile } from "../src/solutionExplorer/slnParser.js";
+import {
+  buildSolutionTree,
+  parseNestedProjects,
+  parseSolutionConfigurations,
+  parseSolutionFile,
+} from "../src/solutionExplorer/slnParser.js";
 
 const SOLUTION_FOLDER_TYPE_GUID = "{2150E333-8FDC-42A3-9474-1A3956D46DE8}";
 const CSHARP_SDK_TYPE_GUID = "{9A19103F-16F7-4668-BE54-9A1E7A4F7556}";
@@ -81,6 +86,39 @@ describe("parseNestedProjects", () => {
     assert.equal(result.size, 2);
     assert.equal(result.get("{11111111-1111-1111-1111-111111111111}"), "{33333333-3333-3333-3333-333333333333}");
     assert.equal(result.get("{22222222-2222-2222-2222-222222222222}"), "{33333333-3333-3333-3333-333333333333}");
+  });
+});
+
+describe("parseSolutionConfigurations", () => {
+  it("reads the configuration names from SolutionConfigurationPlatforms", () => {
+    const sln = [
+      "Global",
+      "\tGlobalSection(SolutionConfigurationPlatforms) = preSolution",
+      "\t\tDebug|Any CPU = Debug|Any CPU",
+      "\t\tRelease|Any CPU = Release|Any CPU",
+      "\tEndGlobalSection",
+      "EndGlobal",
+    ].join("\n");
+
+    assert.deepEqual(parseSolutionConfigurations(sln), ["Debug|Any CPU", "Release|Any CPU"]);
+  });
+
+  it("falls back to Debug/Release Any CPU when the section is absent", () => {
+    assert.deepEqual(parseSolutionConfigurations("Global\nEndGlobal\n"), [
+      "Debug|Any CPU",
+      "Release|Any CPU",
+    ]);
+  });
+
+  it("falls back when the section exists but is empty", () => {
+    const sln = [
+      "Global",
+      "\tGlobalSection(SolutionConfigurationPlatforms) = preSolution",
+      "\tEndGlobalSection",
+      "EndGlobal",
+    ].join("\n");
+
+    assert.deepEqual(parseSolutionConfigurations(sln), ["Debug|Any CPU", "Release|Any CPU"]);
   });
 });
 

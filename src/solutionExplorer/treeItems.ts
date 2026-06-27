@@ -35,7 +35,11 @@ export class SolutionFolderTreeItem extends vscode.TreeItem {
 export class ProjectTreeItem extends vscode.TreeItem {
   constructor(public readonly info: ProjectInfo) {
     super(info.name, vscode.TreeItemCollapsibleState.Collapsed);
-    this.contextValue = "csharpSolutionExplorer.project";
+    // Append `.nested` for projects inside a solution folder so "Remove from Solution Folder"
+    // can be shown only when it actually applies.
+    this.contextValue = info.parentFolderGuid
+      ? "csharpSolutionExplorer.project.nested"
+      : "csharpSolutionExplorer.project";
     this.resourceUri = info.uri;
     this.iconPath = vscode.ThemeIcon.File;
     if (info.isPseudoSolution) {

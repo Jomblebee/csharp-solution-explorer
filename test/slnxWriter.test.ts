@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   addSlnxFolderEntry,
+  addSlnxProjectEntry,
   removeSlnxProjectEntry,
   renameSlnxProjectEntry,
 } from "../src/solutionExplorer/slnxWriter.js";
@@ -171,5 +172,54 @@ describe("addSlnxFolderEntry", () => {
     assert.ok(apps && apps.kind === "solutionFolder");
     assert.ok(apps.children.some((c) => c.kind === "solutionFolder" && c.name === "Added"));
     assert.ok(apps.children.some((c) => c.kind === "solutionFolder" && c.name === "Inline"));
+  });
+});
+
+describe("addSlnxProjectEntry", () => {
+  it("adds a project at the solution root before </Solution>", () => {
+    const result = addSlnxProjectEntry(fixture(), "New/New.csproj");
+
+    const tree = parseSlnxFile(result);
+    assert.ok(tree.some((node) => node.kind === "project" && node.relativePath === "New/New.csproj"));
+    const lines = result.split("\n");
+    assert.ok(lines[lines.length - 1].includes("</Solution>"));
+  });
+
+  it("writes the project as a self-closing element with one level of indentation", () => {
+    const result = addSlnxProjectEntry(fixture(), "New/New.csproj");
+    const line = result.split("\n").find((l) => l.includes("New/New.csproj"))!;
+
+    assert.equal(line, '  <Project Path="New/New.csproj" />');
+  });
+
+  it("nests the project inside the named parent folder", () => {
+    const result = addSlnxProjectEntry(fixture(), "New/New.csproj", "Apps");
+    const apps = parseSlnxFile(result).find((n) => n.kind === "solutionFolder" && n.name === "Apps");
+
+    assert.ok(apps && apps.kind === "solutionFolder");
+    assert.ok(apps.children.some((c) => c.kind === "project" && c.relativePath === "New/New.csproj"));
+  });
+
+  it("nests into a freshly created inline-empty folder by expanding it", () => {
+    const afterFolder = addSlnxFolderEntry(fixture(), "Created");
+    const afterProject = addSlnxProjectEntry(afterFolder, "New/New.csproj", "Created");
+    const created = parseSlnxFile(afterProject).find((n) => n.kind === "solutionFolder" && n.name === "Created");
+
+    assert.ok(created && created.kind === "solutionFolder");
+    assert.ok(created.children.some((c) => c.kind === "project" && c.relativePath === "New/New.csproj"));
+  });
+
+  it("preserves CRLF line endings", () => {
+    const result = addSlnxProjectEntry(fixtureWithCrlf(), "New/New.csproj");
+
+    assert.ok(result.includes("\r\n"));
+    assert.ok(result.includes('<Project Path="New/New.csproj" />'));
+  });
+
+  it("is a no-op when the parent folder is not found", () => {
+    const original = fixture();
+    const result = addSlnxProjectEntry(original, "New/New.csproj", "DoesNotExist");
+
+    assert.equal(result, original);
   });
 });
