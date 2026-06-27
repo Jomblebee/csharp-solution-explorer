@@ -25,6 +25,9 @@ export interface SolutionInfo {
   kind: "solution";
   name: string;
   uri: vscode.Uri;
+  /** Workspace-folder-relative directory of the solution file, used to disambiguate
+   * same-named solutions. Empty when the solution sits at the workspace folder root. */
+  relativeDir?: string;
 }
 
 export interface ProjectInfo {

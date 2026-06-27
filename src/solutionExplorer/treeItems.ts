@@ -16,6 +16,11 @@ export class SolutionTreeItem extends vscode.TreeItem {
     super(info.name, vscode.TreeItemCollapsibleState.Expanded);
     this.contextValue = "csharpSolutionExplorer.solution";
     this.iconPath = new vscode.ThemeIcon("folder-library");
+    // Surface the file type (and folder, for nested/duplicate-named solutions) so root nodes are
+    // clearly recognizable as solutions rather than plain folders.
+    const ext = info.uri.fsPath.toLowerCase().endsWith(".slnx") ? ".slnx" : ".sln";
+    this.description = info.relativeDir ? `${info.relativeDir} · ${ext}` : ext;
+    this.tooltip = `Solution · ${info.uri.fsPath}`;
   }
 }
 

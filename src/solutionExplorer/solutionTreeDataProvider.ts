@@ -100,17 +100,20 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     const items: SolutionExplorerTreeItem[] = [];
 
     for (const folder of folders) {
+      const exclude = new vscode.RelativePattern(folder, "**/{node_modules,bin,obj,.git,.vs}/**");
       const slnUris = [
-        ...(await vscode.workspace.findFiles(new vscode.RelativePattern(folder, "*.sln"))),
-        ...(await vscode.workspace.findFiles(new vscode.RelativePattern(folder, "*.slnx"))),
-      ];
+        ...(await vscode.workspace.findFiles(new vscode.RelativePattern(folder, "**/*.sln"), exclude)),
+        ...(await vscode.workspace.findFiles(new vscode.RelativePattern(folder, "**/*.slnx"), exclude)),
+      ].sort((a, b) => a.fsPath.localeCompare(b.fsPath));
 
       if (slnUris.length > 0) {
         for (const slnUri of slnUris) {
+          const relativeDir = toPosixRelative(folder.uri.fsPath, path.dirname(slnUri.fsPath));
           const info: SolutionInfo = {
             kind: "solution",
             name: basenameWithoutExtension(slnUri.fsPath),
             uri: slnUri,
+            relativeDir: relativeDir || undefined,
           };
           items.push(new SolutionTreeItem(info));
         }
