@@ -1,26 +1,43 @@
+import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { buildClassFileContent, buildNamespace } from "./csharpTemplates.js";
 import { basenameWithoutExtension, SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
-import { parseSolutionFile } from "./slnParser.js";
-import { removeProjectEntry, renameProjectEntry } from "./slnWriter.js";
+import {
+  buildSolutionTree,
+  parseNestedProjects,
+  parseSolutionFile,
+  SOLUTION_FOLDER_TYPE_GUID,
+  SolutionTreeNode,
+} from "./slnParser.js";
+import {
+  addNestedProjectRelation,
+  addProjectEntry,
+  removeNestedProjectRelation,
+  removeProjectEntry,
+  renameProjectEntry,
+} from "./slnWriter.js";
 import { removeSlnxProjectEntry, renameSlnxProjectEntry } from "./slnxWriter.js";
-import { FileTreeItem, FolderTreeItem, ProjectTreeItem } from "./treeItems.js";
+import { FileTreeItem, FolderTreeItem, ProjectTreeItem, SolutionFolderTreeItem } from "./treeItems.js";
 import {
   BUILD_PROJECT_COMMAND_ID,
   DELETE_COMMAND_ID,
   NEW_CLASS_COMMAND_ID,
   NEW_FOLDER_COMMAND_ID,
+  NEW_SOLUTION_FOLDER_COMMAND_ID,
   OPEN_FILE_COMMAND_ID,
   ProjectInfo,
   REFRESH_COMMAND_ID,
   RENAME_COMMAND_ID,
   RUN_PROJECT_COMMAND_ID,
+  MOVE_TO_SOLUTION_FOLDER_COMMAND_ID,
+  REMOVE_FROM_SOLUTION_FOLDER_COMMAND_ID,
+  SolutionFolderInfo,
 } from "./types.js";
 
-type NewItemTarget = FolderTreeItem | ProjectTreeItem;
-type ExistingItemTarget = FolderTreeItem | FileTreeItem | ProjectTreeItem;
+type NewItemTarget = FolderTreeItem | ProjectTreeItem | SolutionFolderTreeItem;
+type ExistingItemTarget = FolderTreeItem | FileTreeItem | ProjectTreeItem | SolutionFolderTreeItem;
 
 export function registerSolutionExplorerCommands(
   context: vscode.ExtensionContext,
@@ -37,11 +54,20 @@ export function registerSolutionExplorerCommands(
     vscode.commands.registerCommand(NEW_FOLDER_COMMAND_ID, (item: NewItemTarget) =>
       withErrorHandling(() => newFolder(item, provider)),
     ),
+    vscode.commands.registerCommand(NEW_SOLUTION_FOLDER_COMMAND_ID, (item: NewItemTarget) =>
+      withErrorHandling(() => newSolutionFolder(item, provider)),
+    ),
     vscode.commands.registerCommand(RENAME_COMMAND_ID, (item: ExistingItemTarget) =>
       withErrorHandling(() => rename(item, provider)),
     ),
     vscode.commands.registerCommand(DELETE_COMMAND_ID, (item: ExistingItemTarget) =>
       withErrorHandling(() => deleteItem(item, provider)),
+    ),
+    vscode.commands.registerCommand(MOVE_TO_SOLUTION_FOLDER_COMMAND_ID, (item: ProjectTreeItem) =>
+      withErrorHandling(() => moveToSolutionFolder(item, provider)),
+    ),
+    vscode.commands.registerCommand(REMOVE_FROM_SOLUTION_FOLDER_COMMAND_ID, (item: ProjectTreeItem) =>
+      withErrorHandling(() => removeFromSolutionFolder(item, provider)),
     ),
     vscode.commands.registerCommand(BUILD_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => buildProject(item)),
     vscode.commands.registerCommand(RUN_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => runProject(item)),
@@ -61,23 +87,46 @@ function errorMessage(err: unknown): string {
 }
 
 function isNewItemTarget(item: unknown): item is NewItemTarget {
-  return item instanceof FolderTreeItem || item instanceof ProjectTreeItem;
+  return item instanceof FolderTreeItem || item instanceof ProjectTreeItem || item instanceof SolutionFolderTreeItem;
 }
 
 function isExistingItemTarget(item: unknown): item is ExistingItemTarget {
-  return item instanceof FolderTreeItem || item instanceof FileTreeItem || item instanceof ProjectTreeItem;
+  return (
+    item instanceof FolderTreeItem ||
+    item instanceof FileTreeItem ||
+    item instanceof ProjectTreeItem ||
+    item instanceof SolutionFolderTreeItem
+  );
 }
 
 function getTargetDirUri(item: NewItemTarget): vscode.Uri {
-  return item instanceof FolderTreeItem ? item.entry.uri : item.info.rootDir;
+  if (item instanceof FolderTreeItem) {
+    return item.entry.uri;
+  }
+  if (item instanceof SolutionFolderTreeItem) {
+    return item.info.solutionDir;
+  }
+  return item.info.rootDir;
 }
 
 function getEntryUri(item: ExistingItemTarget): vscode.Uri {
-  return item instanceof ProjectTreeItem ? item.info.uri : item.entry.uri;
+  if (item instanceof ProjectTreeItem) {
+    return item.info.uri;
+  }
+  if (item instanceof SolutionFolderTreeItem) {
+    return item.info.solutionUri;
+  }
+  return item.entry.uri;
 }
 
 function getDisplayName(item: ExistingItemTarget): string {
-  return item instanceof ProjectTreeItem ? item.info.name : item.entry.name;
+  if (item instanceof ProjectTreeItem) {
+    return item.info.name;
+  }
+  if (item instanceof SolutionFolderTreeItem) {
+    return item.info.name;
+  }
+  return item.entry.name;
 }
 
 function validateNewName(value: string, dirPath: string, suffix = ""): string | undefined {
@@ -186,6 +235,8 @@ async function rename(item: unknown, provider: SolutionTreeDataProvider): Promis
 
   if (item instanceof ProjectTreeItem) {
     await renameProject(item.info, newName);
+  } else if (item instanceof SolutionFolderTreeItem) {
+    await renameSolutionFolder(item.info, newName);
   } else {
     const oldUri = getEntryUri(item);
     const finalName =
@@ -196,6 +247,155 @@ async function rename(item: unknown, provider: SolutionTreeDataProvider): Promis
     await vscode.workspace.fs.rename(oldUri, newUri);
   }
 
+  provider.refresh();
+}
+
+async function renameSolutionFolder(info: SolutionFolderInfo, newName: string): Promise<void> {
+  if (!info.guid) {
+    throw new Error("Solution folder GUID is missing");
+  }
+
+  const slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(info.solutionUri));
+  const newSlnText = renameProjectEntry(slnText, info.guid, newName, newName);
+  await vscode.workspace.fs.writeFile(info.solutionUri, new TextEncoder().encode(newSlnText));
+}
+
+async function deleteSolutionFolder(info: SolutionFolderInfo): Promise<void> {
+  if (!info.guid) {
+    throw new Error("Solution folder GUID is missing");
+  }
+
+  let slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(info.solutionUri));
+
+  function collectDescendantGuids(node: SolutionTreeNode, guids: Set<string>): void {
+    if (node.kind === "solutionFolder") {
+      guids.add(node.guid);
+      for (const child of node.children) {
+        collectDescendantGuids(child, guids);
+      }
+    } else {
+      guids.add(node.guid);
+    }
+  }
+
+  const descendantGuids = new Set<string>();
+  for (const child of info.children) {
+    collectDescendantGuids(child, descendantGuids);
+  }
+
+  for (const guid of descendantGuids) {
+    slnText = removeProjectEntry(slnText, guid);
+  }
+  slnText = removeProjectEntry(slnText, info.guid);
+
+  await vscode.workspace.fs.writeFile(info.solutionUri, new TextEncoder().encode(slnText));
+}
+
+async function newSolutionFolder(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  if (!isNewItemTarget(item)) {
+    return;
+  }
+
+  const solutionUri = item instanceof SolutionFolderTreeItem ? item.info.solutionUri : undefined;
+  const parentFolderGuid = item instanceof SolutionFolderTreeItem ? item.info.guid : undefined;
+
+  if (!solutionUri) {
+    throw new Error("Solution file not found");
+  }
+
+  const folderName = await vscode.window.showInputBox({
+    prompt: "Solution Folder name",
+    validateInput: (value) => {
+      if (!value.trim()) {
+        return "Name must not be empty";
+      }
+      return undefined;
+    },
+  });
+
+  if (!folderName) {
+    return;
+  }
+
+  let slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(solutionUri));
+  const newGuid = generateSlnGuid();
+  slnText = addProjectEntry(slnText, SOLUTION_FOLDER_TYPE_GUID, folderName, folderName, newGuid);
+
+  if (parentFolderGuid) {
+    slnText = addNestedProjectRelation(slnText, newGuid, parentFolderGuid);
+  }
+
+  await vscode.workspace.fs.writeFile(solutionUri, new TextEncoder().encode(slnText));
+  provider.refresh();
+}
+
+async function moveToSolutionFolder(item: ProjectTreeItem, provider: SolutionTreeDataProvider): Promise<void> {
+  if (!item.info.solutionUri) {
+    throw new Error("Project is not part of a solution");
+  }
+
+  if (!item.info.guid) {
+    throw new Error("Project GUID is missing");
+  }
+
+  const slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(item.info.solutionUri));
+  const tree = buildSolutionTree(parseSolutionFile(slnText), parseNestedProjects(slnText));
+
+  function collectSolutionFolders(node: SolutionTreeNode, folders: Array<{ name: string; guid: string }>): void {
+    if (node.kind === "solutionFolder") {
+      folders.push({ name: node.name, guid: node.guid });
+      for (const child of node.children) {
+        collectSolutionFolders(child, folders);
+      }
+    }
+  }
+
+  const folders: Array<{ name: string; guid: string }> = [];
+  for (const node of tree) {
+    collectSolutionFolders(node, folders);
+  }
+
+  if (folders.length === 0) {
+    vscode.window.showWarningMessage("No solution folders found in this solution.");
+    return;
+  }
+
+  const selected = await vscode.window.showQuickPick(
+    folders.map((f) => ({ label: f.name, detail: f.guid })),
+    { placeHolder: "Select destination solution folder" },
+  );
+
+  if (!selected) {
+    return;
+  }
+
+  const targetGuid = folders.find((f) => f.name === selected.label)?.guid;
+  if (!targetGuid) {
+    throw new Error("Target folder not found");
+  }
+
+  let newSlnText = slnText;
+  if (item.info.parentFolderGuid) {
+    newSlnText = removeNestedProjectRelation(newSlnText, item.info.guid);
+  }
+  newSlnText = addNestedProjectRelation(newSlnText, item.info.guid, targetGuid);
+
+  await vscode.workspace.fs.writeFile(item.info.solutionUri, new TextEncoder().encode(newSlnText));
+  provider.refresh();
+}
+
+async function removeFromSolutionFolder(item: ProjectTreeItem, provider: SolutionTreeDataProvider): Promise<void> {
+  if (!item.info.solutionUri) {
+    throw new Error("Project is not part of a solution");
+  }
+
+  if (!item.info.guid) {
+    throw new Error("Project GUID is missing");
+  }
+
+  const slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(item.info.solutionUri));
+  const newSlnText = removeNestedProjectRelation(slnText, item.info.guid);
+  await vscode.workspace.fs.writeFile(item.info.solutionUri, new TextEncoder().encode(newSlnText));
   provider.refresh();
 }
 
@@ -275,17 +475,21 @@ async function deleteItem(item: unknown, provider: SolutionTreeDataProvider): Pr
     return;
   }
 
-  const confirmation = await vscode.window.showWarningMessage(
-    `Delete '${getDisplayName(item)}'? This action cannot be undone.`,
-    { modal: true },
-    "Delete",
-  );
+  const itemName = getDisplayName(item);
+  const message =
+    item instanceof SolutionFolderTreeItem
+      ? `Delete '${itemName}'? Projects it contains will be moved to the parent level. This action cannot be undone.`
+      : `Delete '${itemName}'? This action cannot be undone.`;
+
+  const confirmation = await vscode.window.showWarningMessage(message, { modal: true }, "Delete");
   if (confirmation !== "Delete") {
     return;
   }
 
   if (item instanceof ProjectTreeItem) {
     await deleteProject(item.info);
+  } else if (item instanceof SolutionFolderTreeItem) {
+    await deleteSolutionFolder(item.info);
   } else {
     await vscode.workspace.fs.delete(getEntryUri(item), { recursive: true, useTrash: true });
   }
@@ -334,4 +538,8 @@ function runInTerminal(name: string, command: string): void {
   const terminal = vscode.window.terminals.find((t) => t.name === name) ?? vscode.window.createTerminal(name);
   terminal.show();
   terminal.sendText(command);
+}
+
+function generateSlnGuid(): string {
+  return `{${crypto.randomUUID().toUpperCase()}}`;
 }

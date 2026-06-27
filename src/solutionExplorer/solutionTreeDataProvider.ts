@@ -75,7 +75,10 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       return this.getProjectItems(element.info);
     }
     if (element instanceof SolutionFolderTreeItem) {
-      return this.nodesToTreeItems(element.info.children, element.info.solutionDir, element.info.solutionUri);
+      const bytes = await vscode.workspace.fs.readFile(element.info.solutionUri);
+      const slnText = new TextDecoder().decode(bytes);
+      const nesting = parseNestedProjects(slnText);
+      return this.nodesToTreeItems(element.info.children, element.info.solutionDir, element.info.solutionUri, nesting);
     }
     if (element instanceof ProjectTreeItem) {
       return this.getProjectChildren(element.info);
@@ -127,18 +130,20 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     const bytes = await vscode.workspace.fs.readFile(solution.uri);
     const text = new TextDecoder().decode(bytes);
     const solutionDir = vscode.Uri.joinPath(solution.uri, "..");
+    const nesting = parseNestedProjects(text);
 
     const tree = solution.uri.fsPath.toLowerCase().endsWith(".slnx")
       ? parseSlnxFile(text)
       : buildSolutionTree(parseSolutionFile(text), parseNestedProjects(text));
 
-    return this.nodesToTreeItems(tree, solutionDir, solution.uri);
+    return this.nodesToTreeItems(tree, solutionDir, solution.uri, nesting);
   }
 
   private async nodesToTreeItems(
     nodes: SolutionTreeNode[],
     solutionDir: vscode.Uri,
     solutionUri: vscode.Uri,
+    nesting: Map<string, string>,
   ): Promise<SolutionExplorerTreeItem[]> {
     const items: SolutionExplorerTreeItem[] = [];
     for (const node of nodes) {
@@ -147,6 +152,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
           new SolutionFolderTreeItem({
             kind: "solutionFolder",
             name: node.name,
+            guid: node.guid,
             children: node.children,
             solutionDir,
             solutionUri,
@@ -164,7 +170,8 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
         continue;
       }
 
-      items.push(new ProjectTreeItem(this.toProjectInfo(csprojUri, false, node.name, solutionUri)));
+      const parentFolderGuid = nesting.get(node.guid);
+      items.push(new ProjectTreeItem(this.toProjectInfo(csprojUri, false, node.name, solutionUri, node.guid, parentFolderGuid)));
     }
 
     return items;
@@ -175,6 +182,8 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     isPseudoSolution: boolean,
     name: string | undefined,
     solutionUri: vscode.Uri | undefined,
+    guid?: string,
+    parentFolderGuid?: string,
   ): ProjectInfo {
     return {
       kind: "project",
@@ -183,6 +192,8 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       rootDir: vscode.Uri.file(getProjectRootDir(csprojUri.fsPath)),
       isPseudoSolution,
       solutionUri,
+      guid,
+      parentFolderGuid,
     };
   }
 

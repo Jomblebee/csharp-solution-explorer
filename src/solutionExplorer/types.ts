@@ -5,8 +5,11 @@ export const REFRESH_COMMAND_ID = "csharpSolutionExplorer.refresh";
 export const OPEN_FILE_COMMAND_ID = "csharpSolutionExplorer.openFile";
 export const NEW_CLASS_COMMAND_ID = "csharpSolutionExplorer.newClass";
 export const NEW_FOLDER_COMMAND_ID = "csharpSolutionExplorer.newFolder";
+export const NEW_SOLUTION_FOLDER_COMMAND_ID = "csharpSolutionExplorer.newSolutionFolder";
 export const RENAME_COMMAND_ID = "csharpSolutionExplorer.rename";
 export const DELETE_COMMAND_ID = "csharpSolutionExplorer.delete";
+export const MOVE_TO_SOLUTION_FOLDER_COMMAND_ID = "csharpSolutionExplorer.moveToSolutionFolder";
+export const REMOVE_FROM_SOLUTION_FOLDER_COMMAND_ID = "csharpSolutionExplorer.removeFromSolutionFolder";
 export const BUILD_PROJECT_COMMAND_ID = "csharpSolutionExplorer.buildProject";
 export const RUN_PROJECT_COMMAND_ID = "csharpSolutionExplorer.runProject";
 
@@ -31,11 +34,16 @@ export interface ProjectInfo {
   isPseudoSolution: boolean;
   /** The .sln file this project is registered in, if any (absent for pseudo-solutions). */
   solutionUri?: vscode.Uri;
+  /** The GUID of this project in the .sln file. */
+  guid?: string;
+  /** The GUID of the parent solution folder, if this project is nested. */
+  parentFolderGuid?: string;
 }
 
 export interface SolutionFolderInfo {
   kind: "solutionFolder";
   name: string;
+  guid: string;
   children: SolutionTreeNode[];
   solutionDir: vscode.Uri;
   solutionUri: vscode.Uri;

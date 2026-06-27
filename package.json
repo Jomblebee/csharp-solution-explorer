@@ -60,6 +60,11 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.newSolutionFolder",
+        "title": "New Solution Folder...",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.rename",
         "title": "Rename...",
         "category": "C# Solution Explorer"
@@ -67,6 +72,16 @@
       {
         "command": "csharpSolutionExplorer.delete",
         "title": "Delete",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.moveToSolutionFolder",
+        "title": "Move to Solution Folder...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.removeFromSolutionFolder",
+        "title": "Remove from Solution Folder",
         "category": "C# Solution Explorer"
       },
       {
@@ -100,6 +115,11 @@
           "group": "1_new"
         },
         {
+          "command": "csharpSolutionExplorer.newSolutionFolder",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem == csharpSolutionExplorer.solutionFolder)",
+          "group": "1_new"
+        },
+        {
           "command": "csharpSolutionExplorer.buildProject",
           "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project",
           "group": "2_build"
@@ -111,13 +131,23 @@
         },
         {
           "command": "csharpSolutionExplorer.rename",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem == csharpSolutionExplorer.project)",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem == csharpSolutionExplorer.project || viewItem == csharpSolutionExplorer.solutionFolder)",
           "group": "7_modification"
         },
         {
           "command": "csharpSolutionExplorer.delete",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem == csharpSolutionExplorer.project)",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem == csharpSolutionExplorer.project || viewItem == csharpSolutionExplorer.solutionFolder)",
           "group": "7_modification"
+        },
+        {
+          "command": "csharpSolutionExplorer.moveToSolutionFolder",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project",
+          "group": "8_nesting"
+        },
+        {
+          "command": "csharpSolutionExplorer.removeFromSolutionFolder",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project",
+          "group": "8_nesting"
         }
       ]
     }

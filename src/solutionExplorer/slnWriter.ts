@@ -62,3 +62,83 @@ export function renameProjectEntry(
 
   return updated.join(newline);
 }
+
+/**
+ * Adds a new `Project(...)` ... `EndProject` block for a project or solution folder.
+ * Inserts it before the first `Global` section (or at the end if no Global section exists).
+ */
+export function addProjectEntry(
+  slnText: string,
+  typeGuid: string,
+  name: string,
+  relativePath: string,
+  projectGuid: string,
+): string {
+  const newline = slnText.includes("\r\n") ? "\r\n" : "\n";
+  const globalIndex = slnText.search(/^\s*Global\s*$/m);
+
+  const projectBlock = `Project("${typeGuid}") = "${name}", "${relativePath}", "${projectGuid}"${newline}EndProject`;
+
+  if (globalIndex === -1) {
+    return slnText + newline + projectBlock;
+  }
+
+  return slnText.slice(0, globalIndex) + projectBlock + newline + newline + slnText.slice(globalIndex);
+}
+
+/**
+ * Adds a nesting relation `{childGuid} = {parentGuid}` to the `GlobalSection(NestedProjects)` block.
+ * Creates the section if it doesn't exist.
+ */
+export function addNestedProjectRelation(slnText: string, childGuid: string, parentGuid: string): string {
+  const newline = slnText.includes("\r\n") ? "\r\n" : "\n";
+  const nestedProjectsPattern = /GlobalSection\(NestedProjects\)\s*=\s*preSolution([\s\S]*?)EndGlobalSection/i;
+  const match = nestedProjectsPattern.exec(slnText);
+
+  if (match) {
+    const sectionStart = match.index;
+    const endGlobalSectionLine = slnText.indexOf("EndGlobalSection", sectionStart);
+
+    const newRelation = `${newline}\t${childGuid} = ${parentGuid}`;
+    const beforeEndGlobalSection = slnText.slice(sectionStart, endGlobalSectionLine);
+    const afterEndGlobalSection = slnText.slice(endGlobalSectionLine);
+
+    return beforeEndGlobalSection + newRelation + newline + afterEndGlobalSection;
+  }
+
+  const globalPattern = /^Global\s*$/m;
+  const globalMatch = globalPattern.exec(slnText);
+  if (globalMatch) {
+    const globalIndex = globalMatch.index;
+    const nestedProjectsSection =
+      `GlobalSection(NestedProjects) = preSolution${newline}` +
+      `\t${childGuid} = ${parentGuid}${newline}` +
+      `EndGlobalSection`;
+
+    return slnText.slice(0, globalIndex) + nestedProjectsSection + newline + newline + slnText.slice(globalIndex);
+  }
+
+  throw new Error("Could not find Global section in solution file");
+}
+
+/**
+ * Removes the nesting relation for the given child GUID from `GlobalSection(NestedProjects)`.
+ * Does nothing if the child is not nested or if the section doesn't exist.
+ */
+export function removeNestedProjectRelation(slnText: string, childGuid: string): string {
+  const newline = slnText.includes("\r\n") ? "\r\n" : "\n";
+  const nestedProjectsPattern = /GlobalSection\(NestedProjects\)\s*=\s*preSolution([\s\S]*?)EndGlobalSection/i;
+  const match = nestedProjectsPattern.exec(slnText);
+
+  if (!match) {
+    return slnText;
+  }
+
+  const lines = slnText.split(/\r\n|\n/);
+  const updated = lines.filter((line) => {
+    const trimmed = line.trim();
+    return !trimmed.startsWith(`${childGuid} =`);
+  });
+
+  return updated.join(newline);
+}
