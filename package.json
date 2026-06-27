@@ -1,0 +1,82 @@
+{
+  "name": "jfksharp",
+  "displayName": "JFKSharp",
+  "description": "A lightweight Solution Explorer for C# projects in VS Code (and Open VSX-compatible editors).",
+  "version": "0.1.0",
+  "publisher": "jomblebee",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "jfksharp-activitybar",
+          "title": "JFKSharp",
+          "icon": "resources/solution-explorer-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "jfksharp-activitybar": [
+        {
+          "id": "jfksharp.solutionExplorer",
+          "name": "Solution Explorer"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "jfksharp.solutionExplorer",
+        "contents": "No .sln file was found in this workspace.\n[Open Folder](command:vscode.openFolder)\nIf you have a solution file, open the folder that contains it."
+      }
+    ],
+    "commands": [
+      {
+        "command": "jfksharp.solutionExplorer.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)",
+        "category": "JFKSharp"
+      },
+      {
+        "command": "jfksharp.solutionExplorer.openFile",
+        "title": "Open File",
+        "category": "JFKSharp"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "jfksharp.solutionExplorer.refresh",
+          "when": "view == jfksharp.solutionExplorer",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src test",
+    "test": "node --import tsx --test \"test/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "esbuild": "^0.24.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

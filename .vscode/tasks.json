@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "watch:esbuild",
+      "label": "watch:esbuild",
+      "group": "watch",
+      "problemMatcher": "$esbuild-watch",
+      "isBackground": true,
+      "presentation": { "group": "watch", "reveal": "never" }
+    },
+    {
+      "type": "npm",
+      "script": "watch:tsc",
+      "label": "watch:tsc",
+      "group": "watch",
+      "problemMatcher": "$tsc-watch",
+      "isBackground": true,
+      "presentation": { "group": "watch", "reveal": "never" }
+    },
+    {
+      "label": "npm: watch",
+      "dependsOn": ["watch:esbuild", "watch:tsc"],
+      "presentation": { "reveal": "never" },
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ]
+}

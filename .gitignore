@@ -1,0 +1,10 @@
+# Node / extension build
+node_modules/
+dist/
+*.vsix
+.vscode-test/
+
+# .NET sample solution
+samples/**/bin/
+samples/**/obj/
+samples/**/.vs/
