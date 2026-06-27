@@ -96,14 +96,10 @@ export function addNestedProjectRelation(slnText: string, childGuid: string, par
   const match = nestedProjectsPattern.exec(slnText);
 
   if (match) {
-    const sectionStart = match.index;
-    const endGlobalSectionLine = slnText.indexOf("EndGlobalSection", sectionStart);
+    const endGlobalSectionLine = slnText.indexOf("EndGlobalSection", match.index);
 
     const newRelation = `${newline}\t${childGuid} = ${parentGuid}`;
-    const beforeEndGlobalSection = slnText.slice(sectionStart, endGlobalSectionLine);
-    const afterEndGlobalSection = slnText.slice(endGlobalSectionLine);
-
-    return beforeEndGlobalSection + newRelation + newline + afterEndGlobalSection;
+    return slnText.slice(0, endGlobalSectionLine) + newRelation + newline + slnText.slice(endGlobalSectionLine);
   }
 
   const globalPattern = /^Global\s*$/m;

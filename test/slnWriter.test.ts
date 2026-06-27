@@ -169,6 +169,25 @@ describe("addNestedProjectRelation", () => {
     assert.equal(nesting.get("{22222222-2222-2222-2222-222222222222}"), "{33333333-3333-3333-3333-333333333333}");
   });
 
+  it("preserves all project entries and other sections when adding to an existing NestedProjects section", () => {
+    const result = addNestedProjectRelation(
+      sampleSolution(),
+      "{22222222-2222-2222-2222-222222222222}",
+      "{33333333-3333-3333-3333-333333333333}",
+    );
+
+    const projects = parseSolutionFile(result);
+    assert.equal(projects.length, 3, "all three project entries must survive");
+    assert.deepEqual(
+      projects.map((p) => p.name),
+      ["App", "Library", "Solution Items"],
+    );
+    assert.ok(result.includes("ProjectConfigurationPlatforms"), "ProjectConfigurationPlatforms section must survive");
+    const nesting = parseNestedProjects(result);
+    assert.equal(nesting.get("{11111111-1111-1111-1111-111111111111}"), "{33333333-3333-3333-3333-333333333333}");
+    assert.equal(nesting.get("{22222222-2222-2222-2222-222222222222}"), "{33333333-3333-3333-3333-333333333333}");
+  });
+
   it("creates a NestedProjects section if it doesn't exist", () => {
     const slnWithoutNesting = [
       "Microsoft Visual Studio Solution File, Format Version 12.00",
