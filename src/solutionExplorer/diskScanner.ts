@@ -47,3 +47,30 @@ export function listDirectChildren(dirPath: string): ScannedEntry[] {
 
   return entries;
 }
+
+/**
+ * Recursively walks `rootDir` (skipping bin/obj/node_modules/hidden directories, same as
+ * `listDirectChildren`), returning every file as a POSIX-style path relative to `rootDir`.
+ * Used for MSBuild glob resolution, which needs the full file set regardless of which
+ * folders are currently expanded in the tree.
+ */
+export function listAllFilesRecursive(rootDir: string): string[] {
+  const results: string[] = [];
+
+  const walk = (dirPath: string, relativePrefix: string) => {
+    const dirents = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const dirent of dirents) {
+      if (dirent.isDirectory()) {
+        if (shouldExcludeDir(dirent.name)) {
+          continue;
+        }
+        walk(path.join(dirPath, dirent.name), `${relativePrefix}${dirent.name}/`);
+      } else {
+        results.push(`${relativePrefix}${dirent.name}`);
+      }
+    }
+  };
+
+  walk(rootDir, "");
+  return results;
+}

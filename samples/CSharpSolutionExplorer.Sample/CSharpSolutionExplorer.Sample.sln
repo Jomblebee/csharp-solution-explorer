@@ -3,11 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JFKSharp.Sample.App", "JFKSharp.Sample.App\JFKSharp.Sample.App.csproj", "{F82A2B89-B7A7-465F-80DA-E70B167D83C7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSharpSolutionExplorer.Sample.App", "CSharpSolutionExplorer.Sample.App\CSharpSolutionExplorer.Sample.App.csproj", "{F82A2B89-B7A7-465F-80DA-E70B167D83C7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JFKSharp.Sample.Library", "JFKSharp.Sample.Library\JFKSharp.Sample.Library.csproj", "{632FB186-150A-449F-91D6-D717682E4C13}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSharpSolutionExplorer.Sample.Library", "CSharpSolutionExplorer.Sample.Library\CSharpSolutionExplorer.Sample.Library.csproj", "{632FB186-150A-449F-91D6-D717682E4C13}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JFKSharp.Sample.Web", "JFKSharp.Sample.Web\JFKSharp.Sample.Web.csproj", "{C44C459B-D63C-4C70-BB2E-E5945C9CD2B0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSharpSolutionExplorer.Sample.Web", "CSharpSolutionExplorer.Sample.Web\CSharpSolutionExplorer.Sample.Web.csproj", "{C44C459B-D63C-4C70-BB2E-E5945C9CD2B0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Apps", "Apps", "{A1B2C3D4-0001-4000-8000-000000000001}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Hosted", "Hosted", "{A1B2C3D4-0002-4000-8000-000000000002}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -58,5 +62,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F82A2B89-B7A7-465F-80DA-E70B167D83C7} = {A1B2C3D4-0001-4000-8000-000000000001}
+		{A1B2C3D4-0002-4000-8000-000000000002} = {A1B2C3D4-0001-4000-8000-000000000001}
+		{C44C459B-D63C-4C70-BB2E-E5945C9CD2B0} = {A1B2C3D4-0002-4000-8000-000000000002}
 	EndGlobalSection
 EndGlobal

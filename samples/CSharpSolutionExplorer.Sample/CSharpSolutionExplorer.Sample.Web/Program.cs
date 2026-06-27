@@ -1,4 +1,4 @@
-using JFKSharp.Sample.Web.Components;
+using CSharpSolutionExplorer.Sample.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 

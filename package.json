@@ -1,6 +1,6 @@
 {
-  "name": "jfksharp",
-  "displayName": "JFKSharp",
+  "name": "csharp-solution-explorer",
+  "displayName": "C# Solution Explorer",
   "description": "A lightweight Solution Explorer for C# projects in VS Code (and Open VSX-compatible editors).",
   "version": "0.1.0",
   "publisher": "jomblebee",
@@ -17,45 +17,107 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "jfksharp-activitybar",
-          "title": "JFKSharp",
+          "id": "csharp-solution-explorer-activitybar",
+          "title": "C# Solution Explorer",
           "icon": "resources/solution-explorer-icon.svg"
         }
       ]
     },
     "views": {
-      "jfksharp-activitybar": [
+      "csharp-solution-explorer-activitybar": [
         {
-          "id": "jfksharp.solutionExplorer",
+          "id": "csharpSolutionExplorer.view",
           "name": "Solution Explorer"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "jfksharp.solutionExplorer",
+        "view": "csharpSolutionExplorer.view",
         "contents": "No .sln file was found in this workspace.\n[Open Folder](command:vscode.openFolder)\nIf you have a solution file, open the folder that contains it."
       }
     ],
     "commands": [
       {
-        "command": "jfksharp.solutionExplorer.refresh",
+        "command": "csharpSolutionExplorer.refresh",
         "title": "Refresh",
         "icon": "$(refresh)",
-        "category": "JFKSharp"
+        "category": "C# Solution Explorer"
       },
       {
-        "command": "jfksharp.solutionExplorer.openFile",
+        "command": "csharpSolutionExplorer.openFile",
         "title": "Open File",
-        "category": "JFKSharp"
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.newClass",
+        "title": "New Class...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.newFolder",
+        "title": "New Folder...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.rename",
+        "title": "Rename...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.delete",
+        "title": "Delete",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.buildProject",
+        "title": "Build Project",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.runProject",
+        "title": "Run Project",
+        "category": "C# Solution Explorer"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "jfksharp.solutionExplorer.refresh",
-          "when": "view == jfksharp.solutionExplorer",
+          "command": "csharpSolutionExplorer.refresh",
+          "when": "view == csharpSolutionExplorer.view",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "csharpSolutionExplorer.newClass",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.project)",
+          "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.newFolder",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.project)",
+          "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.buildProject",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project",
+          "group": "2_build"
+        },
+        {
+          "command": "csharpSolutionExplorer.runProject",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project",
+          "group": "2_build"
+        },
+        {
+          "command": "csharpSolutionExplorer.rename",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem == csharpSolutionExplorer.project)",
+          "group": "7_modification"
+        },
+        {
+          "command": "csharpSolutionExplorer.delete",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem == csharpSolutionExplorer.project)",
+          "group": "7_modification"
         }
       ]
     }
@@ -68,6 +130,9 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src test",
     "test": "node --import tsx --test \"test/**/*.test.ts\""
+  },
+  "dependencies": {
+    "minimatch": "^10.2.5"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

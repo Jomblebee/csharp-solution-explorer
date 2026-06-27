@@ -8,3 +8,9 @@ dist/
 samples/**/bin/
 samples/**/obj/
 samples/**/.vs/
+
+# macOS
+.DS_Store
+
+# Claude Code local settings
+.claude/settings.local.json

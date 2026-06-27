@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { listDirectChildren, shouldExcludeDir } from "../src/solutionExplorer/diskScanner.js";
+import { listAllFilesRecursive, listDirectChildren, shouldExcludeDir } from "../src/solutionExplorer/diskScanner.js";
 
 describe("shouldExcludeDir", () => {
   it("excludes well-known build/dependency directory names", () => {
@@ -28,7 +28,7 @@ describe("listDirectChildren", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "jfksharp-disk-scanner-"));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "csharp-solution-explorer-disk-scanner-"));
     fs.mkdirSync(path.join(tempDir, "bin"));
     fs.mkdirSync(path.join(tempDir, "obj"));
     fs.mkdirSync(path.join(tempDir, ".vs"));
@@ -64,5 +64,43 @@ describe("listDirectChildren", () => {
     assert.equal(entries[0].kind, "folder");
     assert.equal(entries[1].kind, "file");
     assert.equal(entries[2].kind, "file");
+  });
+});
+
+describe("listAllFilesRecursive", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "csharp-solution-explorer-disk-scanner-recursive-"));
+    fs.mkdirSync(path.join(tempDir, "bin"));
+    fs.mkdirSync(path.join(tempDir, "Generated"), { recursive: true });
+    fs.writeFileSync(path.join(tempDir, "bin", "Ignored.dll"), "");
+    fs.writeFileSync(path.join(tempDir, "Program.cs"), "");
+    fs.writeFileSync(path.join(tempDir, "Generated", "Model.cs"), "");
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("returns nested files as POSIX-relative paths", () => {
+    const result = listAllFilesRecursive(tempDir).sort();
+
+    assert.deepEqual(result, ["Generated/Model.cs", "Program.cs"]);
+  });
+
+  it("excludes files within bin/obj/hidden directories, even when nested", () => {
+    const result = listAllFilesRecursive(tempDir);
+
+    assert.equal(result.includes("bin/Ignored.dll"), false);
+  });
+
+  it("returns an empty array for a project with no files", () => {
+    const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "csharp-solution-explorer-disk-scanner-empty-"));
+    try {
+      assert.deepEqual(listAllFilesRecursive(emptyDir), []);
+    } finally {
+      fs.rmSync(emptyDir, { recursive: true, force: true });
+    }
   });
 });

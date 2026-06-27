@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\JFKSharp.Sample.Library\JFKSharp.Sample.Library.csproj" />
+    <ProjectReference Include="..\CSharpSolutionExplorer.Sample.Library\CSharpSolutionExplorer.Sample.Library.csproj" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
   <PropertyGroup>

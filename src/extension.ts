@@ -4,7 +4,7 @@ import { SolutionTreeDataProvider } from "./solutionExplorer/solutionTreeDataPro
 
 export function activate(context: vscode.ExtensionContext): void {
   const provider = new SolutionTreeDataProvider();
-  const treeView = vscode.window.createTreeView("jfksharp.solutionExplorer", {
+  const treeView = vscode.window.createTreeView("csharpSolutionExplorer.view", {
     treeDataProvider: provider,
   });
 
