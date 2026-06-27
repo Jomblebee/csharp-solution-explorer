@@ -1,4 +1,86 @@
 const PATH_ATTR_PATTERN = /Path="([^"]*)"/i;
+const NAME_ATTR_PATTERN = /Name="([^"]*)"/i;
+const FOLDER_OPEN_TAG = /<Folder\b[^>]*>/gi;
+
+function leadingIndent(line: string): string {
+  return /^(\s*)/.exec(line)?.[1] ?? "";
+}
+
+/** Net change in folder nesting depth contributed by a line, counting every tag it contains.
+ * Self-closing folders and inline open/close pairs net to zero. */
+function netFolderDepth(line: string): number {
+  let opens = 0;
+  for (const match of line.matchAll(FOLDER_OPEN_TAG)) {
+    if (!match[0].replace(/\s+/g, "").endsWith("/>")) {
+      opens++;
+    }
+  }
+  const closes = (line.match(/<\/Folder>/gi) ?? []).length;
+  return opens - closes;
+}
+
+/** Finds the line index of the (non-self-closing) `<Folder>` open tag whose Name is `/name/`. */
+function findFolderOpenLine(lines: string[], normalizedName: string): number {
+  return lines.findIndex((line) => {
+    for (const match of line.matchAll(FOLDER_OPEN_TAG)) {
+      if (match[0].replace(/\s+/g, "").endsWith("/>")) {
+        continue;
+      }
+      if (NAME_ATTR_PATTERN.exec(match[0])?.[1].toLowerCase() === normalizedName) {
+        return true;
+      }
+    }
+    return false;
+  });
+}
+
+/**
+ * Inserts a new (empty) solution folder into a .slnx file. Empty folders are written as an
+ * open/close pair (`<Folder Name="/x/"></Folder>`) rather than self-closing, since the parser
+ * only treats non-self-closing folders as nodes. When `parentFolderName` is given, the folder is
+ * nested inside that parent (matched by its `/Name/`); an inline-empty parent is expanded across
+ * lines to receive the child. Otherwise the folder is added at the solution root, before
+ * `</Solution>`. Preserves original line endings. No-op if the insertion point cannot be located.
+ */
+export function addSlnxFolderEntry(slnxText: string, folderName: string, parentFolderName?: string): string {
+  const newline = slnxText.includes("\r\n") ? "\r\n" : "\n";
+  const lines = slnxText.split(/\r\n|\n/);
+  const folderLine = (indent: string) => `${indent}<Folder Name="/${folderName}/"></Folder>`;
+
+  if (!parentFolderName) {
+    const closeIdx = lines.findIndex((line) => line.includes("</Solution>"));
+    if (closeIdx === -1) {
+      return slnxText;
+    }
+    lines.splice(closeIdx, 0, folderLine(`${leadingIndent(lines[closeIdx])}  `));
+    return lines.join(newline);
+  }
+
+  const parentIdx = findFolderOpenLine(lines, `/${parentFolderName}/`.toLowerCase());
+  if (parentIdx === -1) {
+    return slnxText;
+  }
+
+  const parentIndent = leadingIndent(lines[parentIdx]);
+  let depth = 0;
+  for (let i = parentIdx; i < lines.length; i++) {
+    depth += netFolderDepth(lines[i]);
+    if (depth !== 0) {
+      continue;
+    }
+    if (i === parentIdx) {
+      // Inline-empty parent (`<Folder Name="/x/"></Folder>`): expand it to hold the child.
+      const parentLine = lines[parentIdx];
+      const openTag = parentLine.slice(0, parentLine.indexOf(">") + 1);
+      lines.splice(parentIdx, 1, openTag, folderLine(`${parentIndent}  `), `${parentIndent}</Folder>`);
+    } else {
+      lines.splice(i, 0, folderLine(`${parentIndent}  `));
+    }
+    return lines.join(newline);
+  }
+
+  return slnxText;
+}
 
 /**
  * Removes the <Project Path="..."> line whose Path attribute matches projectPath

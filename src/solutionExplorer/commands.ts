@@ -18,8 +18,14 @@ import {
   removeProjectEntry,
   renameProjectEntry,
 } from "./slnWriter.js";
-import { removeSlnxProjectEntry, renameSlnxProjectEntry } from "./slnxWriter.js";
-import { FileTreeItem, FolderTreeItem, ProjectTreeItem, SolutionFolderTreeItem } from "./treeItems.js";
+import { addSlnxFolderEntry, removeSlnxProjectEntry, renameSlnxProjectEntry } from "./slnxWriter.js";
+import {
+  FileTreeItem,
+  FolderTreeItem,
+  ProjectTreeItem,
+  SolutionFolderTreeItem,
+  SolutionTreeItem,
+} from "./treeItems.js";
 import {
   BUILD_PROJECT_COMMAND_ID,
   DELETE_COMMAND_ID,
@@ -296,12 +302,16 @@ async function deleteSolutionFolder(info: SolutionFolderInfo): Promise<void> {
 }
 
 async function newSolutionFolder(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
-  if (!isNewItemTarget(item)) {
+  let solutionUri: vscode.Uri | undefined;
+  let parentFolderGuid: string | undefined;
+  if (item instanceof SolutionTreeItem) {
+    solutionUri = item.info.uri;
+  } else if (item instanceof SolutionFolderTreeItem) {
+    solutionUri = item.info.solutionUri;
+    parentFolderGuid = item.info.guid;
+  } else {
     return;
   }
-
-  const solutionUri = item instanceof SolutionFolderTreeItem ? item.info.solutionUri : undefined;
-  const parentFolderGuid = item instanceof SolutionFolderTreeItem ? item.info.guid : undefined;
 
   if (!solutionUri) {
     throw new Error("Solution file not found");
@@ -321,15 +331,21 @@ async function newSolutionFolder(item: unknown, provider: SolutionTreeDataProvid
     return;
   }
 
-  let slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(solutionUri));
-  const newGuid = generateSlnGuid();
-  slnText = addProjectEntry(slnText, SOLUTION_FOLDER_TYPE_GUID, folderName, folderName, newGuid);
-
-  if (parentFolderGuid) {
-    slnText = addNestedProjectRelation(slnText, newGuid, parentFolderGuid);
+  const name = folderName.trim();
+  const original = new TextDecoder().decode(await vscode.workspace.fs.readFile(solutionUri));
+  let updated: string;
+  if (solutionUri.fsPath.toLowerCase().endsWith(".slnx")) {
+    // For .slnx, solution folders are identified by name; parentFolderGuid carries the parent's name.
+    updated = addSlnxFolderEntry(original, name, parentFolderGuid);
+  } else {
+    const newGuid = generateSlnGuid();
+    updated = addProjectEntry(original, SOLUTION_FOLDER_TYPE_GUID, name, name, newGuid);
+    if (parentFolderGuid) {
+      updated = addNestedProjectRelation(updated, newGuid, parentFolderGuid);
+    }
   }
 
-  await vscode.workspace.fs.writeFile(solutionUri, new TextEncoder().encode(slnText));
+  await vscode.workspace.fs.writeFile(solutionUri, new TextEncoder().encode(updated));
   provider.refresh();
 }
 
