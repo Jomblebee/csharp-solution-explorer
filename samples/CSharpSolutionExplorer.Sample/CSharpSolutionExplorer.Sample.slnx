@@ -5,5 +5,8 @@
       <Project Path="CSharpSolutionExplorer.Sample.Web/CSharpSolutionExplorer.Sample.Web.csproj" />
     </Folder>
   </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="CSharpSolutionExplorer.Sample.Tests/CSharpSolutionExplorer.Sample.Tests.csproj" />
+  </Folder>
   <Project Path="CSharpSolutionExplorer.Sample.Library/CSharpSolutionExplorer.Sample.Library.csproj" />
 </Solution>
