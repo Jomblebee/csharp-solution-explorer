@@ -1,6 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { removeProjectEntry, renameProjectEntry } from "../src/solutionExplorer/slnWriter.js";
+import {
+  removeProjectEntry,
+  renameProjectEntry,
+  addProjectEntry,
+  addNestedProjectRelation,
+  removeNestedProjectRelation,
+} from "../src/solutionExplorer/slnWriter.js";
 import { parseNestedProjects, parseSolutionFile } from "../src/solutionExplorer/slnParser.js";
 
 const CSHARP_SDK_TYPE_GUID = "{9A19103F-16F7-4668-BE54-9A1E7A4F7556}";
@@ -113,6 +119,91 @@ describe("renameProjectEntry", () => {
       "{11111111-1111-1111-1111-111111111111}",
       "Renamed",
       "Renamed/Renamed.csproj",
+    );
+
+    const nesting = parseNestedProjects(result);
+    assert.equal(nesting.get("{11111111-1111-1111-1111-111111111111}"), "{33333333-3333-3333-3333-333333333333}");
+  });
+});
+
+describe("addProjectEntry", () => {
+  it("adds a new Project/EndProject block before Global", () => {
+    const result = addProjectEntry(
+      sampleSolution(),
+      SOLUTION_FOLDER_TYPE_GUID,
+      "NewFolder",
+      "NewFolder",
+      "{44444444-4444-4444-4444-444444444444}",
+    );
+
+    const references = parseSolutionFile(result);
+    const newProject = references.find((r) => r.projectGuid === "{44444444-4444-4444-4444-444444444444}");
+    assert.equal(newProject?.name, "NewFolder");
+    assert.equal(newProject?.typeGuid, SOLUTION_FOLDER_TYPE_GUID);
+  });
+
+  it("adds the new entry at the end if no Global section exists", () => {
+    const slnWithoutGlobal = sampleSolution().split("Global")[0].trim();
+    const result = addProjectEntry(
+      slnWithoutGlobal,
+      SOLUTION_FOLDER_TYPE_GUID,
+      "NewFolder",
+      "NewFolder",
+      "{44444444-4444-4444-4444-444444444444}",
+    );
+
+    const references = parseSolutionFile(result);
+    assert.equal(references.length, 4);
+  });
+});
+
+describe("addNestedProjectRelation", () => {
+  it("adds a nesting relation to the NestedProjects section", () => {
+    const result = addNestedProjectRelation(
+      sampleSolution(),
+      "{22222222-2222-2222-2222-222222222222}",
+      "{33333333-3333-3333-3333-333333333333}",
+    );
+
+    const nesting = parseNestedProjects(result);
+    assert.equal(nesting.get("{22222222-2222-2222-2222-222222222222}"), "{33333333-3333-3333-3333-333333333333}");
+  });
+
+  it("creates a NestedProjects section if it doesn't exist", () => {
+    const slnWithoutNesting = [
+      "Microsoft Visual Studio Solution File, Format Version 12.00",
+      `Project("${CSHARP_SDK_TYPE_GUID}") = "App", "App/App.csproj", "{11111111-1111-1111-1111-111111111111}"`,
+      "EndProject",
+      "Global",
+      "EndGlobal",
+    ].join("\n");
+
+    const result = addNestedProjectRelation(
+      slnWithoutNesting,
+      "{11111111-1111-1111-1111-111111111111}",
+      "{99999999-9999-9999-9999-999999999999}",
+    );
+
+    const nesting = parseNestedProjects(result);
+    assert.equal(nesting.get("{11111111-1111-1111-1111-111111111111}"), "{99999999-9999-9999-9999-999999999999}");
+  });
+});
+
+describe("removeNestedProjectRelation", () => {
+  it("removes the nesting relation for the given child GUID", () => {
+    const result = removeNestedProjectRelation(
+      sampleSolution(),
+      "{11111111-1111-1111-1111-111111111111}",
+    );
+
+    const nesting = parseNestedProjects(result);
+    assert.equal(nesting.has("{11111111-1111-1111-1111-111111111111}"), false);
+  });
+
+  it("does nothing if the child is not nested", () => {
+    const result = removeNestedProjectRelation(
+      sampleSolution(),
+      "{22222222-2222-2222-2222-222222222222}",
     );
 
     const nesting = parseNestedProjects(result);
