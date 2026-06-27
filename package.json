@@ -108,6 +108,11 @@
         "command": "csharpSolutionExplorer.runProject",
         "title": "Run Project",
         "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.openSolutionFile",
+        "title": "Open in Editor",
+        "category": "C# Solution Explorer"
       }
     ],
     "menus": {
@@ -178,6 +183,11 @@
           "command": "csharpSolutionExplorer.moveSolutionFolder",
           "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.solutionFolder",
           "group": "8_nesting"
+        },
+        {
+          "command": "csharpSolutionExplorer.openSolutionFile",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.solution",
+          "group": "0_open"
         }
       ]
     }

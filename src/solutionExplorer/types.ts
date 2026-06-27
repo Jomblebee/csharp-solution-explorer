@@ -15,6 +15,7 @@ export const ADD_EXISTING_PROJECT_COMMAND_ID = "csharpSolutionExplorer.addExisti
 export const REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID = "csharpSolutionExplorer.removeProjectFromSolution";
 export const BUILD_PROJECT_COMMAND_ID = "csharpSolutionExplorer.buildProject";
 export const RUN_PROJECT_COMMAND_ID = "csharpSolutionExplorer.runProject";
+export const OPEN_SOLUTION_FILE_COMMAND_ID = "csharpSolutionExplorer.openSolutionFile";
 
 export interface ProjectReference {
   typeGuid: string;
