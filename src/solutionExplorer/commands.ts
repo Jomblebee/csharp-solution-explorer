@@ -5,6 +5,7 @@ import { buildClassFileContent, buildNamespace } from "./csharpTemplates.js";
 import { basenameWithoutExtension, SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
 import { parseSolutionFile } from "./slnParser.js";
 import { removeProjectEntry, renameProjectEntry } from "./slnWriter.js";
+import { removeSlnxProjectEntry, renameSlnxProjectEntry } from "./slnxWriter.js";
 import { FileTreeItem, FolderTreeItem, ProjectTreeItem } from "./treeItems.js";
 import {
   BUILD_PROJECT_COMMAND_ID,
@@ -200,16 +201,20 @@ async function rename(item: unknown, provider: SolutionTreeDataProvider): Promis
 
 async function renameProject(info: ProjectInfo, newName: string): Promise<void> {
   let solutionGuid: string | undefined;
+  let originalRelativePath: string | undefined;
   let solutionDir: vscode.Uri | undefined;
   let slnText: string | undefined;
+  const isSlnx = info.solutionUri?.fsPath.toLowerCase().endsWith(".slnx") ?? false;
 
   if (info.solutionUri) {
     solutionDir = vscode.Uri.joinPath(info.solutionUri, "..");
-    const originalRelativePath = toPosixRelative(solutionDir.fsPath, info.uri.fsPath);
+    originalRelativePath = toPosixRelative(solutionDir.fsPath, info.uri.fsPath);
     slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(info.solutionUri));
-    solutionGuid = parseSolutionFile(slnText).find(
-      (ref) => ref.relativePath.toLowerCase() === originalRelativePath.toLowerCase(),
-    )?.projectGuid;
+    if (!isSlnx) {
+      solutionGuid = parseSolutionFile(slnText).find(
+        (ref) => ref.relativePath.toLowerCase() === originalRelativePath!.toLowerCase(),
+      )?.projectGuid;
+    }
   }
 
   const oldCsprojUri = info.uri;
@@ -227,9 +232,13 @@ async function renameProject(info: ProjectInfo, newName: string): Promise<void> 
       csprojUri = vscode.Uri.joinPath(newRootDir, `${newName}.csproj`);
     }
 
-    if (info.solutionUri && solutionDir && solutionGuid && slnText) {
+    if (info.solutionUri && solutionDir && slnText && originalRelativePath) {
       const newRelativePath = toPosixRelative(solutionDir.fsPath, csprojUri.fsPath);
-      const newSlnText = renameProjectEntry(slnText, solutionGuid, newName, newRelativePath);
+      const newSlnText = isSlnx
+        ? renameSlnxProjectEntry(slnText, originalRelativePath, newRelativePath)
+        : solutionGuid
+          ? renameProjectEntry(slnText, solutionGuid, newName, newRelativePath)
+          : slnText;
       await vscode.workspace.fs.writeFile(info.solutionUri, new TextEncoder().encode(newSlnText));
     }
   } catch (err) {
@@ -291,20 +300,24 @@ async function deleteProject(info: ProjectInfo): Promise<void> {
     const solutionDir = vscode.Uri.joinPath(info.solutionUri, "..");
     const relativePath = toPosixRelative(solutionDir.fsPath, info.uri.fsPath);
     const slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(info.solutionUri));
-    const guid = parseSolutionFile(slnText).find(
-      (ref) => ref.relativePath.toLowerCase() === relativePath.toLowerCase(),
-    )?.projectGuid;
 
-    if (guid) {
-      try {
-        const newSlnText = removeProjectEntry(slnText, guid);
-        await vscode.workspace.fs.writeFile(info.solutionUri, new TextEncoder().encode(newSlnText));
-      } catch (err) {
-        throw new Error(
-          `Project files were deleted, but updating '${path.basename(info.solutionUri.fsPath)}' failed: ` +
-            `${errorMessage(err)}. Remove the stale entry manually.`,
-        );
+    try {
+      let newSlnText: string;
+      if (info.solutionUri.fsPath.toLowerCase().endsWith(".slnx")) {
+        newSlnText = removeSlnxProjectEntry(slnText, relativePath);
+      } else {
+        const guid = parseSolutionFile(slnText).find(
+          (ref) => ref.relativePath.toLowerCase() === relativePath.toLowerCase(),
+        )?.projectGuid;
+        if (!guid) {return;}
+        newSlnText = removeProjectEntry(slnText, guid);
       }
+      await vscode.workspace.fs.writeFile(info.solutionUri, new TextEncoder().encode(newSlnText));
+    } catch (err) {
+      throw new Error(
+        `Project files were deleted, but updating '${path.basename(info.solutionUri.fsPath)}' failed: ` +
+          `${errorMessage(err)}. Remove the stale entry manually.`,
+      );
     }
   }
 }

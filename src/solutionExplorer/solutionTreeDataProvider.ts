@@ -11,6 +11,7 @@ import {
 } from "./csprojReader.js";
 import { listAllFilesRecursive, listDirectChildren } from "./diskScanner.js";
 import { buildSolutionTree, parseNestedProjects, parseSolutionFile, SolutionTreeNode } from "./slnParser.js";
+import { parseSlnxFile } from "./slnxParser.js";
 import { DependenciesInfo, ExcludedPaths, ProjectInfo, SolutionInfo } from "./types.js";
 import {
   DependenciesTreeItem,
@@ -96,7 +97,10 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     const items: SolutionExplorerTreeItem[] = [];
 
     for (const folder of folders) {
-      const slnUris = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, "*.sln"));
+      const slnUris = [
+        ...(await vscode.workspace.findFiles(new vscode.RelativePattern(folder, "*.sln"))),
+        ...(await vscode.workspace.findFiles(new vscode.RelativePattern(folder, "*.slnx"))),
+      ];
 
       if (slnUris.length > 0) {
         for (const slnUri of slnUris) {
@@ -121,9 +125,12 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
 
   private async getProjectItems(solution: SolutionInfo): Promise<SolutionExplorerTreeItem[]> {
     const bytes = await vscode.workspace.fs.readFile(solution.uri);
-    const slnText = new TextDecoder().decode(bytes);
-    const tree = buildSolutionTree(parseSolutionFile(slnText), parseNestedProjects(slnText));
+    const text = new TextDecoder().decode(bytes);
     const solutionDir = vscode.Uri.joinPath(solution.uri, "..");
+
+    const tree = solution.uri.fsPath.toLowerCase().endsWith(".slnx")
+      ? parseSlnxFile(text)
+      : buildSolutionTree(parseSolutionFile(text), parseNestedProjects(text));
 
     return this.nodesToTreeItems(tree, solutionDir, solution.uri);
   }
