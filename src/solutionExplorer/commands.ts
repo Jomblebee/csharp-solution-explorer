@@ -2,7 +2,10 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { buildClassFileContent, buildInterfaceFileContent, buildNamespace } from "./csharpTemplates.js";
+import {
+  applyCursorTemplate,
+  buildNamespace,
+} from "./csharpTemplates.js";
 import { basenameWithoutExtension, SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
 import {
   CSHARP_PROJECT_TYPE_GUID,
@@ -40,6 +43,11 @@ import {
   NEW_CLASS_COMMAND_ID,
   NEW_FOLDER_COMMAND_ID,
   NEW_INTERFACE_COMMAND_ID,
+  NEW_RECORD_COMMAND_ID,
+  NEW_ENUM_COMMAND_ID,
+  NEW_STRUCT_COMMAND_ID,
+  NEW_RAZOR_COMMAND_ID,
+  NEW_FILE_COMMAND_ID,
   NEW_SOLUTION_FOLDER_COMMAND_ID,
   OPEN_FILE_COMMAND_ID,
   OPEN_SETTINGS_COMMAND_ID,
@@ -71,6 +79,21 @@ export function registerSolutionExplorerCommands(
     vscode.commands.registerCommand(NEW_INTERFACE_COMMAND_ID, (item: NewItemTarget) =>
       withErrorHandling(() => newInterface(item, provider)),
     ),
+    vscode.commands.registerCommand(NEW_RECORD_COMMAND_ID, (item: NewItemTarget) =>
+      withErrorHandling(() => newRecord(item, provider)),
+    ),
+    vscode.commands.registerCommand(NEW_ENUM_COMMAND_ID, (item: NewItemTarget) =>
+      withErrorHandling(() => newEnum(item, provider)),
+    ),
+    vscode.commands.registerCommand(NEW_STRUCT_COMMAND_ID, (item: NewItemTarget) =>
+      withErrorHandling(() => newStruct(item, provider)),
+    ),
+    vscode.commands.registerCommand(NEW_RAZOR_COMMAND_ID, (item: NewItemTarget) =>
+      withErrorHandling(() => newRazor(item, provider)),
+    ),
+    vscode.commands.registerCommand(NEW_FILE_COMMAND_ID, (item: NewItemTarget) =>
+      withErrorHandling(() => newFile(item, provider)),
+    ),
     vscode.commands.registerCommand(NEW_FOLDER_COMMAND_ID, (item: NewItemTarget) =>
       withErrorHandling(() => newFolder(item, provider)),
     ),
@@ -95,7 +118,7 @@ export function registerSolutionExplorerCommands(
       vscode.window.showTextDocument(item.info.uri),
     ),
     vscode.commands.registerCommand(OPEN_SETTINGS_COMMAND_ID, () =>
-      vscode.commands.executeCommand("workbench.action.openSettings", "@ext:jomblebee.csharp-solution-explorer"),
+      vscode.commands.executeCommand("workbench.action.openSettings", "@ext:jomblebee.jomblebee-csharp-solution-explorer"),
     ),
   );
 }
@@ -168,6 +191,91 @@ function validateNewName(value: string, dirPath: string, suffix = ""): string | 
   return undefined;
 }
 
+function validateNewCsharpName(value: string, dirPath: string, suffix: string): string | undefined {
+  if (!value.trim()) return "Name must not be empty";
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value)) {
+    return "Must be a valid C# identifier: start with a letter or underscore, then letters, digits, or underscores only";
+  }
+  if (fs.existsSync(path.join(dirPath, `${value}${suffix}`))) {
+    return "A file or folder with that name already exists";
+  }
+  return undefined;
+}
+
+function resolveTemplate(key: string): string | undefined {
+  const setting = vscode.workspace.getConfiguration("csharpSolutionExplorer").get<string>(key) ?? "";
+  if (!setting.trim()) { return undefined; }
+  return setting;
+}
+
+interface NewCsharpFileOptions {
+  templateKey: string;
+  typeName: string;
+  prompt: string;
+  placeholder: string;
+  extension: ".cs" | ".razor";
+  initialValue?: string;
+  requiresUppercase?: boolean;
+}
+
+async function createNewCsharpFile(
+  item: unknown,
+  provider: SolutionTreeDataProvider,
+  opts: NewCsharpFileOptions,
+): Promise<void> {
+  if (!isNewItemTarget(item)) return;
+
+  const template = resolveTemplate(opts.templateKey);
+  if (!template) {
+    vscode.window.showErrorMessage(
+      `C# Solution Explorer: The ${opts.typeName} template setting is empty. Restore the default by clicking the reset icon in Settings.`,
+    );
+    return;
+  }
+
+  const targetDirUri = getTargetDirUri(item);
+  const name = await vscode.window.showInputBox({
+    prompt: opts.prompt,
+    placeHolder: opts.placeholder,
+    value: opts.initialValue,
+    valueSelection: opts.initialValue !== undefined ? [opts.initialValue.length, opts.initialValue.length] : undefined,
+    validateInput: (value) => {
+      const baseError = validateNewCsharpName(value, targetDirUri.fsPath, opts.extension);
+      if (baseError) return baseError;
+      if (opts.requiresUppercase && value && !/^[A-Z]/.test(value)) {
+        return "Razor component names must start with an uppercase letter (Blazor convention)";
+      }
+      return undefined;
+    },
+  });
+  if (!name) return;
+
+  let projectName: string;
+  let projectRootDirPath: string;
+  if (item instanceof ProjectTreeItem) {
+    projectName = item.info.name;
+    projectRootDirPath = item.info.rootDir.fsPath;
+  } else {
+    const csprojPath = findContainingCsprojPath(targetDirUri.fsPath);
+    projectName = csprojPath ? basenameWithoutExtension(csprojPath) : name;
+    projectRootDirPath = csprojPath ? path.dirname(csprojPath) : targetDirUri.fsPath;
+  }
+
+  const namespace = buildNamespace(projectName, projectRootDirPath, targetDirUri.fsPath);
+  const date = new Date().toISOString().slice(0, 10);
+  const { content, cursorOffset } = applyCursorTemplate(template, namespace, name, `${name}${opts.extension}`, date);
+  const fileUri = vscode.Uri.joinPath(targetDirUri, `${name}${opts.extension}`);
+
+  await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(content));
+  provider.refresh();
+  const editor = await vscode.window.showTextDocument(fileUri);
+  if (cursorOffset !== undefined) {
+    const pos = editor.document.positionAt(cursorOffset);
+    editor.selection = new vscode.Selection(pos, pos);
+    editor.revealRange(new vscode.Range(pos, pos));
+  }
+}
+
 /** Walks up from `startDirPath` to find the nearest containing .csproj file. */
 function findContainingCsprojPath(startDirPath: string): string | undefined {
   let dir = startDirPath;
@@ -196,72 +304,86 @@ function toPosixRelative(fromDirPath: string, toPath: string): string {
   return path.relative(fromDirPath, toPath).split(path.sep).join("/");
 }
 
-async function newClass(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
-  if (!isNewItemTarget(item)) {
-    return;
-  }
-
-  const targetDirUri = getTargetDirUri(item);
-  const className = await vscode.window.showInputBox({
+function newClass(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  return createNewCsharpFile(item, provider, {
+    templateKey: "templates.class",
+    typeName: "class",
     prompt: "Class name",
-    validateInput: (value) => validateNewName(value, targetDirUri.fsPath, ".cs"),
+    placeholder: "MyClass",
+    extension: ".cs",
   });
-  if (!className) {
-    return;
-  }
-
-  let projectName: string;
-  let projectRootDirPath: string;
-  if (item instanceof ProjectTreeItem) {
-    projectName = item.info.name;
-    projectRootDirPath = item.info.rootDir.fsPath;
-  } else {
-    const csprojPath = findContainingCsprojPath(targetDirUri.fsPath);
-    projectName = csprojPath ? basenameWithoutExtension(csprojPath) : className;
-    projectRootDirPath = csprojPath ? path.dirname(csprojPath) : targetDirUri.fsPath;
-  }
-
-  const namespace = buildNamespace(projectName, projectRootDirPath, targetDirUri.fsPath);
-  const content = buildClassFileContent(namespace, className);
-  const fileUri = vscode.Uri.joinPath(targetDirUri, `${className}.cs`);
-
-  await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(content));
-  provider.refresh();
-  await vscode.window.showTextDocument(fileUri);
 }
 
-async function newInterface(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
-  if (!isNewItemTarget(item)) {
-    return;
-  }
+function newInterface(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  return createNewCsharpFile(item, provider, {
+    templateKey: "templates.interface",
+    typeName: "interface",
+    prompt: "Interface name",
+    placeholder: "IMyService",
+    extension: ".cs",
+    initialValue: "I",
+  });
+}
+
+function newRecord(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  return createNewCsharpFile(item, provider, {
+    templateKey: "templates.record",
+    typeName: "record",
+    prompt: "Record name",
+    placeholder: "MyRecord",
+    extension: ".cs",
+  });
+}
+
+function newEnum(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  return createNewCsharpFile(item, provider, {
+    templateKey: "templates.enum",
+    typeName: "enum",
+    prompt: "Enum name",
+    placeholder: "MyEnum",
+    extension: ".cs",
+  });
+}
+
+function newStruct(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  return createNewCsharpFile(item, provider, {
+    templateKey: "templates.struct",
+    typeName: "struct",
+    prompt: "Struct name",
+    placeholder: "MyStruct",
+    extension: ".cs",
+  });
+}
+
+function newRazor(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  return createNewCsharpFile(item, provider, {
+    templateKey: "templates.razor",
+    typeName: "Razor component",
+    prompt: "Component name",
+    placeholder: "MyComponent",
+    extension: ".razor",
+    requiresUppercase: true,
+  });
+}
+
+async function newFile(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  if (!isNewItemTarget(item)) return;
 
   const targetDirUri = getTargetDirUri(item);
-  const interfaceName = await vscode.window.showInputBox({
-    prompt: "Interface name",
-    validateInput: (value) => validateNewName(value, targetDirUri.fsPath, ".cs"),
+  const filename = await vscode.window.showInputBox({
+    prompt: "File name (with extension)",
+    placeHolder: "e.g. appsettings.json",
+    validateInput: (value) => validateNewName(value, targetDirUri.fsPath),
   });
-  if (!interfaceName) {
-    return;
-  }
+  if (!filename) return;
 
-  let projectName: string;
-  let projectRootDirPath: string;
-  if (item instanceof ProjectTreeItem) {
-    projectName = item.info.name;
-    projectRootDirPath = item.info.rootDir.fsPath;
-  } else {
-    const csprojPath = findContainingCsprojPath(targetDirUri.fsPath);
-    projectName = csprojPath ? basenameWithoutExtension(csprojPath) : interfaceName;
-    projectRootDirPath = csprojPath ? path.dirname(csprojPath) : targetDirUri.fsPath;
-  }
-
-  const namespace = buildNamespace(projectName, projectRootDirPath, targetDirUri.fsPath);
-  const content = buildInterfaceFileContent(namespace, interfaceName);
-  const fileUri = vscode.Uri.joinPath(targetDirUri, `${interfaceName}.cs`);
-
-  await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(content));
+  const fileUri = vscode.Uri.joinPath(targetDirUri, filename);
+  await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(""));
   provider.refresh();
-  await vscode.window.showTextDocument(fileUri);
+  const editor = await vscode.window.showTextDocument(fileUri);
+  const pos = editor.document.positionAt(0);
+  editor.selection = new vscode.Selection(pos, pos);
+  editor.revealRange(new vscode.Range(pos, pos));
 }
 
 async function newFolder(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
