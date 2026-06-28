@@ -1,5 +1,5 @@
 {
-  "name": "csharp-solution-explorer",
+  "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
   "description": "A lightweight Solution Explorer for C# projects in VS Code (and Open VSX-compatible editors).",
   "version": "0.1.0",
