@@ -13,6 +13,7 @@ export const REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID = "csharpSolutionExplorer.r
 export const BUILD_PROJECT_COMMAND_ID = "csharpSolutionExplorer.buildProject";
 export const RUN_PROJECT_COMMAND_ID = "csharpSolutionExplorer.runProject";
 export const OPEN_SOLUTION_FILE_COMMAND_ID = "csharpSolutionExplorer.openSolutionFile";
+export const OPEN_SETTINGS_COMMAND_ID = "csharpSolutionExplorer.openSettings";
 
 export interface ProjectReference {
   typeGuid: string;

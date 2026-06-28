@@ -39,6 +39,7 @@ import {
   NEW_FOLDER_COMMAND_ID,
   NEW_SOLUTION_FOLDER_COMMAND_ID,
   OPEN_FILE_COMMAND_ID,
+  OPEN_SETTINGS_COMMAND_ID,
   OPEN_SOLUTION_FILE_COMMAND_ID,
   ProjectInfo,
   REFRESH_COMMAND_ID,
@@ -86,6 +87,9 @@ export function registerSolutionExplorerCommands(
     vscode.commands.registerCommand(RUN_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => runProject(item)),
     vscode.commands.registerCommand(OPEN_SOLUTION_FILE_COMMAND_ID, (item: SolutionTreeItem) =>
       vscode.window.showTextDocument(item.info.uri),
+    ),
+    vscode.commands.registerCommand(OPEN_SETTINGS_COMMAND_ID, () =>
+      vscode.commands.executeCommand("workbench.action.openSettings", "@ext:jomblebee.csharp-solution-explorer"),
     ),
   );
 }

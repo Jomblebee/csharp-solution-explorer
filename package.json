@@ -14,6 +14,16 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "C# Solution Explorer",
+      "properties": {
+        "csharpSolutionExplorer.confirmMove": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ask for confirmation before moving items in the Solution Explorer."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -98,6 +108,12 @@
         "command": "csharpSolutionExplorer.openSolutionFile",
         "title": "Open in Editor",
         "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.openSettings",
+        "title": "Settings",
+        "icon": "$(gear)",
+        "category": "C# Solution Explorer"
       }
     ],
     "menus": {
@@ -106,6 +122,11 @@
           "command": "csharpSolutionExplorer.refresh",
           "when": "view == csharpSolutionExplorer.view",
           "group": "navigation"
+        },
+        {
+          "command": "csharpSolutionExplorer.openSettings",
+          "when": "view == csharpSolutionExplorer.view",
+          "group": "navigation@99"
         }
       ],
       "view/item/context": [
