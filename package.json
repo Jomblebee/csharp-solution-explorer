@@ -206,7 +206,7 @@
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "check-types": "tsc --noEmit",
     "lint": "eslint src test",
-    "test": "node --import tsx --test \"test/**/*.test.ts\""
+    "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
     "minimatch": "^10.2.5"
