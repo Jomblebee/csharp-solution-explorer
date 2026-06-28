@@ -5,11 +5,25 @@
   "version": "0.1.0",
   "publisher": "jomblebee",
   "license": "MIT",
-  "repository": { "type": "git", "url": "https://github.com/Jomblebee/JFKSharp" },
-  "bugs": { "url": "https://github.com/Jomblebee/JFKSharp/issues" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jomblebee/JFKSharp"
+  },
+  "bugs": {
+    "url": "https://github.com/Jomblebee/JFKSharp/issues"
+  },
   "homepage": "https://github.com/Jomblebee/JFKSharp#readme",
-  "galleryBanner": { "color": "#1e1e1e", "theme": "dark" },
-  "keywords": ["csharp", "solution explorer", "dotnet", "sln", "slnx"],
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "keywords": [
+    "csharp",
+    "solution explorer",
+    "dotnet",
+    "sln",
+    "slnx"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -216,6 +230,7 @@
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.24.0",
     "eslint": "^9.0.0",
     "tsx": "^4.19.0",
