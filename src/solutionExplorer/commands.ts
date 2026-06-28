@@ -5,9 +5,7 @@ import * as vscode from "vscode";
 import { buildClassFileContent, buildNamespace } from "./csharpTemplates.js";
 import { basenameWithoutExtension, SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
 import {
-  buildSolutionTree,
   CSHARP_PROJECT_TYPE_GUID,
-  parseNestedProjects,
   parseSolutionConfigurations,
   parseSolutionFile,
   SOLUTION_FOLDER_TYPE_GUID,
@@ -17,7 +15,6 @@ import {
   addNestedProjectRelation,
   addProjectConfigurationPlatforms,
   addProjectEntry,
-  removeNestedProjectRelation,
   removeProjectEntry,
   renameProjectEntry,
 } from "./slnWriter.js";
@@ -47,9 +44,6 @@ import {
   REFRESH_COMMAND_ID,
   RENAME_COMMAND_ID,
   RUN_PROJECT_COMMAND_ID,
-  MOVE_TO_SOLUTION_FOLDER_COMMAND_ID,
-  MOVE_SOLUTION_FOLDER_COMMAND_ID,
-  REMOVE_FROM_SOLUTION_FOLDER_COMMAND_ID,
   ADD_EXISTING_PROJECT_COMMAND_ID,
   REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID,
   SolutionFolderInfo,
@@ -81,15 +75,6 @@ export function registerSolutionExplorerCommands(
     ),
     vscode.commands.registerCommand(DELETE_COMMAND_ID, (item: ExistingItemTarget) =>
       withErrorHandling(() => deleteItem(item, provider)),
-    ),
-    vscode.commands.registerCommand(MOVE_TO_SOLUTION_FOLDER_COMMAND_ID, (item: ProjectTreeItem) =>
-      withErrorHandling(() => moveToSolutionFolder(item, provider)),
-    ),
-    vscode.commands.registerCommand(REMOVE_FROM_SOLUTION_FOLDER_COMMAND_ID, (item: ProjectTreeItem) =>
-      withErrorHandling(() => removeFromSolutionFolder(item, provider)),
-    ),
-    vscode.commands.registerCommand(MOVE_SOLUTION_FOLDER_COMMAND_ID, (item: SolutionFolderTreeItem) =>
-      withErrorHandling(() => moveSolutionFolder(item, provider)),
     ),
     vscode.commands.registerCommand(ADD_EXISTING_PROJECT_COMMAND_ID, (item: unknown) =>
       withErrorHandling(() => addExistingProject(item, provider)),
@@ -370,86 +355,6 @@ async function newSolutionFolder(item: unknown, provider: SolutionTreeDataProvid
   provider.refresh();
 }
 
-async function moveToSolutionFolder(item: ProjectTreeItem, provider: SolutionTreeDataProvider): Promise<void> {
-  if (!item.info.solutionUri) {
-    throw new Error("Project is not part of a solution");
-  }
-
-  if (!item.info.guid) {
-    throw new Error("Project GUID is missing");
-  }
-
-  const slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(item.info.solutionUri));
-  const tree = buildSolutionTree(parseSolutionFile(slnText), parseNestedProjects(slnText));
-
-  function collectSolutionFolders(node: SolutionTreeNode, folders: Array<{ name: string; guid: string }>): void {
-    if (node.kind === "solutionFolder") {
-      folders.push({ name: node.name, guid: node.guid });
-      for (const child of node.children) {
-        collectSolutionFolders(child, folders);
-      }
-    }
-  }
-
-  const folders: Array<{ name: string; guid: string }> = [];
-  for (const node of tree) {
-    collectSolutionFolders(node, folders);
-  }
-
-  if (folders.length === 0) {
-    vscode.window.showWarningMessage("No solution folders found in this solution.");
-    return;
-  }
-
-  const ROOT_LABEL = "$(root-folder) Root";
-  const selected = await vscode.window.showQuickPick(
-    [
-      { label: ROOT_LABEL, description: item.info.parentFolderGuid ? undefined : "(current)" },
-      ...folders.map((f) => ({
-        label: f.name,
-        detail: f.guid,
-        description: f.guid === item.info.parentFolderGuid ? "(current)" : undefined,
-      })),
-    ],
-    { placeHolder: "Select destination solution folder" },
-  );
-
-  if (!selected) {
-    return;
-  }
-
-  let newSlnText = slnText;
-  if (item.info.parentFolderGuid) {
-    newSlnText = removeNestedProjectRelation(newSlnText, item.info.guid);
-  }
-
-  if (selected.label !== ROOT_LABEL) {
-    const targetGuid = folders.find((f) => f.name === selected.label)?.guid;
-    if (!targetGuid) {
-      throw new Error("Target folder not found");
-    }
-    newSlnText = addNestedProjectRelation(newSlnText, item.info.guid, targetGuid);
-  }
-
-  await vscode.workspace.fs.writeFile(item.info.solutionUri, new TextEncoder().encode(newSlnText));
-  provider.refresh();
-}
-
-async function removeFromSolutionFolder(item: ProjectTreeItem, provider: SolutionTreeDataProvider): Promise<void> {
-  if (!item.info.solutionUri) {
-    throw new Error("Project is not part of a solution");
-  }
-
-  if (!item.info.guid) {
-    throw new Error("Project GUID is missing");
-  }
-
-  const slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(item.info.solutionUri));
-  const newSlnText = removeNestedProjectRelation(slnText, item.info.guid);
-  await vscode.workspace.fs.writeFile(item.info.solutionUri, new TextEncoder().encode(newSlnText));
-  provider.refresh();
-}
-
 async function addExistingProject(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
   let solutionUri: vscode.Uri | undefined;
   // For .sln this is the parent solution folder's GUID; for .slnx it is the parent folder's name.
@@ -553,76 +458,6 @@ async function removeProjectFromSolution(item: ProjectTreeItem, provider: Soluti
   }
 
   await vscode.workspace.fs.writeFile(solutionUri, new TextEncoder().encode(newSlnText));
-  provider.refresh();
-}
-
-async function moveSolutionFolder(item: SolutionFolderTreeItem, provider: SolutionTreeDataProvider): Promise<void> {
-  const slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(item.info.solutionUri));
-  const tree = buildSolutionTree(parseSolutionFile(slnText), parseNestedProjects(slnText));
-
-  // Collect the GUIDs of the folder itself and all its descendants to prevent circular nesting
-  function collectDescendantFolderGuids(node: SolutionTreeNode, guids: Set<string>): void {
-    if (node.kind === "solutionFolder") {
-      guids.add(node.guid);
-      for (const child of node.children) {
-        collectDescendantFolderGuids(child, guids);
-      }
-    }
-  }
-
-  const excludedGuids = new Set<string>([item.info.guid]);
-  for (const child of item.info.children) {
-    collectDescendantFolderGuids(child, excludedGuids);
-  }
-
-  function collectSolutionFolders(
-    node: SolutionTreeNode,
-    folders: Array<{ name: string; guid: string }>,
-    excluded: Set<string>,
-  ): void {
-    if (node.kind === "solutionFolder" && !excluded.has(node.guid)) {
-      folders.push({ name: node.name, guid: node.guid });
-      for (const child of node.children) {
-        collectSolutionFolders(child, folders, excluded);
-      }
-    }
-  }
-
-  const folders: Array<{ name: string; guid: string }> = [];
-  for (const node of tree) {
-    collectSolutionFolders(node, folders, excludedGuids);
-  }
-
-  const nesting = parseNestedProjects(slnText);
-  const currentParentGuid = nesting.get(item.info.guid);
-
-  const ROOT_LABEL = "$(root-folder) Root";
-  const selected = await vscode.window.showQuickPick(
-    [
-      { label: ROOT_LABEL, description: currentParentGuid ? undefined : "(current)" },
-      ...folders.map((f) => ({
-        label: f.name,
-        detail: f.guid,
-        description: f.guid === currentParentGuid ? "(current)" : undefined,
-      })),
-    ],
-    { placeHolder: "Select destination solution folder" },
-  );
-
-  if (!selected) {
-    return;
-  }
-
-  let newSlnText = removeNestedProjectRelation(slnText, item.info.guid);
-  if (selected.label !== ROOT_LABEL) {
-    const targetGuid = folders.find((f) => f.name === selected.label)?.guid;
-    if (!targetGuid) {
-      throw new Error("Target folder not found");
-    }
-    newSlnText = addNestedProjectRelation(newSlnText, item.info.guid, targetGuid);
-  }
-
-  await vscode.workspace.fs.writeFile(item.info.solutionUri, new TextEncoder().encode(newSlnText));
   provider.refresh();
 }
 

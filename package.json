@@ -75,21 +75,6 @@
         "category": "C# Solution Explorer"
       },
       {
-        "command": "csharpSolutionExplorer.moveToSolutionFolder",
-        "title": "Move to Solution Folder...",
-        "category": "C# Solution Explorer"
-      },
-      {
-        "command": "csharpSolutionExplorer.removeFromSolutionFolder",
-        "title": "Remove from Solution Folder",
-        "category": "C# Solution Explorer"
-      },
-      {
-        "command": "csharpSolutionExplorer.moveSolutionFolder",
-        "title": "Move Solution Folder...",
-        "category": "C# Solution Explorer"
-      },
-      {
         "command": "csharpSolutionExplorer.addExistingProject",
         "title": "Add Existing Project...",
         "category": "C# Solution Explorer"
@@ -168,21 +153,6 @@
           "command": "csharpSolutionExplorer.removeProjectFromSolution",
           "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
           "group": "7_modification"
-        },
-        {
-          "command": "csharpSolutionExplorer.moveToSolutionFolder",
-          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
-          "group": "8_nesting"
-        },
-        {
-          "command": "csharpSolutionExplorer.removeFromSolutionFolder",
-          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project.nested",
-          "group": "8_nesting"
-        },
-        {
-          "command": "csharpSolutionExplorer.moveSolutionFolder",
-          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.solutionFolder",
-          "group": "8_nesting"
         },
         {
           "command": "csharpSolutionExplorer.openSolutionFile",

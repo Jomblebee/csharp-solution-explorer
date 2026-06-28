@@ -1,11 +1,13 @@
 import * as vscode from "vscode";
 import { registerSolutionExplorerCommands } from "./solutionExplorer/commands.js";
+import { SolutionTreeDragAndDropController } from "./solutionExplorer/dragAndDropController.js";
 import { SolutionTreeDataProvider } from "./solutionExplorer/solutionTreeDataProvider.js";
 
 export function activate(context: vscode.ExtensionContext): void {
   const provider = new SolutionTreeDataProvider();
   const treeView = vscode.window.createTreeView("csharpSolutionExplorer.view", {
     treeDataProvider: provider,
+    dragAndDropController: new SolutionTreeDragAndDropController(provider),
   });
 
   registerSolutionExplorerCommands(context, provider);
