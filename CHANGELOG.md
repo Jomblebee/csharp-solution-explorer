@@ -4,6 +4,15 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.1.1] – 2026-06-28
+
+### Fixed
+
+- Delete Solution Folder: warning text now accurately states that contained
+  projects are removed from the solution (not moved to parent level)
+- Add Existing Project: file picker now correctly accepts .fsproj and .vbproj
+  in addition to .csproj
+
 ## [0.1.0] – 2026-06-28
 
 ### Added
