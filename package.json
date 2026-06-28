@@ -5,13 +5,19 @@
   "version": "0.1.0",
   "publisher": "jomblebee",
   "license": "MIT",
-  "private": true,
+  "repository": { "type": "git", "url": "https://github.com/Jomblebee/JFKSharp" },
+  "bugs": { "url": "https://github.com/Jomblebee/JFKSharp/issues" },
+  "homepage": "https://github.com/Jomblebee/JFKSharp#readme",
+  "galleryBanner": { "color": "#1e1e1e", "theme": "dark" },
+  "keywords": ["csharp", "solution explorer", "dotnet", "sln", "slnx"],
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
+    "Programming Languages",
     "Other"
   ],
+  "icon": "resources/icon.png",
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
