@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildClassFileContent, buildNamespace } from "../src/solutionExplorer/csharpTemplates.js";
+import { buildClassFileContent, buildInterfaceFileContent, buildNamespace } from "../src/solutionExplorer/csharpTemplates.js";
 
 describe("buildNamespace", () => {
   it("uses just the project name when the target is the project root", () => {
@@ -33,5 +33,13 @@ describe("buildClassFileContent", () => {
     const result = buildClassFileContent("App.Models", "Customer");
 
     assert.equal(result, "namespace App.Models;\n\npublic class Customer\n{\n}\n");
+  });
+});
+
+describe("buildInterfaceFileContent", () => {
+  it("generates a file-scoped namespace and an empty public interface", () => {
+    const result = buildInterfaceFileContent("App.Contracts", "IRepository");
+
+    assert.equal(result, "namespace App.Contracts;\n\npublic interface IRepository\n{\n}\n");
   });
 });

@@ -16,3 +16,7 @@ export function buildNamespace(projectName: string, projectRootDirPath: string, 
 export function buildClassFileContent(namespace: string, className: string): string {
   return `namespace ${namespace};\n\npublic class ${className}\n{\n}\n`;
 }
+
+export function buildInterfaceFileContent(namespace: string, interfaceName: string): string {
+  return `namespace ${namespace};\n\npublic interface ${interfaceName}\n{\n}\n`;
+}

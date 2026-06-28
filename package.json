@@ -14,6 +14,16 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "C# Solution Explorer",
+      "properties": {
+        "csharpSolutionExplorer.confirmMove": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ask for confirmation before moving items in the Solution Explorer."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {
@@ -55,8 +65,18 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.newInterface",
+        "title": "New Interface...",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.newFolder",
         "title": "New Folder...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.newSolutionFolder",
+        "title": "New Solution Folder...",
         "category": "C# Solution Explorer"
       },
       {
@@ -70,6 +90,16 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.addExistingProject",
+        "title": "Add Existing Project...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.removeProjectFromSolution",
+        "title": "Remove from Solution",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.buildProject",
         "title": "Build Project",
         "category": "C# Solution Explorer"
@@ -77,6 +107,17 @@
       {
         "command": "csharpSolutionExplorer.runProject",
         "title": "Run Project",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.openSolutionFile",
+        "title": "Open in Editor",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.openSettings",
+        "title": "Settings",
+        "icon": "$(gear)",
         "category": "C# Solution Explorer"
       }
     ],
@@ -86,38 +127,68 @@
           "command": "csharpSolutionExplorer.refresh",
           "when": "view == csharpSolutionExplorer.view",
           "group": "navigation"
+        },
+        {
+          "command": "csharpSolutionExplorer.openSettings",
+          "when": "view == csharpSolutionExplorer.view",
+          "group": "navigation@99"
         }
       ],
       "view/item/context": [
         {
           "command": "csharpSolutionExplorer.newClass",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.project)",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
+          "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.newInterface",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
           "group": "1_new"
         },
         {
           "command": "csharpSolutionExplorer.newFolder",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.project)",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
+          "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.newSolutionFolder",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem == csharpSolutionExplorer.solutionFolder)",
+          "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.addExistingProject",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem == csharpSolutionExplorer.solutionFolder)",
           "group": "1_new"
         },
         {
           "command": "csharpSolutionExplorer.buildProject",
-          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
           "group": "2_build"
         },
         {
           "command": "csharpSolutionExplorer.runProject",
-          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.project",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
           "group": "2_build"
         },
         {
           "command": "csharpSolutionExplorer.rename",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem == csharpSolutionExplorer.project)",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solutionFolder)",
           "group": "7_modification"
         },
         {
           "command": "csharpSolutionExplorer.delete",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem == csharpSolutionExplorer.project)",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem == csharpSolutionExplorer.file || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solutionFolder)",
           "group": "7_modification"
+        },
+        {
+          "command": "csharpSolutionExplorer.removeProjectFromSolution",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
+          "group": "7_modification"
+        },
+        {
+          "command": "csharpSolutionExplorer.openSolutionFile",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.solution",
+          "group": "0_open"
         }
       ]
     }

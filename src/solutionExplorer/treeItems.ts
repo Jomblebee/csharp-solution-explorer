@@ -16,6 +16,11 @@ export class SolutionTreeItem extends vscode.TreeItem {
     super(info.name, vscode.TreeItemCollapsibleState.Expanded);
     this.contextValue = "csharpSolutionExplorer.solution";
     this.iconPath = new vscode.ThemeIcon("folder-library");
+    // Surface the file type (and folder, for nested/duplicate-named solutions) so root nodes are
+    // clearly recognizable as solutions rather than plain folders.
+    const ext = info.uri.fsPath.toLowerCase().endsWith(".slnx") ? ".slnx" : ".sln";
+    this.description = info.relativeDir ? `${info.relativeDir} · ${ext}` : ext;
+    this.tooltip = `Solution · ${info.uri.fsPath}`;
   }
 }
 
@@ -30,7 +35,11 @@ export class SolutionFolderTreeItem extends vscode.TreeItem {
 export class ProjectTreeItem extends vscode.TreeItem {
   constructor(public readonly info: ProjectInfo) {
     super(info.name, vscode.TreeItemCollapsibleState.Collapsed);
-    this.contextValue = "csharpSolutionExplorer.project";
+    // Append `.nested` for projects inside a solution folder so "Remove from Solution Folder"
+    // can be shown only when it actually applies.
+    this.contextValue = info.parentFolderGuid
+      ? "csharpSolutionExplorer.project.nested"
+      : "csharpSolutionExplorer.project";
     this.resourceUri = info.uri;
     this.iconPath = vscode.ThemeIcon.File;
     if (info.isPseudoSolution) {

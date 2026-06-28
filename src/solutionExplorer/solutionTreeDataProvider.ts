@@ -75,7 +75,10 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       return this.getProjectItems(element.info);
     }
     if (element instanceof SolutionFolderTreeItem) {
-      return this.nodesToTreeItems(element.info.children, element.info.solutionDir, element.info.solutionUri);
+      const bytes = await vscode.workspace.fs.readFile(element.info.solutionUri);
+      const slnText = new TextDecoder().decode(bytes);
+      const nesting = parseNestedProjects(slnText);
+      return this.nodesToTreeItems(element.info.children, element.info.solutionDir, element.info.solutionUri, nesting);
     }
     if (element instanceof ProjectTreeItem) {
       return this.getProjectChildren(element.info);
@@ -97,17 +100,20 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     const items: SolutionExplorerTreeItem[] = [];
 
     for (const folder of folders) {
+      const exclude = new vscode.RelativePattern(folder, "**/{node_modules,bin,obj,.git,.vs}/**");
       const slnUris = [
-        ...(await vscode.workspace.findFiles(new vscode.RelativePattern(folder, "*.sln"))),
-        ...(await vscode.workspace.findFiles(new vscode.RelativePattern(folder, "*.slnx"))),
-      ];
+        ...(await vscode.workspace.findFiles(new vscode.RelativePattern(folder, "**/*.sln"), exclude)),
+        ...(await vscode.workspace.findFiles(new vscode.RelativePattern(folder, "**/*.slnx"), exclude)),
+      ].sort((a, b) => a.fsPath.localeCompare(b.fsPath));
 
       if (slnUris.length > 0) {
         for (const slnUri of slnUris) {
+          const relativeDir = toPosixRelative(folder.uri.fsPath, path.dirname(slnUri.fsPath));
           const info: SolutionInfo = {
             kind: "solution",
             name: basenameWithoutExtension(slnUri.fsPath),
             uri: slnUri,
+            relativeDir: relativeDir || undefined,
           };
           items.push(new SolutionTreeItem(info));
         }
@@ -127,18 +133,20 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     const bytes = await vscode.workspace.fs.readFile(solution.uri);
     const text = new TextDecoder().decode(bytes);
     const solutionDir = vscode.Uri.joinPath(solution.uri, "..");
+    const nesting = parseNestedProjects(text);
 
     const tree = solution.uri.fsPath.toLowerCase().endsWith(".slnx")
       ? parseSlnxFile(text)
       : buildSolutionTree(parseSolutionFile(text), parseNestedProjects(text));
 
-    return this.nodesToTreeItems(tree, solutionDir, solution.uri);
+    return this.nodesToTreeItems(tree, solutionDir, solution.uri, nesting);
   }
 
   private async nodesToTreeItems(
     nodes: SolutionTreeNode[],
     solutionDir: vscode.Uri,
     solutionUri: vscode.Uri,
+    nesting: Map<string, string>,
   ): Promise<SolutionExplorerTreeItem[]> {
     const items: SolutionExplorerTreeItem[] = [];
     for (const node of nodes) {
@@ -147,6 +155,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
           new SolutionFolderTreeItem({
             kind: "solutionFolder",
             name: node.name,
+            guid: node.guid,
             children: node.children,
             solutionDir,
             solutionUri,
@@ -164,7 +173,8 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
         continue;
       }
 
-      items.push(new ProjectTreeItem(this.toProjectInfo(csprojUri, false, node.name, solutionUri)));
+      const parentFolderGuid = nesting.get(node.guid);
+      items.push(new ProjectTreeItem(this.toProjectInfo(csprojUri, false, node.name, solutionUri, node.guid, parentFolderGuid)));
     }
 
     return items;
@@ -175,6 +185,8 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     isPseudoSolution: boolean,
     name: string | undefined,
     solutionUri: vscode.Uri | undefined,
+    guid?: string,
+    parentFolderGuid?: string,
   ): ProjectInfo {
     return {
       kind: "project",
@@ -183,6 +195,8 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       rootDir: vscode.Uri.file(getProjectRootDir(csprojUri.fsPath)),
       isPseudoSolution,
       solutionUri,
+      guid,
+      parentFolderGuid,
     };
   }
 
