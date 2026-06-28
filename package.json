@@ -65,6 +65,11 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.newInterface",
+        "title": "New Interface...",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.newFolder",
         "title": "New Folder...",
         "category": "C# Solution Explorer"
@@ -132,6 +137,11 @@
       "view/item/context": [
         {
           "command": "csharpSolutionExplorer.newClass",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
+          "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.newInterface",
           "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
           "group": "1_new"
         },

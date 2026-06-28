@@ -254,6 +254,63 @@ function reindentBlock(block: string[], fromIndent: string, toIndent: string): s
 }
 
 /**
+ * Removes the entire `<Folder>...</Folder>` block (including all nested content) whose
+ * Name attribute matches `/${folderName}/` (case-insensitive). Preserves original line
+ * endings. No-op if the folder is not found or the XML is malformed.
+ */
+export function removeSlnxFolderEntry(slnxText: string, folderName: string): string {
+  const newline = slnxText.includes("\r\n") ? "\r\n" : "\n";
+  const lines = slnxText.split(/\r\n|\n/);
+
+  const startIdx = findFolderOpenLine(lines, `/${folderName}/`.toLowerCase());
+  if (startIdx === -1) {
+    return slnxText;
+  }
+
+  let depth = 0;
+  let endIdx = -1;
+  for (let i = startIdx; i < lines.length; i++) {
+    depth += netFolderDepth(lines[i]);
+    if (depth === 0) {
+      endIdx = i;
+      break;
+    }
+  }
+  if (endIdx === -1) {
+    return slnxText;
+  }
+
+  return [...lines.slice(0, startIdx), ...lines.slice(endIdx + 1)].join(newline);
+}
+
+/**
+ * Renames a solution folder by updating its `Name` attribute from `/${oldFolderName}/`
+ * to `/${newFolderName}/` (case-insensitive match). Preserves indentation and original
+ * line endings. No-op if the folder is not found.
+ */
+export function renameSlnxFolderEntry(slnxText: string, oldFolderName: string, newFolderName: string): string {
+  const newline = slnxText.includes("\r\n") ? "\r\n" : "\n";
+  const lines = slnxText.split(/\r\n|\n/);
+  const normalizedOld = `/${oldFolderName}/`.toLowerCase();
+
+  const result = lines.map((line) => {
+    if (!line.includes("<Folder")) {
+      return line;
+    }
+    const match = NAME_ATTR_PATTERN.exec(line);
+    if (!match) {
+      return line;
+    }
+    if (match[1].toLowerCase() !== normalizedOld) {
+      return line;
+    }
+    return line.replace(NAME_ATTR_PATTERN, `Name="/${newFolderName}/"`);
+  });
+
+  return result.join(newline);
+}
+
+/**
  * Updates the Path attribute of the <Project> element matching oldPath to newPath.
  * Preserves indentation, other attributes, and original line endings.
  */

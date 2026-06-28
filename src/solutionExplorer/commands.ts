@@ -2,7 +2,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { buildClassFileContent, buildNamespace } from "./csharpTemplates.js";
+import { buildClassFileContent, buildInterfaceFileContent, buildNamespace } from "./csharpTemplates.js";
 import { basenameWithoutExtension, SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
 import {
   CSHARP_PROJECT_TYPE_GUID,
@@ -21,7 +21,9 @@ import {
 import {
   addSlnxFolderEntry,
   addSlnxProjectEntry,
+  removeSlnxFolderEntry,
   removeSlnxProjectEntry,
+  renameSlnxFolderEntry,
   renameSlnxProjectEntry,
 } from "./slnxWriter.js";
 import { parseSlnxFile } from "./slnxParser.js";
@@ -37,6 +39,7 @@ import {
   DELETE_COMMAND_ID,
   NEW_CLASS_COMMAND_ID,
   NEW_FOLDER_COMMAND_ID,
+  NEW_INTERFACE_COMMAND_ID,
   NEW_SOLUTION_FOLDER_COMMAND_ID,
   OPEN_FILE_COMMAND_ID,
   OPEN_SETTINGS_COMMAND_ID,
@@ -64,6 +67,9 @@ export function registerSolutionExplorerCommands(
     ),
     vscode.commands.registerCommand(NEW_CLASS_COMMAND_ID, (item: NewItemTarget) =>
       withErrorHandling(() => newClass(item, provider)),
+    ),
+    vscode.commands.registerCommand(NEW_INTERFACE_COMMAND_ID, (item: NewItemTarget) =>
+      withErrorHandling(() => newInterface(item, provider)),
     ),
     vscode.commands.registerCommand(NEW_FOLDER_COMMAND_ID, (item: NewItemTarget) =>
       withErrorHandling(() => newFolder(item, provider)),
@@ -224,6 +230,40 @@ async function newClass(item: unknown, provider: SolutionTreeDataProvider): Prom
   await vscode.window.showTextDocument(fileUri);
 }
 
+async function newInterface(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  if (!isNewItemTarget(item)) {
+    return;
+  }
+
+  const targetDirUri = getTargetDirUri(item);
+  const interfaceName = await vscode.window.showInputBox({
+    prompt: "Interface name",
+    validateInput: (value) => validateNewName(value, targetDirUri.fsPath, ".cs"),
+  });
+  if (!interfaceName) {
+    return;
+  }
+
+  let projectName: string;
+  let projectRootDirPath: string;
+  if (item instanceof ProjectTreeItem) {
+    projectName = item.info.name;
+    projectRootDirPath = item.info.rootDir.fsPath;
+  } else {
+    const csprojPath = findContainingCsprojPath(targetDirUri.fsPath);
+    projectName = csprojPath ? basenameWithoutExtension(csprojPath) : interfaceName;
+    projectRootDirPath = csprojPath ? path.dirname(csprojPath) : targetDirUri.fsPath;
+  }
+
+  const namespace = buildNamespace(projectName, projectRootDirPath, targetDirUri.fsPath);
+  const content = buildInterfaceFileContent(namespace, interfaceName);
+  const fileUri = vscode.Uri.joinPath(targetDirUri, `${interfaceName}.cs`);
+
+  await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(content));
+  provider.refresh();
+  await vscode.window.showTextDocument(fileUri);
+}
+
 async function newFolder(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
   if (!isNewItemTarget(item)) {
     return;
@@ -276,7 +316,10 @@ async function renameSolutionFolder(info: SolutionFolderInfo, newName: string): 
   }
 
   const slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(info.solutionUri));
-  const newSlnText = renameProjectEntry(slnText, info.guid, newName, newName);
+  const isSlnx = info.solutionUri.fsPath.toLowerCase().endsWith(".slnx");
+  const newSlnText = isSlnx
+    ? renameSlnxFolderEntry(slnText, info.guid, newName)
+    : renameProjectEntry(slnText, info.guid, newName, newName);
   await vscode.workspace.fs.writeFile(info.solutionUri, new TextEncoder().encode(newSlnText));
 }
 
@@ -286,6 +329,12 @@ async function deleteSolutionFolder(info: SolutionFolderInfo): Promise<void> {
   }
 
   let slnText = new TextDecoder().decode(await vscode.workspace.fs.readFile(info.solutionUri));
+
+  if (info.solutionUri.fsPath.toLowerCase().endsWith(".slnx")) {
+    const newSlnText = removeSlnxFolderEntry(slnText, info.guid);
+    await vscode.workspace.fs.writeFile(info.solutionUri, new TextEncoder().encode(newSlnText));
+    return;
+  }
 
   function collectDescendantGuids(node: SolutionTreeNode, guids: Set<string>): void {
     if (node.kind === "solutionFolder") {

@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {
   addSlnxFolderEntry,
   addSlnxProjectEntry,
+  removeSlnxFolderEntry,
   removeSlnxProjectEntry,
+  renameSlnxFolderEntry,
   renameSlnxProjectEntry,
 } from "../src/solutionExplorer/slnxWriter.js";
 import { parseSlnxFile } from "../src/solutionExplorer/slnxParser.js";
@@ -101,6 +103,98 @@ describe("renameSlnxProjectEntry", () => {
     const updatedLine = result.split("\n").find((l) => l.includes("New/New.csproj"))!;
 
     assert.ok(updatedLine.startsWith("    "));
+  });
+});
+
+describe("removeSlnxFolderEntry", () => {
+  it("removes the entire folder block including nested projects", () => {
+    const result = removeSlnxFolderEntry(fixture(), "Apps");
+
+    assert.ok(!result.includes("/Apps/"));
+    assert.ok(!result.includes("App/App.csproj"));
+    assert.ok(!result.includes("Library/Library.csproj"));
+  });
+
+  it("leaves root-level projects and other content untouched", () => {
+    const result = removeSlnxFolderEntry(fixture(), "Apps");
+
+    assert.ok(result.includes("Standalone/Standalone.csproj"));
+  });
+
+  it("is a no-op when the folder does not exist", () => {
+    const original = fixture();
+    const result = removeSlnxFolderEntry(original, "DoesNotExist");
+
+    assert.equal(result, original);
+  });
+
+  it("preserves CRLF line endings", () => {
+    const result = removeSlnxFolderEntry(fixtureWithCrlf(), "Apps");
+
+    assert.ok(result.includes("\r\n"));
+    assert.ok(!result.includes("/Apps/"));
+  });
+
+  it("removes a deeply nested folder block including its children", () => {
+    const nested = [
+      "<Solution>",
+      '  <Folder Name="/Outer/">',
+      '    <Folder Name="/Inner/">',
+      '      <Project Path="Deep/Deep.csproj" />',
+      "    </Folder>",
+      "  </Folder>",
+      '  <Project Path="Root/Root.csproj" />',
+      "</Solution>",
+    ].join("\n");
+    const result = removeSlnxFolderEntry(nested, "Inner");
+
+    assert.ok(!result.includes("/Inner/"));
+    assert.ok(!result.includes("Deep/Deep.csproj"));
+    assert.ok(result.includes("/Outer/"));
+    assert.ok(result.includes("Root/Root.csproj"));
+  });
+});
+
+describe("renameSlnxFolderEntry", () => {
+  it("updates the Name attribute of the matching folder", () => {
+    const result = renameSlnxFolderEntry(fixture(), "Apps", "Applications");
+
+    assert.ok(result.includes('Name="/Applications/"'));
+    assert.ok(!result.includes('Name="/Apps/"'));
+  });
+
+  it("leaves projects and other content untouched", () => {
+    const result = renameSlnxFolderEntry(fixture(), "Apps", "Applications");
+
+    assert.ok(result.includes("App/App.csproj"));
+    assert.ok(result.includes("Standalone/Standalone.csproj"));
+  });
+
+  it("is a no-op when the folder does not exist", () => {
+    const original = fixture();
+    const result = renameSlnxFolderEntry(original, "DoesNotExist", "New");
+
+    assert.equal(result, original);
+  });
+
+  it("preserves CRLF line endings", () => {
+    const result = renameSlnxFolderEntry(fixtureWithCrlf(), "Apps", "Applications");
+
+    assert.ok(result.includes("\r\n"));
+    assert.ok(result.includes('Name="/Applications/"'));
+  });
+
+  it("matches the old folder name case-insensitively", () => {
+    const result = renameSlnxFolderEntry(fixture(), "APPS", "Applications");
+
+    assert.ok(result.includes('Name="/Applications/"'));
+  });
+
+  it("preserves indentation of the renamed line", () => {
+    const result = renameSlnxFolderEntry(fixture(), "Apps", "Applications");
+    const line = result.split("\n").find((l) => l.includes("/Applications/"))!;
+
+    assert.ok(line.startsWith("  <Folder"));
   });
 });
 

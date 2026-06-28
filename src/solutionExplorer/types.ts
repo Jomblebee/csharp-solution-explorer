@@ -4,6 +4,7 @@ import { SolutionTreeNode } from "./slnParser.js";
 export const REFRESH_COMMAND_ID = "csharpSolutionExplorer.refresh";
 export const OPEN_FILE_COMMAND_ID = "csharpSolutionExplorer.openFile";
 export const NEW_CLASS_COMMAND_ID = "csharpSolutionExplorer.newClass";
+export const NEW_INTERFACE_COMMAND_ID = "csharpSolutionExplorer.newInterface";
 export const NEW_FOLDER_COMMAND_ID = "csharpSolutionExplorer.newFolder";
 export const NEW_SOLUTION_FOLDER_COMMAND_ID = "csharpSolutionExplorer.newSolutionFolder";
 export const RENAME_COMMAND_ID = "csharpSolutionExplorer.rename";
