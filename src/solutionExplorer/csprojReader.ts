@@ -1,8 +1,10 @@
 import * as path from "node:path";
 import { minimatch } from "minimatch";
 
+const PROJECT_EXTENSIONS = new Set([".csproj", ".fsproj", ".vbproj"]);
+
 export function isLikelyCsproj(filePath: string): boolean {
-  return path.extname(filePath).toLowerCase() === ".csproj";
+  return PROJECT_EXTENSIONS.has(path.extname(filePath).toLowerCase());
 }
 
 export function getProjectRootDir(csprojPath: string): string {

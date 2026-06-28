@@ -428,7 +428,7 @@ async function addExistingProject(item: unknown, provider: SolutionTreeDataProvi
   const selection = await vscode.window.showOpenDialog({
     canSelectMany: false,
     openLabel: "Add Project",
-    filters: { "C# Project": ["csproj"] },
+    filters: { "Project Files": ["csproj", "fsproj", "vbproj"] },
   });
   if (!selection || selection.length === 0) {
     return;
@@ -593,7 +593,7 @@ async function deleteItem(item: unknown, provider: SolutionTreeDataProvider): Pr
   const itemName = getDisplayName(item);
   const message =
     item instanceof SolutionFolderTreeItem
-      ? `Delete '${itemName}'? Projects it contains will be moved to the parent level. This action cannot be undone.`
+      ? `Delete '${itemName}'? Projects it contains will also be removed from the solution. This action cannot be undone.`
       : `Delete '${itemName}'? This action cannot be undone.`;
 
   const confirmation = await vscode.window.showWarningMessage(message, { modal: true }, "Delete");
