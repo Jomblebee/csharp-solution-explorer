@@ -4,6 +4,16 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.0] – 2026-06-29
+
+### Added
+
+- **New Item submenu** with five new commands: New Record…, New Enum…, New Struct…, New Razor Component…, New File…
+- All C# and Razor templates are fully configurable via VS Code settings (`csharpSolutionExplorer.templates.*`)
+- Template variables: `${namespace}`, `${name}`, `${filename}`, `${date}`, `${cursor}` (sets initial cursor position)
+- Razor component name validation enforces the Blazor convention (must start with an uppercase letter)
+- Refactored New Class and New Interface to use the same template engine (both now support `${cursor}` and all template variables)
+
 ## [0.1.1] – 2026-06-28
 
 ### Fixed
