@@ -7,12 +7,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Jomblebee/JFKSharp"
+    "url": "https://github.com/Jomblebee/csharp-solution-explorer"
   },
   "bugs": {
-    "url": "https://github.com/Jomblebee/JFKSharp/issues"
+    "url": "https://github.com/Jomblebee/csharp-solution-explorer/issues"
   },
-  "homepage": "https://github.com/Jomblebee/JFKSharp#readme",
+  "homepage": "https://github.com/Jomblebee/csharp-solution-explorer#readme",
   "galleryBanner": {
     "color": "#1e1e1e",
     "theme": "dark"
