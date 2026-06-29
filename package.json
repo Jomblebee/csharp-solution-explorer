@@ -2,7 +2,7 @@
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
   "description": "A lightweight Solution Explorer for C# projects in VS Code (and Open VSX-compatible editors).",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "jomblebee",
   "license": "MIT",
   "repository": {
@@ -34,16 +34,56 @@
   "icon": "resources/icon.png",
   "main": "./dist/extension.js",
   "contributes": {
-    "configuration": {
-      "title": "C# Solution Explorer",
-      "properties": {
-        "csharpSolutionExplorer.confirmMove": {
-          "type": "boolean",
-          "default": true,
-          "description": "Ask for confirmation before moving items in the Solution Explorer."
+    "configuration": [
+      {
+        "id": "csharpSolutionExplorer",
+        "title": "C# Solution Explorer",
+        "properties": {
+          "csharpSolutionExplorer.confirmMove": {
+            "type": "boolean",
+            "default": true,
+            "description": "Ask for confirmation before moving items in the Solution Explorer."
+          }
+        }
+      },
+      {
+        "id": "csharpSolutionExplorer.templates",
+        "title": "Templates",
+        "order": 1,
+        "properties": {
+          "csharpSolutionExplorer.templates.class": {
+            "type": "string",
+            "default": "namespace ${namespace};\n\npublic class ${name}\n{\n    ${cursor}\n}\n",
+            "description": "Template for new C# class files. Variables: ${namespace}, ${name}, ${filename}, ${date}, ${cursor} (sets initial cursor position). Clear to show an error instead of creating the file."
+          },
+          "csharpSolutionExplorer.templates.interface": {
+            "type": "string",
+            "default": "namespace ${namespace};\n\npublic interface ${name}\n{\n    ${cursor}\n}\n",
+            "description": "Template for new C# interface files. Variables: ${namespace}, ${name}, ${filename}, ${date}, ${cursor} (sets initial cursor position). Clear to show an error instead of creating the file."
+          },
+          "csharpSolutionExplorer.templates.record": {
+            "type": "string",
+            "default": "namespace ${namespace};\n\npublic record ${name}(${cursor});\n",
+            "description": "Template for new C# record files. Variables: ${namespace}, ${name}, ${filename}, ${date}, ${cursor} (sets initial cursor position). Clear to show an error instead of creating the file."
+          },
+          "csharpSolutionExplorer.templates.enum": {
+            "type": "string",
+            "default": "namespace ${namespace};\n\npublic enum ${name}\n{\n    ${cursor}\n}\n",
+            "description": "Template for new C# enum files. Variables: ${namespace}, ${name}, ${filename}, ${date}, ${cursor} (sets initial cursor position). Clear to show an error instead of creating the file."
+          },
+          "csharpSolutionExplorer.templates.struct": {
+            "type": "string",
+            "default": "namespace ${namespace};\n\npublic struct ${name}\n{\n    ${cursor}\n}\n",
+            "description": "Template for new C# struct files. Variables: ${namespace}, ${name}, ${filename}, ${date}, ${cursor} (sets initial cursor position). Clear to show an error instead of creating the file."
+          },
+          "csharpSolutionExplorer.templates.razor": {
+            "type": "string",
+            "default": "@namespace ${namespace}\n\n<h3>${name}</h3>\n\n@code {\n    ${cursor}\n}\n",
+            "description": "Template for new Razor component files (.razor). Variables: ${namespace}, ${name}, ${filename}, ${date}, ${cursor} (sets initial cursor position). Clear to show an error instead of creating the file."
+          }
         }
       }
-    },
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -82,16 +122,49 @@
       {
         "command": "csharpSolutionExplorer.newClass",
         "title": "New Class...",
+        "icon": "$(symbol-class)",
         "category": "C# Solution Explorer"
       },
       {
         "command": "csharpSolutionExplorer.newInterface",
         "title": "New Interface...",
+        "icon": "$(symbol-interface)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.newRecord",
+        "title": "New Record...",
+        "icon": "$(symbol-struct)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.newEnum",
+        "title": "New Enum...",
+        "icon": "$(symbol-enum)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.newStruct",
+        "title": "New Struct...",
+        "icon": "$(symbol-struct)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.newRazor",
+        "title": "New Razor Component...",
+        "icon": "$(file-code)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.newFile",
+        "title": "New File...",
+        "icon": "$(new-file)",
         "category": "C# Solution Explorer"
       },
       {
         "command": "csharpSolutionExplorer.newFolder",
         "title": "New Folder...",
+        "icon": "$(new-folder)",
         "category": "C# Solution Explorer"
       },
       {
@@ -141,6 +214,13 @@
         "category": "C# Solution Explorer"
       }
     ],
+    "submenus": [
+      {
+        "id": "csharpSolutionExplorer.newItem",
+        "label": "New Item",
+        "icon": "$(add)"
+      }
+    ],
     "menus": {
       "view/title": [
         {
@@ -154,19 +234,43 @@
           "group": "navigation@99"
         }
       ],
-      "view/item/context": [
+      "csharpSolutionExplorer.newItem": [
         {
           "command": "csharpSolutionExplorer.newClass",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
-          "group": "1_new"
+          "group": "1_cs"
         },
         {
           "command": "csharpSolutionExplorer.newInterface",
-          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
-          "group": "1_new"
+          "group": "1_cs"
+        },
+        {
+          "command": "csharpSolutionExplorer.newRecord",
+          "group": "1_cs"
+        },
+        {
+          "command": "csharpSolutionExplorer.newEnum",
+          "group": "1_cs"
+        },
+        {
+          "command": "csharpSolutionExplorer.newStruct",
+          "group": "1_cs"
+        },
+        {
+          "command": "csharpSolutionExplorer.newRazor",
+          "group": "2_web"
+        },
+        {
+          "command": "csharpSolutionExplorer.newFile",
+          "group": "8_generic"
         },
         {
           "command": "csharpSolutionExplorer.newFolder",
+          "group": "9_folder"
+        }
+      ],
+      "view/item/context": [
+        {
+          "submenu": "csharpSolutionExplorer.newItem",
           "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
           "group": "1_new"
         },
