@@ -342,7 +342,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
         projectUri: info.uri,
         frameworks: assets.frameworks.map((f) => ({ kind: "frameworkReference" as const, name: f.name, version: f.version })),
         analyzers: assets.analyzers.map((a) => ({ kind: "analyzer" as const, name: a.name, version: a.version })),
-        packages: assets.packages.map((p) => toPackageReferenceInfo(p, false)),
+        packages: assets.packages.map((p) => toPackageReferenceInfo(p, false, info.uri)),
         projects,
       };
     }
@@ -361,6 +361,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
         kind: "packageReference" as const,
         name: ref.name,
         version: ref.version,
+        projectUri: info.uri,
       })),
       projects,
     };
@@ -513,12 +514,18 @@ export function basenameWithoutExtension(fsPath: string): string {
 }
 
 /** Maps an assets.json package (with its transitive subtree) to a tree `PackageReferenceInfo`. */
-function toPackageReferenceInfo(pkg: ParsedAssetPackage, isImplicit: boolean): PackageReferenceInfo {
+function toPackageReferenceInfo(
+  pkg: ParsedAssetPackage,
+  isImplicit: boolean,
+  projectUri?: vscode.Uri,
+): PackageReferenceInfo {
   return {
     kind: "packageReference",
     name: pkg.name,
     version: pkg.version,
+    projectUri,
     isImplicit,
+    // Transitive children are informational only — no owning project, so they can't be removed/updated.
     dependencies: pkg.dependencies.map((child) => toPackageReferenceInfo(child, true)),
   };
 }

@@ -114,7 +114,10 @@ export class PackageReferenceTreeItem extends vscode.TreeItem {
         ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None,
     );
-    this.contextValue = "csharpSolutionExplorer.packageReference";
+    // Only direct references get the editable contextValue (Remove/Update); transitive ones are informational.
+    this.contextValue = info.isImplicit
+      ? "csharpSolutionExplorer.packageReference.transitive"
+      : "csharpSolutionExplorer.packageReference";
     this.description = info.version;
     // Transitive (pulled-in) packages are dimmed to distinguish them from direct references.
     this.iconPath = info.isImplicit

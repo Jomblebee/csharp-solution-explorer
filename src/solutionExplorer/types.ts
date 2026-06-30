@@ -18,6 +18,9 @@ export const ADD_EXISTING_PROJECT_COMMAND_ID = "csharpSolutionExplorer.addExisti
 export const REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID = "csharpSolutionExplorer.removeProjectFromSolution";
 export const ADD_PROJECT_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.addProjectReference";
 export const REMOVE_PROJECT_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.removeProjectReference";
+export const ADD_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.addPackageReference";
+export const REMOVE_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.removePackageReference";
+export const UPDATE_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.updatePackageReference";
 export const BUILD_PROJECT_COMMAND_ID = "csharpSolutionExplorer.buildProject";
 export const RUN_PROJECT_COMMAND_ID = "csharpSolutionExplorer.runProject";
 export const OPEN_SOLUTION_FILE_COMMAND_ID = "csharpSolutionExplorer.openSolutionFile";
@@ -68,6 +71,8 @@ export interface PackageReferenceInfo {
   kind: "packageReference";
   name: string;
   version?: string;
+  /** The owning project's .csproj — set only for direct references; the write target for Remove/Update. */
+  projectUri?: vscode.Uri;
   /** True for transitive (pulled-in) packages rather than direct `<PackageReference>` entries. */
   isImplicit?: boolean;
   /** Transitive child packages, when known from project.assets.json. */

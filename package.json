@@ -203,6 +203,21 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.addPackageReference",
+        "title": "Add Package...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.updatePackageReference",
+        "title": "Update Package...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.removePackageReference",
+        "title": "Remove Package",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.buildProject",
         "title": "Build Project",
         "category": "C# Solution Explorer"
@@ -302,6 +317,21 @@
         {
           "command": "csharpSolutionExplorer.removeProjectReference",
           "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.projectReference",
+          "group": "7_modification"
+        },
+        {
+          "command": "csharpSolutionExplorer.addPackageReference",
+          "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.dependencies || viewItem == csharpSolutionExplorer.dependencyCategory.packages)",
+          "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.updatePackageReference",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.packageReference",
+          "group": "7_modification"
+        },
+        {
+          "command": "csharpSolutionExplorer.removePackageReference",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.packageReference",
           "group": "7_modification"
         },
         {

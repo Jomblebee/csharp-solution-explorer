@@ -36,12 +36,15 @@ import {
   DependencyCategoryTreeItem,
   FileTreeItem,
   FolderTreeItem,
+  PackageReferenceTreeItem,
   ProjectReferenceTreeItem,
   ProjectTreeItem,
   SolutionFolderTreeItem,
   SolutionTreeItem,
 } from "./treeItems.js";
 import { addProjectReference as addProjectReferenceToCsproj, removeProjectReference as removeProjectReferenceFromCsproj } from "./csprojWriter.js";
+import { addPackage, removePackage, restore } from "./dotnetCli.js";
+import { getPackageVersions, NugetPackage, searchPackages } from "../nuget/nugetApi.js";
 import {
   BUILD_PROJECT_COMMAND_ID,
   DELETE_COMMAND_ID,
@@ -65,6 +68,9 @@ import {
   REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID,
   ADD_PROJECT_REFERENCE_COMMAND_ID,
   REMOVE_PROJECT_REFERENCE_COMMAND_ID,
+  ADD_PACKAGE_REFERENCE_COMMAND_ID,
+  REMOVE_PACKAGE_REFERENCE_COMMAND_ID,
+  UPDATE_PACKAGE_REFERENCE_COMMAND_ID,
   SolutionFolderInfo,
 } from "./types.js";
 
@@ -124,6 +130,15 @@ export function registerSolutionExplorerCommands(
     ),
     vscode.commands.registerCommand(REMOVE_PROJECT_REFERENCE_COMMAND_ID, (item: ProjectReferenceTreeItem) =>
       withErrorHandling(() => removeProjectReference(item, provider)),
+    ),
+    vscode.commands.registerCommand(ADD_PACKAGE_REFERENCE_COMMAND_ID, (item: unknown) =>
+      withErrorHandling(() => addPackageReference(item, provider)),
+    ),
+    vscode.commands.registerCommand(REMOVE_PACKAGE_REFERENCE_COMMAND_ID, (item: PackageReferenceTreeItem) =>
+      withErrorHandling(() => removePackageReference(item, provider)),
+    ),
+    vscode.commands.registerCommand(UPDATE_PACKAGE_REFERENCE_COMMAND_ID, (item: PackageReferenceTreeItem) =>
+      withErrorHandling(() => updatePackageReference(item, provider)),
     ),
     vscode.commands.registerCommand(BUILD_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => buildProject(item)),
     vscode.commands.registerCommand(RUN_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => runProject(item)),
@@ -726,6 +741,170 @@ async function removeProjectReference(item: ProjectReferenceTreeItem, provider: 
   const updated = removeProjectReferenceFromCsproj(text, item.info.includePath);
 
   await vscode.workspace.fs.writeFile(ownerUri, new TextEncoder().encode(updated));
+  provider.refresh();
+}
+
+interface PackagePickItem extends vscode.QuickPickItem {
+  id: string;
+}
+
+/** Debounces a void-returning function so rapid calls (e.g. keystrokes) collapse into the last one. */
+function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: number): (...args: A) => void {
+  let timer: NodeJS.Timeout | undefined;
+  return (...args: A) => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => fn(...args), ms);
+  };
+}
+
+function formatDownloads(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return String(count);
+}
+
+function formatPackageDetail(pkg: NugetPackage): string {
+  const downloads = pkg.totalDownloads > 0 ? `${formatDownloads(pkg.totalDownloads)} downloads` : "";
+  return [downloads, pkg.description].filter(Boolean).join(" · ");
+}
+
+/** Opens a QuickPick that searches nuget.org as the user types; resolves to the chosen package id. */
+function pickPackageFromSearch(): Promise<string | undefined> {
+  const quickPick = vscode.window.createQuickPick<PackagePickItem>();
+  quickPick.placeholder = "Search nuget.org for a package";
+  quickPick.matchOnDescription = true;
+  quickPick.matchOnDetail = true;
+
+  // Monotonic token so a slow earlier search can't overwrite the results of a newer one.
+  let latest = 0;
+  const runSearch = debounce(async (value: string) => {
+    const term = value.trim();
+    if (!term) {
+      quickPick.items = [];
+      quickPick.busy = false;
+      return;
+    }
+    const token = ++latest;
+    quickPick.busy = true;
+    try {
+      const results = await searchPackages(term);
+      if (token !== latest) {
+        return;
+      }
+      quickPick.title = undefined;
+      quickPick.items = results.map((pkg) => ({
+        label: pkg.verified ? `$(verified) ${pkg.id}` : pkg.id,
+        id: pkg.id,
+        description: pkg.version,
+        detail: formatPackageDetail(pkg),
+      }));
+    } catch (err) {
+      if (token === latest) {
+        quickPick.items = [];
+        quickPick.title = `Search failed: ${errorMessage(err)}`;
+      }
+    } finally {
+      if (token === latest) {
+        quickPick.busy = false;
+      }
+    }
+  }, 300);
+
+  return new Promise<string | undefined>((resolve) => {
+    quickPick.onDidChangeValue((value) => runSearch(value));
+    quickPick.onDidAccept(() => {
+      const id = quickPick.selectedItems[0]?.id;
+      resolve(id);
+      quickPick.hide();
+    });
+    quickPick.onDidHide(() => {
+      quickPick.dispose();
+      resolve(undefined);
+    });
+    quickPick.show();
+  });
+}
+
+/** Loads a package's versions from nuget.org and lets the user pick one (newest first). */
+async function pickPackageVersion(id: string, currentVersion?: string): Promise<string | undefined> {
+  const versions = await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title: `Loading versions for ${id}…` },
+    () => getPackageVersions(id),
+  );
+  if (versions.length === 0) {
+    vscode.window.showWarningMessage(`No versions were found for '${id}' on nuget.org.`);
+    return undefined;
+  }
+  const picked = await vscode.window.showQuickPick(
+    versions.map((version) => ({
+      label: version,
+      description: version === currentVersion ? "current" : undefined,
+    })),
+    { placeHolder: `Select a version of ${id}` },
+  );
+  return picked?.label;
+}
+
+function installPackage(projectUri: vscode.Uri, id: string, version: string, title: string): Thenable<void> {
+  return vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title },
+    () => addPackage(projectUri.fsPath, id, version),
+  );
+}
+
+async function addPackageReference(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  const ownerUri = resolveOwningProjectUri(item);
+  if (!ownerUri) {
+    return;
+  }
+  const id = await pickPackageFromSearch();
+  if (!id) {
+    return;
+  }
+  const version = await pickPackageVersion(id);
+  if (!version) {
+    return;
+  }
+  await installPackage(ownerUri, id, version, `Installing ${id} ${version}…`);
+  provider.refresh();
+}
+
+async function removePackageReference(item: PackageReferenceTreeItem, provider: SolutionTreeDataProvider): Promise<void> {
+  const projectUri = item.info.projectUri;
+  if (!projectUri) {
+    return;
+  }
+  const confirmation = await vscode.window.showWarningMessage(
+    `Remove the package '${item.info.name}' from the project?`,
+    { modal: true },
+    "Remove",
+  );
+  if (confirmation !== "Remove") {
+    return;
+  }
+  await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title: `Removing ${item.info.name}…` },
+    async () => {
+      await removePackage(projectUri.fsPath, item.info.name);
+      // `dotnet remove package` doesn't restore, so refresh project.assets.json ourselves.
+      await restore(projectUri.fsPath);
+    },
+  );
+  provider.refresh();
+}
+
+async function updatePackageReference(item: PackageReferenceTreeItem, provider: SolutionTreeDataProvider): Promise<void> {
+  const projectUri = item.info.projectUri;
+  if (!projectUri) {
+    return;
+  }
+  const version = await pickPackageVersion(item.info.name, item.info.version);
+  if (!version || version === item.info.version) {
+    return;
+  }
+  await installPackage(projectUri, item.info.name, version, `Updating ${item.info.name} to ${version}…`);
   provider.refresh();
 }
 
