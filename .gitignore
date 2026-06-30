@@ -8,6 +8,9 @@ dist/
 samples/**/bin/
 samples/**/obj/
 samples/**/.vs/
+samples/**/*.db
+samples/**/*.db-shm
+samples/**/*.db-wal
 
 # macOS
 .DS_Store

@@ -1,0 +1,34 @@
+@page "/projects/{ProjectId:int}"
+@rendermode InteractiveServer
+@inherits ProjectDetailBase
+
+<PageTitle>@(Project?.Name ?? "Project") — TaskFlow</PageTitle>
+
+@if (Project is null)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudText Typo="Typo.h4" GutterBottom="true">@Project.Name</MudText>
+
+    @if (Project.Description is not null)
+    {
+        <MudText Typo="Typo.body1" Class="mb-4" Color="Color.Secondary">@Project.Description</MudText>
+    }
+
+    <div class="d-flex gap-3 mt-4">
+        <MudButton Href="@($"projects/{ProjectId}/tasks")"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.ViewKanban">
+            Open Task Board
+        </MudButton>
+        <MudButton OnClick="DeleteProject"
+                   Variant="Variant.Outlined"
+                   Color="Color.Error"
+                   StartIcon="@Icons.Material.Filled.Delete">
+            Delete Project
+        </MudButton>
+    </div>
+}

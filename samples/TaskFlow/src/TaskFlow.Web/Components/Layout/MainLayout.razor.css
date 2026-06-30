@@ -1,0 +1,8 @@
+::deep .mud-nav-link.active {
+    background-color: rgba(63, 81, 181, 0.12);
+    border-radius: 4px;
+}
+
+::deep .mud-main-content {
+    background-color: #f5f5f5;
+}
