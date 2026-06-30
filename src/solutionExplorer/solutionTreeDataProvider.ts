@@ -9,7 +9,7 @@ import {
   parseProjectReferences,
   resolveExcludedPaths,
 } from "./csprojReader.js";
-import { listAllFilesRecursive, listDirectChildren } from "./diskScanner.js";
+import { listAllFilesRecursive, listDirectChildren, ScannedEntry } from "./diskScanner.js";
 import { buildSolutionTree, parseNestedProjects, parseSolutionFile, SolutionTreeNode } from "./slnParser.js";
 import { parseSlnxFile } from "./slnxParser.js";
 import { DependenciesInfo, ExcludedPaths, ProjectInfo, SolutionInfo } from "./types.js";
@@ -20,6 +20,7 @@ import {
   PackageReferenceTreeItem,
   ProjectReferenceTreeItem,
   ProjectTreeItem,
+  RazorFileTreeItem,
   SolutionExplorerTreeItem,
   SolutionFolderTreeItem,
   SolutionTreeItem,
@@ -75,9 +76,9 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       return this.getProjectItems(element.info);
     }
     if (element instanceof SolutionFolderTreeItem) {
-      const bytes = await vscode.workspace.fs.readFile(element.info.solutionUri);
-      const slnText = new TextDecoder().decode(bytes);
-      const nesting = parseNestedProjects(slnText);
+      const nesting = element.info.isVirtual
+        ? new Map<string, string>()
+        : parseNestedProjects(new TextDecoder().decode(await vscode.workspace.fs.readFile(element.info.solutionUri)));
       return this.nodesToTreeItems(element.info.children, element.info.solutionDir, element.info.solutionUri, nesting);
     }
     if (element instanceof ProjectTreeItem) {
@@ -91,6 +92,9 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     }
     if (element instanceof FolderTreeItem) {
       return this.getFsChildren(element.entry.uri, element.projectRootUri, element.excludedPaths);
+    }
+    if (element instanceof RazorFileTreeItem) {
+      return element.companions.map((c) => new FileTreeItem(c));
     }
     return [];
   }
@@ -159,6 +163,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
             children: node.children,
             solutionDir,
             solutionUri,
+            isVirtual: node.isVirtual,
           }),
         );
         continue;
@@ -255,18 +260,65 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     projectRootUri: vscode.Uri,
     excludedPaths: ExcludedPaths,
   ): SolutionExplorerTreeItem[] {
-    return listDirectChildren(dirUri.fsPath).map((scanned) => {
-      const relativePath = toPosixRelative(projectRootUri.fsPath, scanned.path);
+    const scanned = listDirectChildren(dirUri.fsPath);
+
+    const razorLowerNames = scanned
+      .filter((e) => e.kind === "file" && e.name.toLowerCase().endsWith(".razor"))
+      .map((e) => e.name.toLowerCase())
+      // Longest first so "Foo.razor" wins over a shorter prefix when both could match.
+      .sort((a, b) => b.length - a.length);
+
+    // Map each ".razor" file (lowercase name) to its companion files, e.g.
+    // "Foo.razor" → ["Foo.razor.cs", "Foo.razor.css", "Foo.razor.js"], like Visual Studio.
+    const razorToCompanions = new Map<string, ScannedEntry[]>();
+    for (const e of scanned) {
+      if (e.kind !== "file") {
+        continue;
+      }
+      const lower = e.name.toLowerCase();
+      const parentLower = razorLowerNames.find((razor) => lower.startsWith(razor + "."));
+      if (parentLower) {
+        const list = razorToCompanions.get(parentLower) ?? [];
+        list.push(e);
+        razorToCompanions.set(parentLower, list);
+      }
+    }
+    const nestedCompanionLower = new Set(
+      [...razorToCompanions.values()].flat().map((e) => e.name.toLowerCase()),
+    );
+
+    const makeEntry = (s: ScannedEntry) => {
+      const relativePath = toPosixRelative(projectRootUri.fsPath, s.path);
       const isExcluded =
-        scanned.kind === "file" &&
+        s.kind === "file" &&
         (excludedPaths.compile.has(relativePath) ||
           excludedPaths.none.has(relativePath) ||
           excludedPaths.content.has(relativePath));
-      const entry = { kind: scanned.kind, name: scanned.name, uri: vscode.Uri.file(scanned.path), isExcluded };
-      return entry.kind === "folder"
-        ? new FolderTreeItem(entry, projectRootUri, excludedPaths)
-        : new FileTreeItem(entry);
-    });
+      return { kind: s.kind, name: s.name, uri: vscode.Uri.file(s.path), isExcluded };
+    };
+
+    const items: SolutionExplorerTreeItem[] = [];
+    for (const s of scanned) {
+      if (s.kind === "file" && nestedCompanionLower.has(s.name.toLowerCase())) {
+        continue; // hidden — appears as child of its .razor node
+      }
+      const entry = makeEntry(s);
+      if (entry.kind === "folder") {
+        items.push(new FolderTreeItem(entry, projectRootUri, excludedPaths));
+      } else {
+        const companions = razorToCompanions.get(s.name.toLowerCase());
+        if (companions && companions.length > 0) {
+          const companionEntries = companions
+            .slice()
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(makeEntry);
+          items.push(new RazorFileTreeItem(entry, companionEntries));
+        } else {
+          items.push(new FileTreeItem(entry));
+        }
+      }
+    }
+    return items;
   }
 
   dispose(): void {

@@ -4,6 +4,25 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.4.0] – 2026-06-30
+
+### Added
+
+- Companion files are now nested under their `.razor` file in the tree, just like Visual Studio.
+  Any sibling named `Foo.razor.*` (e.g. `Foo.razor.cs`, `Foo.razor.css`, `Foo.razor.js`) appears
+  as a child of `Foo.razor`. The Razor node shows a collapse arrow; clicking it reveals the
+  companions. `.razor` files without companions, and unpaired `*.razor.*` files (no matching
+  `.razor`), continue to appear as normal flat nodes.
+
+## [0.3.0] – 2026-06-30
+
+### Added
+
+- Solution folders with path-like names (e.g. `src/base/MyLib`) are now automatically
+  displayed as a proper nested folder hierarchy in the tree view. Virtual path-segment
+  nodes are expanded by default and have no context-menu actions; real leaf folders retain
+  their full rename/delete/move context menu.
+
 ## [0.2.0] – 2026-06-29
 
 ### Added
