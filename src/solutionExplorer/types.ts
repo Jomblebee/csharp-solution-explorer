@@ -30,6 +30,7 @@ export const TEST_COMMAND_ID = "csharpSolutionExplorer.test";
 export const RUN_PROJECT_COMMAND_ID = "csharpSolutionExplorer.runProject";
 export const NEW_PROJECT_COMMAND_ID = "csharpSolutionExplorer.newProject";
 export const OPEN_SOLUTION_FILE_COMMAND_ID = "csharpSolutionExplorer.openSolutionFile";
+export const OPEN_PROJECT_FILE_COMMAND_ID = "csharpSolutionExplorer.openProjectFile";
 export const OPEN_SETTINGS_COMMAND_ID = "csharpSolutionExplorer.openSettings";
 
 export interface ProjectReference {

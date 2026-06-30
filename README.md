@@ -51,7 +51,7 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 | Rename…                  | Project, Solution Folder, Folder, File |
 | Delete                   | Project, Solution Folder, Folder, File |
 | Remove from Solution     | Project                                |
-| Open in Editor           | Solution node                          |
+| Open in Editor           | Project, Solution node                 |
 
 - **New Item submenu**: prompts for a name and creates the file in the target folder. The namespace is derived automatically from the project name and folder path. All templates are configurable — see [Settings](#settings) below.
 - **New Razor Component…**: enforces the Blazor convention that component names start with an uppercase letter.
@@ -61,7 +61,7 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 - **Remove from Solution**: removes the project reference from the solution file without deleting files on disk.
 - **New Project…**: scaffolds a new project from a `dotnet new` template (Console, Class Library, Web API, Blazor, test projects, and more), creates it in a folder next to the solution, and registers it in the `.sln`/`.slnx` file.
 - **Build / Rebuild / Run / Test / Restore / Clean**: runs the matching `dotnet` command in a dedicated VS Code terminal. Build, Rebuild, Test, Restore, and Clean work on both project and solution nodes; Run is project-only. **Rebuild** uses `dotnet build --no-incremental` to force a full recompile.
-- **Open in Editor**: opens the raw `.sln` or `.slnx` file in the editor.
+- **Open in Editor**: opens the raw `.sln`/`.slnx` (on a solution) or `.csproj` (on a project) file in the editor. The project's own `.csproj` is not listed as a child file — use this command to open it.
 
 ### Dependencies
 

@@ -4,6 +4,19 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.7.0] – 2026-06-30
+
+### Added
+
+- **Open in Editor on projects**: right-click a project to open its `.csproj` file in the
+  editor — the command sits at the top of the context menu, mirroring the existing
+  "Open in Editor" on solution nodes.
+
+### Changed
+
+- A project's own `.csproj` is no longer shown as a child file under the project node.
+  Open it via the new **Open in Editor** command instead.
+
 ## [0.6.0] – 2026-06-30
 
 ### Added
