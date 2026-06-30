@@ -4,6 +4,32 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.5.0] – 2026-06-30
+
+### Added
+
+- **Dependencies tree**: each project now shows a `Dependencies` node that groups its
+  references into Visual Studio-style categories — `Frameworks`, `Analyzers`, `Packages`,
+  and `Projects` (empty categories are hidden). The tree is resolved from
+  `project.assets.json` after a restore for full fidelity (including transitive packages),
+  falling back to parsing the `.csproj` directly when no restore has run.
+- **NuGet package management**: right-click a project, its `Dependencies` node, or the
+  `Packages` category to **Add Package…** — a Quick Pick searches nuget.org live as you
+  type and a second pick chooses the version. Direct packages gain **Update Package…** and
+  **Remove Package**. Writes go through the `dotnet` CLI so versions resolve and a restore
+  keeps the tree (including transitive packages) in sync.
+- **Outdated package indicator**: direct packages with a newer stable version on nuget.org
+  are flagged as `installed → latest` (highlighted) with a one-click **Update to Latest
+  Version** action, alongside the regular Update/Remove. Version lookups run when the
+  `Packages` node is expanded, are cached for the session, and can be disabled via the new
+  `csharpSolutionExplorer.nuget.checkForUpdates` setting.
+- **Project references**: **Add Project Reference…** (on a project, its `Dependencies` node,
+  or the `Projects` category) lets you pick one or more other projects to reference;
+  **Remove** drops a direct reference. Each reference is expandable to reveal the referenced
+  project's own references — fully recursive, dimmed, with cycle protection.
+- **Restore / Clean**: `dotnet restore` and `dotnet clean` are available as context commands
+  on both project and solution nodes, running in a dedicated terminal like Build/Run.
+
 ## [0.4.0] – 2026-06-30
 
 ### Added

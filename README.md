@@ -16,6 +16,7 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 - Parses `.sln` and `.slnx` solution files, including Solution Folder nesting.
 - Falls back to a loose top-level `.csproj` when no solution file is found.
 - Folders and files are read directly from disk (no MSBuild evaluation), excluding `bin`, `obj`, `node_modules`, and hidden directories.
+- Per-project **Dependencies** tree grouped into Visual Studio-style categories (Frameworks, Analyzers, Packages, Projects), with full NuGet and project-reference management — see [Dependencies](#dependencies).
 - Manual refresh button and automatic refresh via a file system watcher.
 - Click a file to open it in the editor.
 
@@ -34,8 +35,16 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 | New Folder…              | Project, Folder                        |
 | New Solution Folder…     | Solution, Solution Folder              |
 | Add Existing Project…    | Solution, Solution Folder              |
+| Add Project Reference…   | Project, Dependencies, Projects        |
+| Remove (reference)       | Project reference                      |
+| Add Package…             | Project, Dependencies, Packages        |
+| Update Package…          | Package                                |
+| Update to Latest Version | Outdated package                       |
+| Remove Package           | Package                                |
 | Build Project            | Project                                |
 | Run Project              | Project                                |
+| Restore                  | Project, Solution                      |
+| Clean                    | Project, Solution                      |
 | Rename…                  | Project, Solution Folder, Folder, File |
 | Delete                   | Project, Solution Folder, Folder, File |
 | Remove from Solution     | Project                                |
@@ -47,8 +56,16 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 - **Rename**: updates the solution file entry and root folder when renaming a project or Solution Folder.
 - **Delete**: moves files and folders to trash; removes the project or Solution Folder entry from the solution file.
 - **Remove from Solution**: removes the project reference from the solution file without deleting files on disk.
-- **Build / Run**: runs `dotnet build` / `dotnet run` in a dedicated VS Code terminal.
+- **Build / Run / Restore / Clean**: runs `dotnet build` / `dotnet run` / `dotnet restore` / `dotnet clean` in a dedicated VS Code terminal. Restore and Clean work on both project and solution nodes.
 - **Open in Editor**: opens the raw `.sln` or `.slnx` file in the editor.
+
+### Dependencies
+
+Each project has a **Dependencies** node that mirrors Visual Studio, grouping references into **Frameworks**, **Analyzers**, **Packages**, and **Projects** (empty categories are hidden). It is resolved from `project.assets.json` after a restore — so it reflects exactly what was restored, including transitive packages — and falls back to reading the `.csproj` directly when no restore has run.
+
+- **NuGet packages**: **Add Package…** opens a Quick Pick that searches nuget.org live as you type, followed by a version pick. Direct packages offer **Update Package…** (pick any version) and **Remove Package**. All writes go through the `dotnet` CLI, so versions resolve and a restore keeps the tree in sync.
+- **Outdated packages**: when `csharpSolutionExplorer.nuget.checkForUpdates` is enabled (default), expanding the **Packages** node checks nuget.org for newer stable versions. Outdated direct packages are highlighted as `installed → latest` with an **Update to Latest Version** one-click action. Results are cached for the session.
+- **Project references**: **Add Project Reference…** lets you select one or more other projects to reference; **Remove** drops a direct reference. Each reference can be expanded to reveal the referenced project's own references — fully recursive, dimmed, with cycle protection.
 
 ### Drag and drop
 
@@ -56,15 +73,16 @@ Projects can be dragged between Solution Folders (or to the solution root) direc
 
 ### Settings
 
-| Setting                                      | Default         | Description                                             |
-| -------------------------------------------- | --------------- | ------------------------------------------------------- |
-| `csharpSolutionExplorer.confirmMove`         | `true`          | Show a confirmation dialog before a drag-and-drop move. |
-| `csharpSolutionExplorer.templates.class`     | *(see below)*   | Template for new C# class files.                        |
-| `csharpSolutionExplorer.templates.interface` | *(see below)*   | Template for new C# interface files.                    |
-| `csharpSolutionExplorer.templates.record`    | *(see below)*   | Template for new C# record files.                       |
-| `csharpSolutionExplorer.templates.enum`      | *(see below)*   | Template for new C# enum files.                         |
-| `csharpSolutionExplorer.templates.struct`    | *(see below)*   | Template for new C# struct files.                       |
-| `csharpSolutionExplorer.templates.razor`     | *(see below)*   | Template for new Razor component files.                 |
+| Setting                                        | Default       | Description                                                                   |
+| ---------------------------------------------- | ------------- | ----------------------------------------------------------------------------- |
+| `csharpSolutionExplorer.confirmMove`           | `true`        | Show a confirmation dialog before a drag-and-drop move.                       |
+| `csharpSolutionExplorer.nuget.checkForUpdates` | `true`        | Check nuget.org for newer versions of direct packages and flag outdated ones. |
+| `csharpSolutionExplorer.templates.class`       | *(see below)* | Template for new C# class files.                                              |
+| `csharpSolutionExplorer.templates.interface`   | *(see below)* | Template for new C# interface files.                                          |
+| `csharpSolutionExplorer.templates.record`      | *(see below)* | Template for new C# record files.                                             |
+| `csharpSolutionExplorer.templates.enum`        | *(see below)* | Template for new C# enum files.                                               |
+| `csharpSolutionExplorer.templates.struct`      | *(see below)* | Template for new C# struct files.                                             |
+| `csharpSolutionExplorer.templates.razor`       | *(see below)* | Template for new Razor component files.                                       |
 
 All template settings support the following variables:
 
@@ -83,7 +101,8 @@ The gear icon in the view title opens the extension settings directly.
 ## Requirements
 
 - **VS Code ≥ 1.85** (or a compatible Open VSX editor).
-- **.NET CLI** (`dotnet`) must be on your `PATH` for the Build Project and Run Project commands.
+- **.NET CLI** (`dotnet`) must be on your `PATH` for the Build, Run, Restore, Clean, and NuGet package commands (Add/Update/Remove Package).
+- **Internet access** to nuget.org is needed for the package search and the outdated-package check (both can be ignored if you only manage references offline).
 
 ## Development
 

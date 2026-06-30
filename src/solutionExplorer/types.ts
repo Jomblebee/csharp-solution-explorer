@@ -16,6 +16,14 @@ export const RENAME_COMMAND_ID = "csharpSolutionExplorer.rename";
 export const DELETE_COMMAND_ID = "csharpSolutionExplorer.delete";
 export const ADD_EXISTING_PROJECT_COMMAND_ID = "csharpSolutionExplorer.addExistingProject";
 export const REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID = "csharpSolutionExplorer.removeProjectFromSolution";
+export const ADD_PROJECT_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.addProjectReference";
+export const REMOVE_PROJECT_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.removeProjectReference";
+export const ADD_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.addPackageReference";
+export const REMOVE_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.removePackageReference";
+export const UPDATE_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.updatePackageReference";
+export const UPDATE_PACKAGE_TO_LATEST_COMMAND_ID = "csharpSolutionExplorer.updatePackageToLatest";
+export const RESTORE_COMMAND_ID = "csharpSolutionExplorer.restore";
+export const CLEAN_COMMAND_ID = "csharpSolutionExplorer.clean";
 export const BUILD_PROJECT_COMMAND_ID = "csharpSolutionExplorer.buildProject";
 export const RUN_PROJECT_COMMAND_ID = "csharpSolutionExplorer.runProject";
 export const OPEN_SOLUTION_FILE_COMMAND_ID = "csharpSolutionExplorer.openSolutionFile";
@@ -66,16 +74,59 @@ export interface PackageReferenceInfo {
   kind: "packageReference";
   name: string;
   version?: string;
+  /** The owning project's .csproj — set only for direct references; the write target for Remove/Update. */
+  projectUri?: vscode.Uri;
+  /** True for transitive (pulled-in) packages rather than direct `<PackageReference>` entries. */
+  isImplicit?: boolean;
+  /** Newest stable version on nuget.org, set only for direct packages that have an update available. */
+  latestVersion?: string;
+  /** Transitive child packages, when known from project.assets.json. */
+  dependencies?: PackageReferenceInfo[];
 }
 
 export interface ProjectReferenceInfo {
   kind: "projectReference";
   name: string;
+  /** The referenced project's .csproj. */
   uri: vscode.Uri;
+  /** The .csproj that declares this reference — the file edited on Remove. */
+  ownerUri: vscode.Uri;
+  /** The original `Include` value, used to remove the exact entry. */
+  includePath: string;
+  /** True for nested (transitive) references shown under a parent reference: dimmed, no Remove. */
+  isTransitive?: boolean;
+  /** Whether the referenced project itself declares project references (drives the expand arrow). */
+  hasChildren?: boolean;
+  /** fsPaths from the root project down to and including this reference's target, for cycle detection. */
+  ancestorFsPaths: string[];
+}
+
+export interface FrameworkReferenceInfo {
+  kind: "frameworkReference";
+  name: string;
+  version?: string;
+}
+
+export interface AnalyzerInfo {
+  kind: "analyzer";
+  name: string;
+  version?: string;
+}
+
+export type DependencyCategory = "frameworks" | "analyzers" | "packages" | "projects";
+
+export interface DependencyCategoryInfo {
+  kind: "dependencyCategory";
+  category: DependencyCategory;
+  dependencies: DependenciesInfo;
 }
 
 export interface DependenciesInfo {
   kind: "dependencies";
+  /** The owning project's .csproj, used as the write target when adding a project reference. */
+  projectUri: vscode.Uri;
+  frameworks: FrameworkReferenceInfo[];
+  analyzers: AnalyzerInfo[];
   packages: PackageReferenceInfo[];
   projects: ProjectReferenceInfo[];
 }

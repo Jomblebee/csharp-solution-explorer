@@ -2,7 +2,7 @@
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
   "description": "A lightweight Solution Explorer for C# projects in VS Code (and Open VSX-compatible editors).",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "jomblebee",
   "license": "MIT",
   "repository": {
@@ -43,6 +43,11 @@
             "type": "boolean",
             "default": true,
             "description": "Ask for confirmation before moving items in the Solution Explorer."
+          },
+          "csharpSolutionExplorer.nuget.checkForUpdates": {
+            "type": "boolean",
+            "default": true,
+            "description": "Check nuget.org for newer versions of direct packages and flag outdated ones in the Dependencies tree."
           }
         }
       },
@@ -193,6 +198,46 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.addProjectReference",
+        "title": "Add Project Reference...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.removeProjectReference",
+        "title": "Remove",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.addPackageReference",
+        "title": "Add Package...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.updatePackageReference",
+        "title": "Update Package...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.updatePackageToLatest",
+        "title": "Update to Latest Version",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.removePackageReference",
+        "title": "Remove Package",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.restore",
+        "title": "Restore",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.clean",
+        "title": "Clean",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.buildProject",
         "title": "Build Project",
         "category": "C# Solution Explorer"
@@ -285,14 +330,54 @@
           "group": "1_new"
         },
         {
+          "command": "csharpSolutionExplorer.addProjectReference",
+          "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.dependencies || viewItem == csharpSolutionExplorer.dependencyCategory.projects)",
+          "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.removeProjectReference",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.projectReference",
+          "group": "7_modification"
+        },
+        {
+          "command": "csharpSolutionExplorer.addPackageReference",
+          "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.dependencies || viewItem == csharpSolutionExplorer.dependencyCategory.packages)",
+          "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.updatePackageToLatest",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.packageReference.outdated",
+          "group": "7_modification@1"
+        },
+        {
+          "command": "csharpSolutionExplorer.updatePackageReference",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.packageReference(\\.outdated)?$/",
+          "group": "7_modification@2"
+        },
+        {
+          "command": "csharpSolutionExplorer.removePackageReference",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.packageReference(\\.outdated)?$/",
+          "group": "7_modification@3"
+        },
+        {
           "command": "csharpSolutionExplorer.buildProject",
           "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
-          "group": "2_build"
+          "group": "2_build@1"
         },
         {
           "command": "csharpSolutionExplorer.runProject",
           "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
-          "group": "2_build"
+          "group": "2_build@2"
+        },
+        {
+          "command": "csharpSolutionExplorer.restore",
+          "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
+          "group": "2_build@3"
+        },
+        {
+          "command": "csharpSolutionExplorer.clean",
+          "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
+          "group": "2_build@4"
         },
         {
           "command": "csharpSolutionExplorer.rename",
