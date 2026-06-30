@@ -193,6 +193,16 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.addProjectReference",
+        "title": "Add Project Reference...",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.removeProjectReference",
+        "title": "Remove",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.buildProject",
         "title": "Build Project",
         "category": "C# Solution Explorer"
@@ -283,6 +293,16 @@
           "command": "csharpSolutionExplorer.addExistingProject",
           "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem == csharpSolutionExplorer.solutionFolder)",
           "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.addProjectReference",
+          "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.dependencies || viewItem == csharpSolutionExplorer.dependencyCategory.projects)",
+          "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.removeProjectReference",
+          "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.projectReference",
+          "group": "7_modification"
         },
         {
           "command": "csharpSolutionExplorer.buildProject",

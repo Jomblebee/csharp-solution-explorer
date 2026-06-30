@@ -7,6 +7,7 @@ import {
   buildNamespace,
 } from "./csharpTemplates.js";
 import { basenameWithoutExtension, SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
+import { parseProjectReferences } from "./csprojReader.js";
 import {
   CSHARP_PROJECT_TYPE_GUID,
   parseSolutionConfigurations,
@@ -31,12 +32,16 @@ import {
 } from "./slnxWriter.js";
 import { parseSlnxFile } from "./slnxParser.js";
 import {
+  DependenciesTreeItem,
+  DependencyCategoryTreeItem,
   FileTreeItem,
   FolderTreeItem,
+  ProjectReferenceTreeItem,
   ProjectTreeItem,
   SolutionFolderTreeItem,
   SolutionTreeItem,
 } from "./treeItems.js";
+import { addProjectReference as addProjectReferenceToCsproj, removeProjectReference as removeProjectReferenceFromCsproj } from "./csprojWriter.js";
 import {
   BUILD_PROJECT_COMMAND_ID,
   DELETE_COMMAND_ID,
@@ -58,6 +63,8 @@ import {
   RUN_PROJECT_COMMAND_ID,
   ADD_EXISTING_PROJECT_COMMAND_ID,
   REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID,
+  ADD_PROJECT_REFERENCE_COMMAND_ID,
+  REMOVE_PROJECT_REFERENCE_COMMAND_ID,
   SolutionFolderInfo,
 } from "./types.js";
 
@@ -111,6 +118,12 @@ export function registerSolutionExplorerCommands(
     ),
     vscode.commands.registerCommand(REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID, (item: ProjectTreeItem) =>
       withErrorHandling(() => removeProjectFromSolution(item, provider)),
+    ),
+    vscode.commands.registerCommand(ADD_PROJECT_REFERENCE_COMMAND_ID, (item: unknown) =>
+      withErrorHandling(() => addProjectReference(item, provider)),
+    ),
+    vscode.commands.registerCommand(REMOVE_PROJECT_REFERENCE_COMMAND_ID, (item: ProjectReferenceTreeItem) =>
+      withErrorHandling(() => removeProjectReference(item, provider)),
     ),
     vscode.commands.registerCommand(BUILD_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => buildProject(item)),
     vscode.commands.registerCommand(RUN_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => runProject(item)),
@@ -633,6 +646,86 @@ async function removeProjectFromSolution(item: ProjectTreeItem, provider: Soluti
   }
 
   await vscode.workspace.fs.writeFile(solutionUri, new TextEncoder().encode(newSlnText));
+  provider.refresh();
+}
+
+/** The .csproj that should receive a new `<ProjectReference>`, derived from the right-clicked node. */
+function resolveOwningProjectUri(item: unknown): vscode.Uri | undefined {
+  if (item instanceof ProjectTreeItem) {
+    return item.info.uri;
+  }
+  if (item instanceof DependenciesTreeItem) {
+    return item.project.uri;
+  }
+  if (item instanceof DependencyCategoryTreeItem) {
+    return item.info.dependencies.projectUri;
+  }
+  return undefined;
+}
+
+async function addProjectReference(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  const ownerUri = resolveOwningProjectUri(item);
+  if (!ownerUri) {
+    return;
+  }
+  const ownerDir = path.dirname(ownerUri.fsPath);
+  const ownerText = new TextDecoder().decode(await vscode.workspace.fs.readFile(ownerUri));
+  const alreadyReferenced = new Set(
+    parseProjectReferences(ownerText).map((ref) => path.resolve(ownerDir, ref.relativePath).toLowerCase()),
+  );
+
+  const candidateUris = await vscode.workspace.findFiles(
+    "**/*.{csproj,fsproj,vbproj}",
+    "**/{bin,obj,node_modules,.git,.vs}/**",
+  );
+  const candidates = candidateUris
+    .filter((uri) => uri.fsPath.toLowerCase() !== ownerUri.fsPath.toLowerCase())
+    .filter((uri) => !alreadyReferenced.has(uri.fsPath.toLowerCase()))
+    .sort((a, b) => basenameWithoutExtension(a.fsPath).localeCompare(basenameWithoutExtension(b.fsPath)));
+
+  if (candidates.length === 0) {
+    vscode.window.showInformationMessage("No other projects are available to reference.");
+    return;
+  }
+
+  const picks = await vscode.window.showQuickPick(
+    candidates.map((uri) => ({
+      label: basenameWithoutExtension(uri.fsPath),
+      description: toPosixRelative(ownerDir, uri.fsPath),
+      uri,
+    })),
+    { canPickMany: true, placeHolder: "Select projects to reference" },
+  );
+  if (!picks || picks.length === 0) {
+    return;
+  }
+
+  let updated = ownerText;
+  for (const pick of picks) {
+    // Write the include in Windows-style backslash form, matching Visual Studio and the samples.
+    const includePath = path.relative(ownerDir, pick.uri.fsPath).split(path.sep).join("\\");
+    updated = addProjectReferenceToCsproj(updated, includePath);
+  }
+
+  await vscode.workspace.fs.writeFile(ownerUri, new TextEncoder().encode(updated));
+  provider.refresh();
+}
+
+async function removeProjectReference(item: ProjectReferenceTreeItem, provider: SolutionTreeDataProvider): Promise<void> {
+  const confirmation = await vscode.window.showWarningMessage(
+    `Remove the reference to '${item.info.name}'? The referenced project's files are kept on disk.`,
+    { modal: true },
+    "Remove",
+  );
+  if (confirmation !== "Remove") {
+    return;
+  }
+
+  const ownerUri = item.info.ownerUri;
+  const text = new TextDecoder().decode(await vscode.workspace.fs.readFile(ownerUri));
+  const updated = removeProjectReferenceFromCsproj(text, item.info.includePath);
+
+  await vscode.workspace.fs.writeFile(ownerUri, new TextEncoder().encode(updated));
   provider.refresh();
 }
 

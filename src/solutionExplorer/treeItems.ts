@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import {
   AnalyzerInfo,
-  DependenciesInfo,
   DependencyCategory,
   DependencyCategoryInfo,
   ExcludedPaths,
@@ -72,7 +71,9 @@ export class ProjectTreeItem extends vscode.TreeItem {
 }
 
 export class DependenciesTreeItem extends vscode.TreeItem {
-  constructor(public readonly info: DependenciesInfo) {
+  // Carries only the owning project; the dependency tree is resolved lazily when this node expands,
+  // so merely expanding a project doesn't read project.assets.json or any referenced .csproj.
+  constructor(public readonly project: ProjectInfo) {
     super("Dependencies", vscode.TreeItemCollapsibleState.Collapsed);
     this.contextValue = "csharpSolutionExplorer.dependencies";
     this.iconPath = new vscode.ThemeIcon("library");
@@ -124,10 +125,19 @@ export class PackageReferenceTreeItem extends vscode.TreeItem {
 
 export class ProjectReferenceTreeItem extends vscode.TreeItem {
   constructor(public readonly info: ProjectReferenceInfo) {
-    super(info.name, vscode.TreeItemCollapsibleState.None);
-    this.contextValue = "csharpSolutionExplorer.projectReference";
+    super(
+      info.name,
+      info.hasChildren ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
+    );
+    // Transitive references are informational (no Remove); only direct ones get the editable contextValue.
+    this.contextValue = info.isTransitive
+      ? "csharpSolutionExplorer.projectReference.transitive"
+      : "csharpSolutionExplorer.projectReference";
     this.resourceUri = info.uri;
-    this.iconPath = new vscode.ThemeIcon("references");
+    // Dim nested/transitive references so they read as "referenced indirectly", like transitive packages.
+    this.iconPath = info.isTransitive
+      ? new vscode.ThemeIcon("references", new vscode.ThemeColor("disabledForeground"))
+      : new vscode.ThemeIcon("references");
     this.command = {
       command: OPEN_FILE_COMMAND_ID,
       title: "Open File",

@@ -23,6 +23,7 @@ import {
   ExcludedPaths,
   PackageReferenceInfo,
   ProjectInfo,
+  ProjectReferenceInfo,
   SolutionInfo,
 } from "./types.js";
 import {
@@ -43,6 +44,13 @@ import {
 
 const REFRESH_DEBOUNCE_MS = 300;
 
+/** A project's own `<ProjectReference>` entry, resolved to the referenced .csproj URI. */
+interface ProjectReferenceEntry {
+  name: string;
+  uri: vscode.Uri;
+  includePath: string;
+}
+
 export class SolutionTreeDataProvider implements vscode.TreeDataProvider<SolutionExplorerTreeItem>, vscode.Disposable {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<SolutionExplorerTreeItem | undefined | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -60,6 +68,11 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
    * change (see `scheduleRefresh`), so edits to the .csproj or a fresh restore are picked up. */
   private readonly dependenciesCache = new Map<string, DependenciesInfo>();
 
+  /** Cache of a project's own parsed project references, keyed by .csproj fsPath. Used both to
+   * resolve the Projects category and to recursively expand transitive references. Invalidated on
+   * any filesystem change (see `scheduleRefresh`). */
+  private readonly projectRefsCache = new Map<string, { name: string; uri: vscode.Uri; includePath: string }[]>();
+
   constructor() {
     this.watcher = vscode.workspace.createFileSystemWatcher("**/*");
     this.watcher.onDidCreate(() => this.scheduleRefresh());
@@ -76,6 +89,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     this.refreshTimeout = setTimeout(() => {
       this.excludedPathsCache.clear();
       this.dependenciesCache.clear();
+      this.projectRefsCache.clear();
       this.refresh();
     }, REFRESH_DEBOUNCE_MS);
   }
@@ -105,13 +119,21 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       return this.getProjectChildren(element.info);
     }
     if (element instanceof DependenciesTreeItem) {
-      return this.getDependencyCategories(element.info);
+      const info = await this.getDependenciesInfo(element.project);
+      return this.getDependencyCategories(info);
     }
     if (element instanceof DependencyCategoryTreeItem) {
       return this.getCategoryChildren(element.info.category, element.info.dependencies);
     }
     if (element instanceof PackageReferenceTreeItem) {
       return (element.info.dependencies ?? []).map((info) => new PackageReferenceTreeItem(info));
+    }
+    if (element instanceof ProjectReferenceTreeItem) {
+      const entries = await this.readProjectReferences(element.info.uri);
+      const children = entries.map((entry) =>
+        this.toProjectReferenceInfo(entry, element.info.uri, element.info.ancestorFsPaths, true),
+      );
+      return Promise.all(children.map(async (info) => new ProjectReferenceTreeItem(await this.withHasChildren(info))));
     }
     if (element instanceof FolderTreeItem) {
       return this.getFsChildren(element.entry.uri, element.projectRootUri, element.excludedPaths);
@@ -229,9 +251,8 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
   }
 
   private async getProjectChildren(info: ProjectInfo): Promise<SolutionExplorerTreeItem[]> {
-    const dependencies = await this.getDependenciesInfo(info);
     const excludedPaths = await this.getExcludedPaths(info);
-    return [new DependenciesTreeItem(dependencies), ...this.getFsChildren(info.rootDir, info.rootDir, excludedPaths)];
+    return [new DependenciesTreeItem(info), ...this.getFsChildren(info.rootDir, info.rootDir, excludedPaths)];
   }
 
   private async getExcludedPaths(info: ProjectInfo): Promise<ExcludedPaths> {
@@ -269,7 +290,10 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       .map(({ category }) => new DependencyCategoryTreeItem({ kind: "dependencyCategory", category, dependencies: info }));
   }
 
-  private getCategoryChildren(category: DependencyCategory, info: DependenciesInfo): SolutionExplorerTreeItem[] {
+  private async getCategoryChildren(
+    category: DependencyCategory,
+    info: DependenciesInfo,
+  ): Promise<SolutionExplorerTreeItem[]> {
     switch (category) {
       case "frameworks":
         return info.frameworks.map((f) => new FrameworkReferenceTreeItem(f));
@@ -278,8 +302,17 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       case "packages":
         return info.packages.map((p) => new PackageReferenceTreeItem(p));
       case "projects":
-        return info.projects.map((p) => new ProjectReferenceTreeItem(p));
+        // `hasChildren` (the expand arrow) is resolved here, only when Projects is actually opened,
+        // so it costs the referenced-project reads only at that point — not on every project expand.
+        return Promise.all(info.projects.map(async (p) => new ProjectReferenceTreeItem(await this.withHasChildren(p))));
     }
+  }
+
+  /** Fills in `hasChildren` for a reference by checking whether its target declares any references. */
+  private async withHasChildren(ref: ProjectReferenceInfo): Promise<ProjectReferenceInfo> {
+    const isCycle = ref.ancestorFsPaths.slice(0, -1).includes(ref.uri.fsPath);
+    const hasChildren = !isCycle && (await this.readProjectReferences(ref.uri)).length > 0;
+    return { ...ref, hasChildren };
   }
 
   private async getDependenciesInfo(info: ProjectInfo): Promise<DependenciesInfo> {
@@ -295,12 +328,10 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
   private async resolveDependenciesInfo(info: ProjectInfo): Promise<DependenciesInfo> {
     const csprojText = new TextDecoder().decode(await vscode.workspace.fs.readFile(info.uri));
 
-    // Project references always come from the .csproj — restore output records them by path, but the
-    // .csproj gives us the original relative paths needed to open the referenced projects.
-    const projects = parseProjectReferences(csprojText).map((ref) => {
-      const uri = vscode.Uri.joinPath(info.rootDir, ref.relativePath);
-      return { kind: "projectReference" as const, name: basenameWithoutExtension(uri.fsPath), uri };
-    });
+    // Direct project references come straight from this .csproj text (no extra read — we seed the
+    // cache from it). `hasChildren` and any transitive expansion are resolved later, on demand.
+    const ownerRefs = this.parseProjectReferenceEntries(info.uri, csprojText);
+    const projects = ownerRefs.map((ref) => this.toProjectReferenceInfo(ref, info.uri, [info.uri.fsPath], false));
 
     // Prefer the resolved restore output (project.assets.json) for full VS fidelity; fall back to
     // parsing the .csproj directly when no restore has run.
@@ -308,6 +339,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     if (assets) {
       return {
         kind: "dependencies",
+        projectUri: info.uri,
         frameworks: assets.frameworks.map((f) => ({ kind: "frameworkReference" as const, name: f.name, version: f.version })),
         analyzers: assets.analyzers.map((a) => ({ kind: "analyzer" as const, name: a.name, version: a.version })),
         packages: assets.packages.map((p) => toPackageReferenceInfo(p, false)),
@@ -322,6 +354,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
 
     return {
       kind: "dependencies",
+      projectUri: info.uri,
       frameworks: [...frameworkNames].map((name) => ({ kind: "frameworkReference" as const, name })),
       analyzers: parseAnalyzers(csprojText).map((a) => ({ kind: "analyzer" as const, name: a.name })),
       packages: parsePackageReferences(csprojText).map((ref) => ({
@@ -330,6 +363,56 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
         version: ref.version,
       })),
       projects,
+    };
+  }
+
+  /** Resolves a .csproj's text into its own `<ProjectReference>` entries and caches them. */
+  private parseProjectReferenceEntries(csprojUri: vscode.Uri, text: string): ProjectReferenceEntry[] {
+    const dir = vscode.Uri.joinPath(csprojUri, "..");
+    const entries = parseProjectReferences(text).map((ref) => {
+      const uri = vscode.Uri.joinPath(dir, ref.relativePath);
+      return { name: basenameWithoutExtension(uri.fsPath), uri, includePath: ref.relativePath };
+    });
+    this.projectRefsCache.set(csprojUri.fsPath, entries);
+    return entries;
+  }
+
+  /** Parses (and caches) a single project's own `<ProjectReference>` entries, resolved to URIs. */
+  private async readProjectReferences(csprojUri: vscode.Uri): Promise<ProjectReferenceEntry[]> {
+    const cached = this.projectRefsCache.get(csprojUri.fsPath);
+    if (cached) {
+      return cached;
+    }
+    try {
+      const text = new TextDecoder().decode(await vscode.workspace.fs.readFile(csprojUri));
+      return this.parseProjectReferenceEntries(csprojUri, text);
+    } catch {
+      // Referenced project file missing or unreadable — treat as having no references.
+      const empty: ProjectReferenceEntry[] = [];
+      this.projectRefsCache.set(csprojUri.fsPath, empty);
+      return empty;
+    }
+  }
+
+  /**
+   * Turns a parsed reference entry into a `ProjectReferenceInfo` *without* reading the target (so it
+   * does no I/O). `parentAncestors` is the chain of target fsPaths from the root project down to the
+   * owner; `hasChildren` is filled in later by {@link withHasChildren} only when the node is shown.
+   */
+  private toProjectReferenceInfo(
+    ref: ProjectReferenceEntry,
+    ownerUri: vscode.Uri,
+    parentAncestors: string[],
+    isTransitive: boolean,
+  ): ProjectReferenceInfo {
+    return {
+      kind: "projectReference",
+      name: ref.name,
+      uri: ref.uri,
+      ownerUri,
+      includePath: ref.includePath,
+      isTransitive,
+      ancestorFsPaths: [...parentAncestors, ref.uri.fsPath],
     };
   }
 
