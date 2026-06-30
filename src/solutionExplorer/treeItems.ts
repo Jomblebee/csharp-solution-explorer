@@ -115,14 +115,26 @@ export class PackageReferenceTreeItem extends vscode.TreeItem {
         : vscode.TreeItemCollapsibleState.None,
     );
     // Only direct references get the editable contextValue (Remove/Update); transitive ones are informational.
-    this.contextValue = info.isImplicit
-      ? "csharpSolutionExplorer.packageReference.transitive"
-      : "csharpSolutionExplorer.packageReference";
-    this.description = info.version;
-    // Transitive (pulled-in) packages are dimmed to distinguish them from direct references.
-    this.iconPath = info.isImplicit
-      ? new vscode.ThemeIcon("package", new vscode.ThemeColor("disabledForeground"))
-      : new vscode.ThemeIcon("package");
+    // A direct package with a known newer version gets the `.outdated` suffix so "Update to Latest" can show.
+    if (info.isImplicit) {
+      this.contextValue = "csharpSolutionExplorer.packageReference.transitive";
+    } else if (info.latestVersion) {
+      this.contextValue = "csharpSolutionExplorer.packageReference.outdated";
+    } else {
+      this.contextValue = "csharpSolutionExplorer.packageReference";
+    }
+    if (info.latestVersion) {
+      // Surface the available update inline (e.g. "9.0.0 → 9.6.0"), with a highlighted icon, like VS.
+      this.description = `${info.version} → ${info.latestVersion}`;
+      this.tooltip = `Update available: ${info.latestVersion}`;
+      this.iconPath = new vscode.ThemeIcon("package", new vscode.ThemeColor("charts.yellow"));
+    } else {
+      this.description = info.version;
+      // Transitive (pulled-in) packages are dimmed to distinguish them from direct references.
+      this.iconPath = info.isImplicit
+        ? new vscode.ThemeIcon("package", new vscode.ThemeColor("disabledForeground"))
+        : new vscode.ThemeIcon("package");
+    }
   }
 }
 

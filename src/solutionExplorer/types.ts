@@ -21,6 +21,9 @@ export const REMOVE_PROJECT_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.remov
 export const ADD_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.addPackageReference";
 export const REMOVE_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.removePackageReference";
 export const UPDATE_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.updatePackageReference";
+export const UPDATE_PACKAGE_TO_LATEST_COMMAND_ID = "csharpSolutionExplorer.updatePackageToLatest";
+export const RESTORE_COMMAND_ID = "csharpSolutionExplorer.restore";
+export const CLEAN_COMMAND_ID = "csharpSolutionExplorer.clean";
 export const BUILD_PROJECT_COMMAND_ID = "csharpSolutionExplorer.buildProject";
 export const RUN_PROJECT_COMMAND_ID = "csharpSolutionExplorer.runProject";
 export const OPEN_SOLUTION_FILE_COMMAND_ID = "csharpSolutionExplorer.openSolutionFile";
@@ -75,6 +78,8 @@ export interface PackageReferenceInfo {
   projectUri?: vscode.Uri;
   /** True for transitive (pulled-in) packages rather than direct `<PackageReference>` entries. */
   isImplicit?: boolean;
+  /** Newest stable version on nuget.org, set only for direct packages that have an update available. */
+  latestVersion?: string;
   /** Transitive child packages, when known from project.assets.json. */
   dependencies?: PackageReferenceInfo[];
 }

@@ -71,6 +71,9 @@ import {
   ADD_PACKAGE_REFERENCE_COMMAND_ID,
   REMOVE_PACKAGE_REFERENCE_COMMAND_ID,
   UPDATE_PACKAGE_REFERENCE_COMMAND_ID,
+  UPDATE_PACKAGE_TO_LATEST_COMMAND_ID,
+  RESTORE_COMMAND_ID,
+  CLEAN_COMMAND_ID,
   SolutionFolderInfo,
 } from "./types.js";
 
@@ -140,8 +143,13 @@ export function registerSolutionExplorerCommands(
     vscode.commands.registerCommand(UPDATE_PACKAGE_REFERENCE_COMMAND_ID, (item: PackageReferenceTreeItem) =>
       withErrorHandling(() => updatePackageReference(item, provider)),
     ),
+    vscode.commands.registerCommand(UPDATE_PACKAGE_TO_LATEST_COMMAND_ID, (item: PackageReferenceTreeItem) =>
+      withErrorHandling(() => updatePackageToLatest(item, provider)),
+    ),
     vscode.commands.registerCommand(BUILD_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => buildProject(item)),
     vscode.commands.registerCommand(RUN_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => runProject(item)),
+    vscode.commands.registerCommand(RESTORE_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => restoreTarget(item)),
+    vscode.commands.registerCommand(CLEAN_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => cleanTarget(item)),
     vscode.commands.registerCommand(OPEN_SOLUTION_FILE_COMMAND_ID, (item: SolutionTreeItem) =>
       vscode.window.showTextDocument(item.info.uri),
     ),
@@ -908,6 +916,17 @@ async function updatePackageReference(item: PackageReferenceTreeItem, provider: 
   provider.refresh();
 }
 
+/** One-click update of an outdated package to the latest version already resolved on its tree item. */
+async function updatePackageToLatest(item: PackageReferenceTreeItem, provider: SolutionTreeDataProvider): Promise<void> {
+  const projectUri = item.info.projectUri;
+  const latest = item.info.latestVersion;
+  if (!projectUri || !latest) {
+    return;
+  }
+  await installPackage(projectUri, item.info.name, latest, `Updating ${item.info.name} to ${latest}…`);
+  provider.refresh();
+}
+
 async function renameProject(info: ProjectInfo, newName: string): Promise<void> {
   let solutionGuid: string | undefined;
   let originalRelativePath: string | undefined;
@@ -1041,6 +1060,15 @@ function buildProject(item: ProjectTreeItem): void {
 
 function runProject(item: ProjectTreeItem): void {
   runInTerminal("C# Solution Explorer: Run", `dotnet run --project "${item.info.uri.fsPath}"`);
+}
+
+// Restore/Clean accept both a project (.csproj) and a solution (.sln/.slnx) path; both tree items carry `info.uri`.
+function restoreTarget(item: ProjectTreeItem | SolutionTreeItem): void {
+  runInTerminal("C# Solution Explorer: Restore", `dotnet restore "${item.info.uri.fsPath}"`);
+}
+
+function cleanTarget(item: ProjectTreeItem | SolutionTreeItem): void {
+  runInTerminal("C# Solution Explorer: Clean", `dotnet clean "${item.info.uri.fsPath}"`);
 }
 
 function runInTerminal(name: string, command: string): void {

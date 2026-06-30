@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseSearchResponse, parseServiceIndex, parseVersionsResponse } from "../src/nuget/nugetApi.js";
+import { compareVersions, parseSearchResponse, parseServiceIndex, parseVersionsResponse } from "../src/nuget/nugetApi.js";
 
 describe("parseSearchResponse", () => {
   it("maps each result, defaulting missing fields", () => {
@@ -57,6 +57,28 @@ describe("parseServiceIndex", () => {
   it("returns an empty list for a malformed response", () => {
     assert.deepEqual(parseServiceIndex({}), []);
     assert.deepEqual(parseServiceIndex({ resources: "nope" }), []);
+  });
+});
+
+describe("compareVersions", () => {
+  it("orders versions numerically", () => {
+    assert.ok(compareVersions("9.0.0", "9.6.0") < 0);
+    assert.ok(compareVersions("13.0.3", "13.0.1") > 0);
+    assert.equal(compareVersions("1.2.3", "1.2.3"), 0);
+  });
+
+  it("treats differing segment counts as length-tolerant", () => {
+    assert.equal(compareVersions("9.0", "9.0.0"), 0);
+    assert.ok(compareVersions("9.0", "9.0.1") < 0);
+  });
+
+  it("ignores the pre-release suffix", () => {
+    assert.equal(compareVersions("9.0.0-rc.1", "9.0.0"), 0);
+    assert.ok(compareVersions("9.0.0-rc.1", "9.0.1") < 0);
+  });
+
+  it("treats non-numeric segments as zero", () => {
+    assert.equal(compareVersions("9.x", "9.0"), 0);
   });
 });
 

@@ -56,6 +56,33 @@ export function parseServiceIndex(json: unknown): string[] {
     .filter((id): id is string => typeof id === "string");
 }
 
+/**
+ * Compares two NuGet version strings numerically. Returns a negative number if `a` is older than
+ * `b`, zero if equal, positive if newer. The pre-release suffix (everything after a `-`) is ignored,
+ * non-numeric segments count as 0, and differing segment counts are length-tolerant (`9.0` == `9.0.0`).
+ * Good enough for the stable versions we compare here; not a full SemVer implementation.
+ */
+export function compareVersions(a: string, b: string): number {
+  const segments = (version: string): number[] =>
+    version
+      .split("-")[0]
+      .split(".")
+      .map((part) => {
+        const n = parseInt(part, 10);
+        return Number.isNaN(n) ? 0 : n;
+      });
+  const left = segments(a);
+  const right = segments(b);
+  const length = Math.max(left.length, right.length);
+  for (let i = 0; i < length; i++) {
+    const diff = (left[i] ?? 0) - (right[i] ?? 0);
+    if (diff !== 0) {
+      return diff;
+    }
+  }
+  return 0;
+}
+
 /** Extracts the version list (newest first) from a flat-container index response. */
 export function parseVersionsResponse(json: unknown): string[] {
   const versions = (json as { versions?: unknown })?.versions;

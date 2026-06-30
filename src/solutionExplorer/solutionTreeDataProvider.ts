@@ -15,6 +15,7 @@ import {
 } from "./csprojReader.js";
 import { listAllFilesRecursive, listDirectChildren, ScannedEntry } from "./diskScanner.js";
 import { getAssetsFilePath, ParsedAssetPackage, parseProjectAssets } from "./projectAssetsReader.js";
+import { compareVersions, getPackageVersions } from "../nuget/nugetApi.js";
 import { buildSolutionTree, parseNestedProjects, parseSolutionFile, SolutionTreeNode } from "./slnParser.js";
 import { parseSlnxFile } from "./slnxParser.js";
 import {
@@ -72,6 +73,11 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
    * resolve the Projects category and to recursively expand transitive references. Invalidated on
    * any filesystem change (see `scheduleRefresh`). */
   private readonly projectRefsCache = new Map<string, { name: string; uri: vscode.Uri; includePath: string }[]>();
+
+  /** Session cache of the newest stable version per package id (lowercased); `undefined` = lookup
+   * failed. Deliberately NOT cleared in `scheduleRefresh`: nuget.org versions don't change on local
+   * file edits, so clearing it would re-fetch on every save. */
+  private readonly latestStableCache = new Map<string, string | undefined>();
 
   constructor() {
     this.watcher = vscode.workspace.createFileSystemWatcher("**/*");
@@ -300,12 +306,55 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       case "analyzers":
         return info.analyzers.map((a) => new AnalyzerTreeItem(a));
       case "packages":
-        return info.packages.map((p) => new PackageReferenceTreeItem(p));
+        return (await this.enrichWithLatest(info.packages)).map((p) => new PackageReferenceTreeItem(p));
       case "projects":
         // `hasChildren` (the expand arrow) is resolved here, only when Projects is actually opened,
         // so it costs the referenced-project reads only at that point — not on every project expand.
         return Promise.all(info.projects.map(async (p) => new ProjectReferenceTreeItem(await this.withHasChildren(p))));
     }
+  }
+
+  /**
+   * Flags direct packages that have a newer stable version on nuget.org by setting `latestVersion`.
+   * Runs only when the `nuget.checkForUpdates` setting is on, only for direct packages with a
+   * concrete (non-floating) version, and caches results for the session. Lookup failures are cached
+   * as "no update" so a single broken request doesn't get retried on every expand.
+   */
+  private async enrichWithLatest(packages: PackageReferenceInfo[]): Promise<PackageReferenceInfo[]> {
+    const enabled = vscode.workspace
+      .getConfiguration("csharpSolutionExplorer")
+      .get<boolean>("nuget.checkForUpdates", true);
+    if (!enabled) {
+      return packages;
+    }
+    return Promise.all(
+      packages.map(async (pkg) => {
+        if (pkg.isImplicit || !isConcreteVersion(pkg.version)) {
+          return pkg;
+        }
+        const latest = await this.getLatestStable(pkg.name);
+        if (latest && compareVersions(pkg.version!, latest) < 0) {
+          return { ...pkg, latestVersion: latest };
+        }
+        return pkg;
+      }),
+    );
+  }
+
+  /** Returns (and session-caches) the newest stable version of a package, or `undefined` on failure. */
+  private async getLatestStable(id: string): Promise<string | undefined> {
+    const key = id.toLowerCase();
+    if (this.latestStableCache.has(key)) {
+      return this.latestStableCache.get(key);
+    }
+    let latest: string | undefined;
+    try {
+      latest = (await getPackageVersions(id))[0];
+    } catch {
+      latest = undefined;
+    }
+    this.latestStableCache.set(key, latest);
+    return latest;
   }
 
   /** Fills in `hasChildren` for a reference by checking whether its target declares any references. */
@@ -528,6 +577,11 @@ function toPackageReferenceInfo(
     // Transitive children are informational only — no owning project, so they can't be removed/updated.
     dependencies: pkg.dependencies.map((child) => toPackageReferenceInfo(child, true)),
   };
+}
+
+/** A version is "concrete" (comparable to a latest version) when it's a fixed number, not a float like `9.*`. */
+function isConcreteVersion(version: string | undefined): version is string {
+  return !!version && !version.includes("*") && !version.includes(",") && /\d/.test(version);
 }
 
 async function fileExists(uri: vscode.Uri): Promise<boolean> {
