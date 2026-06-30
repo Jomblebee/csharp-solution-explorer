@@ -91,6 +91,8 @@ export interface SolutionFolderNode {
   guid: string;
   name: string;
   children: SolutionTreeNode[];
+  /** True for synthetic nodes created by path-segment grouping — they have no corresponding XML element. */
+  isVirtual?: boolean;
 }
 
 export type SolutionTreeNode = ProjectNode | SolutionFolderNode;

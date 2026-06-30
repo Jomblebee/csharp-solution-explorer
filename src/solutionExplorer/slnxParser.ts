@@ -1,5 +1,53 @@
 import { ProjectNode, SolutionFolderNode, SolutionTreeNode } from "./slnParser.js";
 
+/**
+ * Post-processes a flat list of SolutionTreeNodes and groups any SolutionFolderNodes
+ * whose names contain "/" into a proper nested hierarchy of virtual path-segment folders.
+ *
+ * For example, sibling nodes named "src/base/A" and "src/base/B" become:
+ *   SolutionFolderNode "src" (isVirtual)
+ *     SolutionFolderNode "base" (isVirtual)
+ *       SolutionFolderNode "A"
+ *       SolutionFolderNode "B"
+ *
+ * Nodes without "/" and ProjectNodes pass through unchanged.
+ * Insertion order is preserved relative to the first occurrence of each path prefix.
+ */
+export function nestPathBasedFolders(nodes: SolutionTreeNode[]): SolutionTreeNode[] {
+  const result: SolutionTreeNode[] = [];
+  const segmentGroups = new Map<string, SolutionFolderNode>();
+
+  for (const node of nodes) {
+    if (node.kind === "solutionFolder" && node.name.includes("/")) {
+      const slashIdx = node.name.indexOf("/");
+      const firstSeg = node.name.substring(0, slashIdx);
+      const remainder = node.name.substring(slashIdx + 1);
+
+      let virtualFolder = segmentGroups.get(firstSeg);
+      if (!virtualFolder) {
+        virtualFolder = {
+          kind: "solutionFolder",
+          guid: `__virtual__${firstSeg}`,
+          name: firstSeg,
+          children: [],
+          isVirtual: true,
+        };
+        segmentGroups.set(firstSeg, virtualFolder);
+        result.push(virtualFolder);
+      }
+      virtualFolder.children.push({ ...node, name: remainder, guid: remainder });
+    } else {
+      result.push(node);
+    }
+  }
+
+  for (const virtualFolder of segmentGroups.values()) {
+    virtualFolder.children = nestPathBasedFolders(virtualFolder.children);
+  }
+
+  return result;
+}
+
 function deriveProjectName(relativePath: string): string {
   const base = relativePath.split("/").pop() ?? relativePath;
   return base.replace(/\.[^.]+$/, "");
@@ -68,5 +116,5 @@ export function parseSlnxFile(slnxText: string): SolutionTreeNode[] {
     }
   }
 
-  return roots;
+  return nestPathBasedFolders(roots);
 }

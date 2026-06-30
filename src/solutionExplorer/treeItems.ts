@@ -26,8 +26,13 @@ export class SolutionTreeItem extends vscode.TreeItem {
 
 export class SolutionFolderTreeItem extends vscode.TreeItem {
   constructor(public readonly info: SolutionFolderInfo) {
-    super(info.name, vscode.TreeItemCollapsibleState.Collapsed);
-    this.contextValue = "csharpSolutionExplorer.solutionFolder";
+    super(
+      info.name,
+      info.isVirtual ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
+    );
+    this.contextValue = info.isVirtual
+      ? "csharpSolutionExplorer.pathSegmentFolder"
+      : "csharpSolutionExplorer.solutionFolder";
     this.iconPath = vscode.ThemeIcon.Folder;
   }
 }
