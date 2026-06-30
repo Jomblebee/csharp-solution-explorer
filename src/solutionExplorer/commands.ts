@@ -58,6 +58,7 @@ import {
   NEW_FILE_COMMAND_ID,
   NEW_SOLUTION_FOLDER_COMMAND_ID,
   OPEN_FILE_COMMAND_ID,
+  OPEN_PROJECT_FILE_COMMAND_ID,
   OPEN_SETTINGS_COMMAND_ID,
   OPEN_SOLUTION_FILE_COMMAND_ID,
   ProjectInfo,
@@ -159,6 +160,9 @@ export function registerSolutionExplorerCommands(
     vscode.commands.registerCommand(RESTORE_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => restoreTarget(item)),
     vscode.commands.registerCommand(CLEAN_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => cleanTarget(item)),
     vscode.commands.registerCommand(OPEN_SOLUTION_FILE_COMMAND_ID, (item: SolutionTreeItem) =>
+      vscode.window.showTextDocument(item.info.uri),
+    ),
+    vscode.commands.registerCommand(OPEN_PROJECT_FILE_COMMAND_ID, (item: ProjectTreeItem) =>
       vscode.window.showTextDocument(item.info.uri),
     ),
     vscode.commands.registerCommand(OPEN_SETTINGS_COMMAND_ID, () =>

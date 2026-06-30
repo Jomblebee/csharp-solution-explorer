@@ -258,7 +258,12 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
 
   private async getProjectChildren(info: ProjectInfo): Promise<SolutionExplorerTreeItem[]> {
     const excludedPaths = await this.getExcludedPaths(info);
-    return [new DependenciesTreeItem(info), ...this.getFsChildren(info.rootDir, info.rootDir, excludedPaths)];
+    // Hide the project's own .csproj from the file list; it's opened via the node's
+    // "Open in Editor" context-menu command instead of appearing as a child file.
+    return [
+      new DependenciesTreeItem(info),
+      ...this.getFsChildren(info.rootDir, info.rootDir, excludedPaths, info.uri.fsPath),
+    ];
   }
 
   private async getExcludedPaths(info: ProjectInfo): Promise<ExcludedPaths> {
@@ -481,8 +486,9 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     dirUri: vscode.Uri,
     projectRootUri: vscode.Uri,
     excludedPaths: ExcludedPaths,
+    hiddenFsPath?: string,
   ): SolutionExplorerTreeItem[] {
-    const scanned = listDirectChildren(dirUri.fsPath);
+    const scanned = listDirectChildren(dirUri.fsPath).filter((e) => e.path !== hiddenFsPath);
 
     const razorLowerNames = scanned
       .filter((e) => e.kind === "file" && e.name.toLowerCase().endsWith(".razor"))

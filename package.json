@@ -2,7 +2,7 @@
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
   "description": "A lightweight Solution Explorer for C# projects in VS Code (and Open VSX-compatible editors).",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "jomblebee",
   "license": "MIT",
   "repository": {
@@ -268,6 +268,11 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.openProjectFile",
+        "title": "Open in Editor",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.openSettings",
         "title": "Settings",
         "icon": "$(gear)",
@@ -427,6 +432,11 @@
         {
           "command": "csharpSolutionExplorer.openSolutionFile",
           "when": "view == csharpSolutionExplorer.view && viewItem == csharpSolutionExplorer.solution",
+          "group": "0_open"
+        },
+        {
+          "command": "csharpSolutionExplorer.openProjectFile",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
           "group": "0_open"
         }
       ]
