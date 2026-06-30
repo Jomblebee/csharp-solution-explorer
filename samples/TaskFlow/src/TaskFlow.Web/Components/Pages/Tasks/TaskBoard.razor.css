@@ -1,0 +1,11 @@
+.board-column {
+    min-height: 400px;
+}
+
+::deep .mud-card {
+    transition: box-shadow 0.2s ease;
+}
+
+::deep .mud-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

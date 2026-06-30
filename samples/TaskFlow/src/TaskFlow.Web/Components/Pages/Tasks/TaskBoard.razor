@@ -1,0 +1,107 @@
+@page "/projects/{ProjectId:int}/tasks"
+@rendermode InteractiveServer
+@inherits TaskBoardBase
+
+<PageTitle>Task Board — TaskFlow</PageTitle>
+
+<div class="d-flex align-center mb-4 gap-3">
+    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                   Href="@($"projects/{ProjectId}")"
+                   Color="Color.Default" />
+    <MudText Typo="Typo.h4">Task Board</MudText>
+</div>
+
+@if (Tasks is null)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudGrid Spacing="3">
+        @foreach (var status in Enum.GetValues<AppTaskStatus>())
+        {
+            var columnTasks = Tasks.Where(t => t.Status == status).ToList();
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="2" Class="pa-3" Style="min-height: 400px;">
+                    <div class="d-flex align-center mb-3 gap-2">
+                        <MudChip T="string" Color="@GetStatusColor(status)" Size="Size.Small">@columnTasks.Count</MudChip>
+                        <MudText Typo="Typo.h6">@GetStatusLabel(status)</MudText>
+                    </div>
+                    <MudDivider Class="mb-3" />
+                    @foreach (var task in columnTasks)
+                    {
+                        <MudCard Class="mb-2" Elevation="1">
+                            <MudCardContent Class="pb-1 pt-3">
+                                <MudText Typo="Typo.body1">@task.Title</MudText>
+                                <MudChip T="string" Color="@GetPriorityColor(task.Priority)" Size="Size.Small" Class="mt-1">
+                                    @task.Priority
+                                </MudChip>
+                            </MudCardContent>
+                            <MudCardActions Class="pt-0">
+                                @if (status != AppTaskStatus.Todo)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => MoveBack(task.Id, status))"
+                                                   title="Move back" />
+                                }
+                                @if (status != AppTaskStatus.Done)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.ArrowForward"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => MoveForward(task.Id, status))"
+                                                   title="Move forward" />
+                                }
+                            </MudCardActions>
+                        </MudCard>
+                    }
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+
+    <MudPaper Class="pa-4 mt-4" Elevation="2">
+        <MudText Typo="Typo.h6" GutterBottom="true">Add Task</MudText>
+        <div class="d-flex gap-3 align-center">
+            <MudTextField @bind-Value="NewTaskTitle"
+                          Label="Task title"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Task"
+                          Class="flex-1" />
+            <MudButton OnClick="AddTask"
+                       Disabled="@string.IsNullOrWhiteSpace(NewTaskTitle)"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add">
+                Add
+            </MudButton>
+        </div>
+    </MudPaper>
+}
+
+@code {
+    private static Color GetStatusColor(AppTaskStatus status) => status switch
+    {
+        AppTaskStatus.Todo => Color.Default,
+        AppTaskStatus.InProgress => Color.Warning,
+        AppTaskStatus.Done => Color.Success,
+        _ => Color.Default
+    };
+
+    private static string GetStatusLabel(AppTaskStatus status) => status switch
+    {
+        AppTaskStatus.InProgress => "In Progress",
+        _ => status.ToString()
+    };
+
+    private static Color GetPriorityColor(object priority) => priority.ToString() switch
+    {
+        "Low" => Color.Default,
+        "Medium" => Color.Info,
+        "High" => Color.Warning,
+        "Urgent" => Color.Error,
+        _ => Color.Default
+    };
+}

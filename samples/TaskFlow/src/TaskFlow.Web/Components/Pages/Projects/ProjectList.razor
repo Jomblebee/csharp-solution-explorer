@@ -1,0 +1,55 @@
+@page "/projects"
+@rendermode InteractiveServer
+@inherits ProjectListBase
+
+<PageTitle>Projects — TaskFlow</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Projects</MudText>
+
+@if (Projects is null)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    @foreach (var project in Projects)
+    {
+        <MudPaper Class="pa-3 mb-2" Elevation="1">
+            <div class="d-flex justify-space-between align-center">
+                <div>
+                    <MudLink Href="@($"projects/{project.Id}")" Color="Color.Primary">
+                        <MudText Typo="Typo.subtitle1" Inline="true"><strong>@project.Name</strong></MudText>
+                    </MudLink>
+                    @if (project.Description is not null)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@project.Description</MudText>
+                    }
+                </div>
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small">@project.TaskCount tasks</MudChip>
+            </div>
+        </MudPaper>
+    }
+
+    <MudPaper Class="pa-4 mt-4" Elevation="2">
+        <MudText Typo="Typo.h6" GutterBottom="true">New Project</MudText>
+        <div class="d-flex gap-3 align-center">
+            <MudTextField @bind-Value="NewProjectName"
+                          Label="Project name"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Folder"
+                          Class="flex-1" />
+            <MudButton OnClick="CreateProject"
+                       Disabled="@string.IsNullOrWhiteSpace(NewProjectName)"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add">
+                Create
+            </MudButton>
+        </div>
+        @if (ErrorMessage is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-2">@ErrorMessage</MudAlert>
+        }
+    </MudPaper>
+}

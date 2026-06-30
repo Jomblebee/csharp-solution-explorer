@@ -1,0 +1,52 @@
+@page "/"
+@rendermode InteractiveServer
+@inherits HomeBase
+
+<PageTitle>TaskFlow</PageTitle>
+
+@if (Projects is null)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudText Typo="Typo.h4" GutterBottom="true">TaskFlow</MudText>
+    <MudText Typo="Typo.body1" Class="mb-6" Color="Color.Secondary">
+        A Clean Architecture sample with Blazor Server, MediatR, and EF Core.
+    </MudText>
+
+    <MudGrid Spacing="3" Class="mb-6">
+        <MudItem xs="12" sm="6">
+            <MudCard Elevation="3">
+                <MudCardContent Class="d-flex flex-column align-center pa-6">
+                    <MudText Typo="Typo.h3" Color="Color.Primary">@Projects.Count</MudText>
+                    <MudText Typo="Typo.subtitle1">Projects</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudCard Elevation="3">
+                <MudCardContent Class="d-flex flex-column align-center pa-6">
+                    <MudText Typo="Typo.h3" Color="Color.Secondary">@Projects.Sum(p => p.TaskCount)</MudText>
+                    <MudText Typo="Typo.subtitle1">Total Tasks</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <MudText Typo="Typo.h5" GutterBottom="true">Projects</MudText>
+
+    @foreach (var project in Projects)
+    {
+        <MudPaper Class="pa-3 mb-2 d-flex justify-space-between align-center" Elevation="1">
+            <MudLink Href="@($"projects/{project.Id}")" Typo="Typo.subtitle1" Color="Color.Primary">
+                @project.Name
+            </MudLink>
+            <MudChip T="string" Color="Color.Default" Size="Size.Small">@project.TaskCount tasks</MudChip>
+        </MudPaper>
+    }
+
+    <MudButton Href="projects" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">
+        View all projects
+    </MudButton>
+}

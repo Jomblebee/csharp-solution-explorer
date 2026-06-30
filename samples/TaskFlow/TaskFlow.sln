@@ -1,0 +1,57 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskFlow.Domain", "src\TaskFlow.Domain\TaskFlow.Domain.csproj", "{A1000001-0001-4000-8000-000000000001}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskFlow.Application", "src\TaskFlow.Application\TaskFlow.Application.csproj", "{A1000002-0002-4000-8000-000000000002}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskFlow.Infrastructure", "src\TaskFlow.Infrastructure\TaskFlow.Infrastructure.csproj", "{A1000003-0003-4000-8000-000000000003}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskFlow.Web", "src\TaskFlow.Web\TaskFlow.Web.csproj", "{A1000004-0004-4000-8000-000000000004}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaskFlow.Tests", "tests\TaskFlow.Tests\TaskFlow.Tests.csproj", "{A1000005-0005-4000-8000-000000000005}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B1000001-0001-4000-8000-000000000001}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B1000002-0002-4000-8000-000000000002}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A1000001-0001-4000-8000-000000000001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1000001-0001-4000-8000-000000000001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1000001-0001-4000-8000-000000000001}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1000001-0001-4000-8000-000000000001}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1000002-0002-4000-8000-000000000002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1000002-0002-4000-8000-000000000002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1000002-0002-4000-8000-000000000002}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1000002-0002-4000-8000-000000000002}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1000003-0003-4000-8000-000000000003}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1000003-0003-4000-8000-000000000003}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1000003-0003-4000-8000-000000000003}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1000003-0003-4000-8000-000000000003}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1000004-0004-4000-8000-000000000004}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1000004-0004-4000-8000-000000000004}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1000004-0004-4000-8000-000000000004}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1000004-0004-4000-8000-000000000004}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1000005-0005-4000-8000-000000000005}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1000005-0005-4000-8000-000000000005}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1000005-0005-4000-8000-000000000005}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1000005-0005-4000-8000-000000000005}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A1000001-0001-4000-8000-000000000001} = {B1000001-0001-4000-8000-000000000001}
+		{A1000002-0002-4000-8000-000000000002} = {B1000001-0001-4000-8000-000000000001}
+		{A1000003-0003-4000-8000-000000000003} = {B1000001-0001-4000-8000-000000000001}
+		{A1000004-0004-4000-8000-000000000004} = {B1000001-0001-4000-8000-000000000001}
+		{A1000005-0005-4000-8000-000000000005} = {B1000002-0002-4000-8000-000000000002}
+	EndGlobalSection
+EndGlobal
