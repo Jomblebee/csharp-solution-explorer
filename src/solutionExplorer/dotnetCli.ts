@@ -34,6 +34,11 @@ export function removePackage(projectFsPath: string, id: string): Promise<void> 
   return runDotnet(["remove", projectFsPath, "package", id]);
 }
 
+/** Scaffolds a new project from a `dotnet new` template into `outputDir` (created if missing). */
+export function newProject(template: string, name: string, outputDir: string): Promise<void> {
+  return runDotnet(["new", template, "-n", name, "-o", outputDir]);
+}
+
 /**
  * Runs a restore so obj/project.assets.json reflects the current references. `dotnet add package`
  * restores on its own, but `dotnet remove package` does not — without this the removed package

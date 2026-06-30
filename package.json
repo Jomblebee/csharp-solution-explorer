@@ -2,7 +2,7 @@
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
   "description": "A lightweight Solution Explorer for C# projects in VS Code (and Open VSX-compatible editors).",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "publisher": "jomblebee",
   "license": "MIT",
   "repository": {
@@ -239,12 +239,27 @@
       },
       {
         "command": "csharpSolutionExplorer.buildProject",
-        "title": "Build Project",
+        "title": "Build",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.rebuild",
+        "title": "Rebuild",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.test",
+        "title": "Test",
         "category": "C# Solution Explorer"
       },
       {
         "command": "csharpSolutionExplorer.runProject",
         "title": "Run Project",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.newProject",
+        "title": "New Project...",
         "category": "C# Solution Explorer"
       },
       {
@@ -325,6 +340,11 @@
           "group": "1_new"
         },
         {
+          "command": "csharpSolutionExplorer.newProject",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem == csharpSolutionExplorer.solutionFolder)",
+          "group": "1_new"
+        },
+        {
           "command": "csharpSolutionExplorer.addExistingProject",
           "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem == csharpSolutionExplorer.solutionFolder)",
           "group": "1_new"
@@ -361,23 +381,33 @@
         },
         {
           "command": "csharpSolutionExplorer.buildProject",
-          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
+          "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
           "group": "2_build@1"
+        },
+        {
+          "command": "csharpSolutionExplorer.rebuild",
+          "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
+          "group": "2_build@2"
         },
         {
           "command": "csharpSolutionExplorer.runProject",
           "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
-          "group": "2_build@2"
+          "group": "2_build@3"
+        },
+        {
+          "command": "csharpSolutionExplorer.test",
+          "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
+          "group": "2_build@4"
         },
         {
           "command": "csharpSolutionExplorer.restore",
           "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
-          "group": "2_build@3"
+          "group": "2_build@5"
         },
         {
           "command": "csharpSolutionExplorer.clean",
           "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
-          "group": "2_build@4"
+          "group": "2_build@6"
         },
         {
           "command": "csharpSolutionExplorer.rename",

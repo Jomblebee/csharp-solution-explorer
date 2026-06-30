@@ -43,7 +43,7 @@ import {
   SolutionTreeItem,
 } from "./treeItems.js";
 import { addProjectReference as addProjectReferenceToCsproj, removeProjectReference as removeProjectReferenceFromCsproj } from "./csprojWriter.js";
-import { addPackage, removePackage, restore } from "./dotnetCli.js";
+import { addPackage, newProject as scaffoldProject, removePackage, restore } from "./dotnetCli.js";
 import { getPackageVersions, NugetPackage, searchPackages } from "../nuget/nugetApi.js";
 import {
   BUILD_PROJECT_COMMAND_ID,
@@ -74,6 +74,9 @@ import {
   UPDATE_PACKAGE_TO_LATEST_COMMAND_ID,
   RESTORE_COMMAND_ID,
   CLEAN_COMMAND_ID,
+  REBUILD_COMMAND_ID,
+  TEST_COMMAND_ID,
+  NEW_PROJECT_COMMAND_ID,
   SolutionFolderInfo,
 } from "./types.js";
 
@@ -146,8 +149,13 @@ export function registerSolutionExplorerCommands(
     vscode.commands.registerCommand(UPDATE_PACKAGE_TO_LATEST_COMMAND_ID, (item: PackageReferenceTreeItem) =>
       withErrorHandling(() => updatePackageToLatest(item, provider)),
     ),
-    vscode.commands.registerCommand(BUILD_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => buildProject(item)),
+    vscode.commands.registerCommand(BUILD_PROJECT_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => buildTarget(item)),
+    vscode.commands.registerCommand(REBUILD_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => rebuildTarget(item)),
+    vscode.commands.registerCommand(TEST_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => testTarget(item)),
     vscode.commands.registerCommand(RUN_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => runProject(item)),
+    vscode.commands.registerCommand(NEW_PROJECT_COMMAND_ID, (item: unknown) =>
+      withErrorHandling(() => newProject(item, provider)),
+    ),
     vscode.commands.registerCommand(RESTORE_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => restoreTarget(item)),
     vscode.commands.registerCommand(CLEAN_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => cleanTarget(item)),
     vscode.commands.registerCommand(OPEN_SOLUTION_FILE_COMMAND_ID, (item: SolutionTreeItem) =>
@@ -566,33 +574,32 @@ async function newSolutionFolder(item: unknown, provider: SolutionTreeDataProvid
   provider.refresh();
 }
 
-async function addExistingProject(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
-  let solutionUri: vscode.Uri | undefined;
-  // For .sln this is the parent solution folder's GUID; for .slnx it is the parent folder's name.
-  let parentFolder: string | undefined;
+interface SolutionTarget {
+  solutionUri: vscode.Uri;
+  /** For .sln the parent solution folder's GUID; for .slnx the parent folder's name. Undefined at root. */
+  parentFolder: string | undefined;
+}
+
+/** Resolves a right-clicked solution or solution-folder node to its solution file and parent folder. */
+function resolveSolutionTarget(item: unknown): SolutionTarget | undefined {
   if (item instanceof SolutionTreeItem) {
-    solutionUri = item.info.uri;
-  } else if (item instanceof SolutionFolderTreeItem) {
-    solutionUri = item.info.solutionUri;
-    parentFolder = item.info.guid;
-  } else {
-    return;
+    return { solutionUri: item.info.uri, parentFolder: undefined };
   }
-
-  if (!solutionUri) {
-    throw new Error("Solution file not found");
+  if (item instanceof SolutionFolderTreeItem) {
+    return { solutionUri: item.info.solutionUri, parentFolder: item.info.guid };
   }
+  return undefined;
+}
 
-  const selection = await vscode.window.showOpenDialog({
-    canSelectMany: false,
-    openLabel: "Add Project",
-    filters: { "Project Files": ["csproj", "fsproj", "vbproj"] },
-  });
-  if (!selection || selection.length === 0) {
-    return;
-  }
-  const csprojUri = selection[0];
-
+/**
+ * Registers an existing .csproj in the given solution (.sln or .slnx), nesting it under
+ * `parentFolder` when set. No-op (with a warning) if the project is already part of the solution.
+ */
+async function addProjectToSolution(
+  solutionUri: vscode.Uri,
+  csprojUri: vscode.Uri,
+  parentFolder: string | undefined,
+): Promise<void> {
   const solutionDir = vscode.Uri.joinPath(solutionUri, "..");
   const relativePath = toPosixRelative(solutionDir.fsPath, csprojUri.fsPath);
   const original = new TextDecoder().decode(await vscode.workspace.fs.readFile(solutionUri));
@@ -620,6 +627,74 @@ async function addExistingProject(item: unknown, provider: SolutionTreeDataProvi
   }
 
   await vscode.workspace.fs.writeFile(solutionUri, new TextEncoder().encode(updated));
+}
+
+async function addExistingProject(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  const target = resolveSolutionTarget(item);
+  if (!target) {
+    return;
+  }
+
+  const selection = await vscode.window.showOpenDialog({
+    canSelectMany: false,
+    openLabel: "Add Project",
+    filters: { "Project Files": ["csproj", "fsproj", "vbproj"] },
+  });
+  if (!selection || selection.length === 0) {
+    return;
+  }
+
+  await addProjectToSolution(target.solutionUri, selection[0], target.parentFolder);
+  provider.refresh();
+}
+
+/** Curated `dotnet new` C# templates offered by the New Project command. */
+const PROJECT_TEMPLATES: ReadonlyArray<{ template: string; label: string; detail: string }> = [
+  { template: "console", label: "Console App", detail: "Command-line application" },
+  { template: "classlib", label: "Class Library", detail: "Reusable library" },
+  { template: "web", label: "ASP.NET Core Empty", detail: "Minimal web app" },
+  { template: "webapi", label: "ASP.NET Core Web API", detail: "HTTP API with controllers" },
+  { template: "mvc", label: "ASP.NET Core MVC", detail: "Web app with controllers and views" },
+  { template: "razor", label: "ASP.NET Core Razor Pages", detail: "Page-based web app" },
+  { template: "blazor", label: "Blazor Web App", detail: "Blazor full-stack web app" },
+  { template: "worker", label: "Worker Service", detail: "Long-running background service" },
+  { template: "xunit", label: "xUnit Test Project", detail: "Unit tests (xUnit)" },
+  { template: "nunit", label: "NUnit Test Project", detail: "Unit tests (NUnit)" },
+  { template: "mstest", label: "MSTest Test Project", detail: "Unit tests (MSTest)" },
+];
+
+async function newProject(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
+  const target = resolveSolutionTarget(item);
+  if (!target) {
+    return;
+  }
+
+  const pick = await vscode.window.showQuickPick(
+    PROJECT_TEMPLATES.map((t) => ({ label: t.label, detail: t.detail, template: t.template })),
+    { placeHolder: "Select a project template" },
+  );
+  if (!pick) {
+    return;
+  }
+
+  const solutionDir = vscode.Uri.joinPath(target.solutionUri, "..").fsPath;
+  const name = await vscode.window.showInputBox({
+    prompt: "Project name",
+    placeHolder: "MyProject",
+    validateInput: (value) => validateNewName(value, solutionDir),
+  });
+  if (!name) {
+    return;
+  }
+
+  const outputDir = path.join(solutionDir, name);
+  await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title: `Creating ${name}…` },
+    () => scaffoldProject(pick.template, name, outputDir),
+  );
+
+  const csprojUri = vscode.Uri.file(path.join(outputDir, `${name}.csproj`));
+  await addProjectToSolution(target.solutionUri, csprojUri, target.parentFolder);
   provider.refresh();
 }
 
@@ -1054,15 +1129,26 @@ async function deleteProject(info: ProjectInfo): Promise<void> {
   }
 }
 
-function buildProject(item: ProjectTreeItem): void {
+// Build/Rebuild/Test/Restore/Clean accept both a project (.csproj) and a solution (.sln/.slnx) path;
+// both tree items carry `info.uri`.
+function buildTarget(item: ProjectTreeItem | SolutionTreeItem): void {
   runInTerminal("C# Solution Explorer: Build", `dotnet build "${item.info.uri.fsPath}"`);
+}
+
+// `--no-incremental` forces a full recompile in a single command, so it works in every shell
+// (cmd, PowerShell 5/7, bash, zsh) unlike a chained `clean && build`.
+function rebuildTarget(item: ProjectTreeItem | SolutionTreeItem): void {
+  runInTerminal("C# Solution Explorer: Build", `dotnet build "${item.info.uri.fsPath}" --no-incremental`);
+}
+
+function testTarget(item: ProjectTreeItem | SolutionTreeItem): void {
+  runInTerminal("C# Solution Explorer: Test", `dotnet test "${item.info.uri.fsPath}"`);
 }
 
 function runProject(item: ProjectTreeItem): void {
   runInTerminal("C# Solution Explorer: Run", `dotnet run --project "${item.info.uri.fsPath}"`);
 }
 
-// Restore/Clean accept both a project (.csproj) and a solution (.sln/.slnx) path; both tree items carry `info.uri`.
 function restoreTarget(item: ProjectTreeItem | SolutionTreeItem): void {
   runInTerminal("C# Solution Explorer: Restore", `dotnet restore "${item.info.uri.fsPath}"`);
 }

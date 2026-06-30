@@ -34,6 +34,7 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 | — New File…              | Project, Folder                        |
 | New Folder…              | Project, Folder                        |
 | New Solution Folder…     | Solution, Solution Folder              |
+| New Project…             | Solution, Solution Folder              |
 | Add Existing Project…    | Solution, Solution Folder              |
 | Add Project Reference…   | Project, Dependencies, Projects        |
 | Remove (reference)       | Project reference                      |
@@ -41,8 +42,10 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 | Update Package…          | Package                                |
 | Update to Latest Version | Outdated package                       |
 | Remove Package           | Package                                |
-| Build Project            | Project                                |
+| Build                    | Project, Solution                      |
+| Rebuild                  | Project, Solution                      |
 | Run Project              | Project                                |
+| Test                     | Project, Solution                      |
 | Restore                  | Project, Solution                      |
 | Clean                    | Project, Solution                      |
 | Rename…                  | Project, Solution Folder, Folder, File |
@@ -56,7 +59,8 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 - **Rename**: updates the solution file entry and root folder when renaming a project or Solution Folder.
 - **Delete**: moves files and folders to trash; removes the project or Solution Folder entry from the solution file.
 - **Remove from Solution**: removes the project reference from the solution file without deleting files on disk.
-- **Build / Run / Restore / Clean**: runs `dotnet build` / `dotnet run` / `dotnet restore` / `dotnet clean` in a dedicated VS Code terminal. Restore and Clean work on both project and solution nodes.
+- **New Project…**: scaffolds a new project from a `dotnet new` template (Console, Class Library, Web API, Blazor, test projects, and more), creates it in a folder next to the solution, and registers it in the `.sln`/`.slnx` file.
+- **Build / Rebuild / Run / Test / Restore / Clean**: runs the matching `dotnet` command in a dedicated VS Code terminal. Build, Rebuild, Test, Restore, and Clean work on both project and solution nodes; Run is project-only. **Rebuild** uses `dotnet build --no-incremental` to force a full recompile.
 - **Open in Editor**: opens the raw `.sln` or `.slnx` file in the editor.
 
 ### Dependencies
@@ -101,7 +105,7 @@ The gear icon in the view title opens the extension settings directly.
 ## Requirements
 
 - **VS Code ≥ 1.85** (or a compatible Open VSX editor).
-- **.NET CLI** (`dotnet`) must be on your `PATH` for the Build, Run, Restore, Clean, and NuGet package commands (Add/Update/Remove Package).
+- **.NET CLI** (`dotnet`) must be on your `PATH` for the Build, Rebuild, Run, Test, Restore, Clean, New Project, and NuGet package commands (Add/Update/Remove Package).
 - **Internet access** to nuget.org is needed for the package search and the outdated-package check (both can be ignored if you only manage references offline).
 
 ## Development

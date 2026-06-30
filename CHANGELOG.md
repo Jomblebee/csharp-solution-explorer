@@ -4,6 +4,20 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.6.0] – 2026-06-30
+
+### Added
+
+- **New Project…**: right-click a solution or solution folder to scaffold a new project from
+  a `dotnet new` template (Console, Class Library, Web API, MVC, Razor Pages, Blazor, Worker,
+  and xUnit/NUnit/MSTest test projects). The project is created in a folder next to the
+  solution and automatically registered in the `.sln`/`.slnx` file.
+- **Rebuild**: forces a full recompile via `dotnet build --no-incremental` on both project
+  and solution nodes.
+- **Test**: runs `dotnet test` on both project and solution nodes.
+- **Build on solutions**: the **Build** command (renamed from "Build Project") now also runs
+  on solution nodes, not just projects.
+
 ## [0.5.0] – 2026-06-30
 
 ### Added

@@ -25,7 +25,10 @@ export const UPDATE_PACKAGE_TO_LATEST_COMMAND_ID = "csharpSolutionExplorer.updat
 export const RESTORE_COMMAND_ID = "csharpSolutionExplorer.restore";
 export const CLEAN_COMMAND_ID = "csharpSolutionExplorer.clean";
 export const BUILD_PROJECT_COMMAND_ID = "csharpSolutionExplorer.buildProject";
+export const REBUILD_COMMAND_ID = "csharpSolutionExplorer.rebuild";
+export const TEST_COMMAND_ID = "csharpSolutionExplorer.test";
 export const RUN_PROJECT_COMMAND_ID = "csharpSolutionExplorer.runProject";
+export const NEW_PROJECT_COMMAND_ID = "csharpSolutionExplorer.newProject";
 export const OPEN_SOLUTION_FILE_COMMAND_ID = "csharpSolutionExplorer.openSolutionFile";
 export const OPEN_SETTINGS_COMMAND_ID = "csharpSolutionExplorer.openSettings";
 
