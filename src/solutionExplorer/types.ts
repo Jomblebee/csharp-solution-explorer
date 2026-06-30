@@ -58,6 +58,8 @@ export interface SolutionFolderInfo {
   children: SolutionTreeNode[];
   solutionDir: vscode.Uri;
   solutionUri: vscode.Uri;
+  /** True for synthetic path-segment nodes — no corresponding XML element, no context-menu actions. */
+  isVirtual?: boolean;
 }
 
 export interface PackageReferenceInfo {

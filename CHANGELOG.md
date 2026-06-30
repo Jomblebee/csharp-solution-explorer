@@ -4,6 +4,15 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.3.0] – 2026-06-30
+
+### Added
+
+- Solution folders with path-like names (e.g. `src/base/MyLib`) are now automatically
+  displayed as a proper nested folder hierarchy in the tree view. Virtual path-segment
+  nodes are expanded by default and have no context-menu actions; real leaf folders retain
+  their full rename/delete/move context menu.
+
 ## [0.2.0] – 2026-06-29
 
 ### Added

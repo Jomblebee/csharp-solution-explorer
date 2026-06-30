@@ -75,9 +75,9 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       return this.getProjectItems(element.info);
     }
     if (element instanceof SolutionFolderTreeItem) {
-      const bytes = await vscode.workspace.fs.readFile(element.info.solutionUri);
-      const slnText = new TextDecoder().decode(bytes);
-      const nesting = parseNestedProjects(slnText);
+      const nesting = element.info.isVirtual
+        ? new Map<string, string>()
+        : parseNestedProjects(new TextDecoder().decode(await vscode.workspace.fs.readFile(element.info.solutionUri)));
       return this.nodesToTreeItems(element.info.children, element.info.solutionDir, element.info.solutionUri, nesting);
     }
     if (element instanceof ProjectTreeItem) {
@@ -159,6 +159,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
             children: node.children,
             solutionDir,
             solutionUri,
+            isVirtual: node.isVirtual,
           }),
         );
         continue;
