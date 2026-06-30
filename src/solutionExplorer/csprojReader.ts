@@ -20,8 +20,19 @@ export interface CsprojProjectReference {
   relativePath: string;
 }
 
+export interface CsprojFrameworkReference {
+  name: string;
+}
+
+export interface CsprojAnalyzer {
+  name: string;
+}
+
 const PACKAGE_REFERENCE_TAG_PATTERN = /<PackageReference\b([^>]*?)\/?>/gi;
 const PROJECT_REFERENCE_TAG_PATTERN = /<ProjectReference\b([^>]*?)\/?>/gi;
+const FRAMEWORK_REFERENCE_TAG_PATTERN = /<FrameworkReference\b([^>]*?)\/?>/gi;
+const ANALYZER_TAG_PATTERN = /<Analyzer\b([^>]*?)\/?>/gi;
+const PROJECT_SDK_ATTRIBUTE_PATTERN = /<Project\b[^>]*?\bSdk\s*=\s*"([^"]*)"/i;
 
 function getAttribute(attributes: string, attributeName: string): string | undefined {
   const pattern = new RegExp(`${attributeName}\\s*=\\s*"([^"]*)"`, "i");
@@ -63,6 +74,65 @@ export function parseProjectReferences(csprojText: string): CsprojProjectReferen
   }
 
   return results;
+}
+
+/**
+ * Reads the `Sdk` attribute of the root `<Project Sdk="...">` element, e.g. `Microsoft.NET.Sdk`
+ * or `Microsoft.NET.Sdk.Web`. Returns undefined for non-SDK-style projects.
+ */
+export function parseSdkAttribute(csprojText: string): string | undefined {
+  return PROJECT_SDK_ATTRIBUTE_PATTERN.exec(csprojText)?.[1];
+}
+
+/**
+ * Parses explicit `<FrameworkReference Include="Microsoft.AspNetCore.App" />` elements.
+ */
+export function parseFrameworkReferences(csprojText: string): CsprojFrameworkReference[] {
+  const results: CsprojFrameworkReference[] = [];
+
+  for (const match of csprojText.matchAll(FRAMEWORK_REFERENCE_TAG_PATTERN)) {
+    const name = getAttribute(match[1], "Include");
+    if (name) {
+      results.push({ name });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Parses explicit `<Analyzer Include="path/to/Foo.dll" />` elements, surfacing the assembly's
+ * file name (without extension) as the display name.
+ */
+export function parseAnalyzers(csprojText: string): CsprojAnalyzer[] {
+  const results: CsprojAnalyzer[] = [];
+
+  for (const match of csprojText.matchAll(ANALYZER_TAG_PATTERN)) {
+    const include = getAttribute(match[1], "Include");
+    if (include) {
+      const fileName = include.replace(/\\/g, "/").split("/").pop() ?? include;
+      results.push({ name: fileName.replace(/\.dll$/i, "") });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * The shared framework(s) implied by a project's `Sdk` attribute, used as a best-effort
+ * "Frameworks" list when no `project.assets.json` is available. `Microsoft.NETCore.App` is the
+ * base shared framework for every SDK-style project; web/Razor SDKs add `Microsoft.AspNetCore.App`.
+ */
+export function deriveImplicitFrameworks(sdk: string | undefined): string[] {
+  if (!sdk) {
+    return [];
+  }
+  const frameworks = ["Microsoft.NETCore.App"];
+  const normalized = sdk.toLowerCase();
+  if (normalized.includes("sdk.web") || normalized.includes("sdk.razor")) {
+    frameworks.push("Microsoft.AspNetCore.App");
+  }
+  return frameworks;
 }
 
 export type CsprojItemType = "Compile" | "None" | "Content";

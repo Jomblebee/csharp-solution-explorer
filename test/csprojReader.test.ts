@@ -1,10 +1,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  deriveImplicitFrameworks,
   isImplicitItemGlobEnabled,
+  parseAnalyzers,
+  parseFrameworkReferences,
   parseItemRules,
   parsePackageReferences,
   parseProjectReferences,
+  parseSdkAttribute,
   resolveExcludedPaths,
 } from "../src/solutionExplorer/csprojReader.js";
 
@@ -83,6 +87,61 @@ describe("parseProjectReferences", () => {
     const result = parseProjectReferences(`<Project Sdk="Microsoft.NET.Sdk"></Project>`);
 
     assert.deepEqual(result, []);
+  });
+});
+
+describe("parseSdkAttribute", () => {
+  it("reads the SDK from the Project element", () => {
+    assert.equal(parseSdkAttribute(`<Project Sdk="Microsoft.NET.Sdk.Web">`), "Microsoft.NET.Sdk.Web");
+  });
+
+  it("handles other attributes before Sdk", () => {
+    assert.equal(parseSdkAttribute(`<Project ToolsVersion="x" Sdk="Microsoft.NET.Sdk">`), "Microsoft.NET.Sdk");
+  });
+
+  it("returns undefined for non-SDK-style projects", () => {
+    assert.equal(parseSdkAttribute(`<Project ToolsVersion="15.0"></Project>`), undefined);
+  });
+});
+
+describe("parseFrameworkReferences", () => {
+  it("extracts explicit FrameworkReference elements", () => {
+    const csproj = `<ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /></ItemGroup>`;
+
+    assert.deepEqual(parseFrameworkReferences(csproj), [{ name: "Microsoft.AspNetCore.App" }]);
+  });
+
+  it("returns an empty array when there are none", () => {
+    assert.deepEqual(parseFrameworkReferences(`<Project Sdk="Microsoft.NET.Sdk"></Project>`), []);
+  });
+});
+
+describe("parseAnalyzers", () => {
+  it("surfaces the assembly file name without extension", () => {
+    const csproj = `<ItemGroup><Analyzer Include="..\\tools\\MyAnalyzer.dll" /></ItemGroup>`;
+
+    assert.deepEqual(parseAnalyzers(csproj), [{ name: "MyAnalyzer" }]);
+  });
+
+  it("returns an empty array when there are none", () => {
+    assert.deepEqual(parseAnalyzers(`<Project Sdk="Microsoft.NET.Sdk"></Project>`), []);
+  });
+});
+
+describe("deriveImplicitFrameworks", () => {
+  it("returns only NETCore.App for the base SDK", () => {
+    assert.deepEqual(deriveImplicitFrameworks("Microsoft.NET.Sdk"), ["Microsoft.NETCore.App"]);
+  });
+
+  it("adds AspNetCore.App for the Web SDK", () => {
+    assert.deepEqual(deriveImplicitFrameworks("Microsoft.NET.Sdk.Web"), [
+      "Microsoft.NETCore.App",
+      "Microsoft.AspNetCore.App",
+    ]);
+  });
+
+  it("returns nothing when no SDK is set", () => {
+    assert.deepEqual(deriveImplicitFrameworks(undefined), []);
   });
 });
 

@@ -1,22 +1,37 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import {
+  deriveImplicitFrameworks,
   getProjectRootDir,
   isLikelyCsproj,
   isImplicitItemGlobEnabled,
+  parseAnalyzers,
+  parseFrameworkReferences,
   parseItemRules,
   parsePackageReferences,
   parseProjectReferences,
+  parseSdkAttribute,
   resolveExcludedPaths,
 } from "./csprojReader.js";
 import { listAllFilesRecursive, listDirectChildren, ScannedEntry } from "./diskScanner.js";
+import { getAssetsFilePath, ParsedAssetPackage, parseProjectAssets } from "./projectAssetsReader.js";
 import { buildSolutionTree, parseNestedProjects, parseSolutionFile, SolutionTreeNode } from "./slnParser.js";
 import { parseSlnxFile } from "./slnxParser.js";
-import { DependenciesInfo, ExcludedPaths, ProjectInfo, SolutionInfo } from "./types.js";
 import {
+  DependenciesInfo,
+  DependencyCategory,
+  ExcludedPaths,
+  PackageReferenceInfo,
+  ProjectInfo,
+  SolutionInfo,
+} from "./types.js";
+import {
+  AnalyzerTreeItem,
   DependenciesTreeItem,
+  DependencyCategoryTreeItem,
   FileTreeItem,
   FolderTreeItem,
+  FrameworkReferenceTreeItem,
   PackageReferenceTreeItem,
   ProjectReferenceTreeItem,
   ProjectTreeItem,
@@ -41,6 +56,10 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
    * resolution for any project. */
   private readonly excludedPathsCache = new Map<string, ExcludedPaths>();
 
+  /** Cache of resolved dependency trees, keyed by .csproj fsPath. Invalidated on any filesystem
+   * change (see `scheduleRefresh`), so edits to the .csproj or a fresh restore are picked up. */
+  private readonly dependenciesCache = new Map<string, DependenciesInfo>();
+
   constructor() {
     this.watcher = vscode.workspace.createFileSystemWatcher("**/*");
     this.watcher.onDidCreate(() => this.scheduleRefresh());
@@ -56,6 +75,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     }
     this.refreshTimeout = setTimeout(() => {
       this.excludedPathsCache.clear();
+      this.dependenciesCache.clear();
       this.refresh();
     }, REFRESH_DEBOUNCE_MS);
   }
@@ -85,10 +105,13 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       return this.getProjectChildren(element.info);
     }
     if (element instanceof DependenciesTreeItem) {
-      return [
-        ...element.info.packages.map((info) => new PackageReferenceTreeItem(info)),
-        ...element.info.projects.map((info) => new ProjectReferenceTreeItem(info)),
-      ];
+      return this.getDependencyCategories(element.info);
+    }
+    if (element instanceof DependencyCategoryTreeItem) {
+      return this.getCategoryChildren(element.info.category, element.info.dependencies);
+    }
+    if (element instanceof PackageReferenceTreeItem) {
+      return (element.info.dependencies ?? []).map((info) => new PackageReferenceTreeItem(info));
     }
     if (element instanceof FolderTreeItem) {
       return this.getFsChildren(element.entry.uri, element.projectRootUri, element.excludedPaths);
@@ -233,26 +256,92 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     return result;
   }
 
+  /** The four dependency categories, in Visual Studio order, hiding empty ones. */
+  private getDependencyCategories(info: DependenciesInfo): SolutionExplorerTreeItem[] {
+    const categories: { category: DependencyCategory; count: number }[] = [
+      { category: "frameworks", count: info.frameworks.length },
+      { category: "analyzers", count: info.analyzers.length },
+      { category: "packages", count: info.packages.length },
+      { category: "projects", count: info.projects.length },
+    ];
+    return categories
+      .filter(({ count }) => count > 0)
+      .map(({ category }) => new DependencyCategoryTreeItem({ kind: "dependencyCategory", category, dependencies: info }));
+  }
+
+  private getCategoryChildren(category: DependencyCategory, info: DependenciesInfo): SolutionExplorerTreeItem[] {
+    switch (category) {
+      case "frameworks":
+        return info.frameworks.map((f) => new FrameworkReferenceTreeItem(f));
+      case "analyzers":
+        return info.analyzers.map((a) => new AnalyzerTreeItem(a));
+      case "packages":
+        return info.packages.map((p) => new PackageReferenceTreeItem(p));
+      case "projects":
+        return info.projects.map((p) => new ProjectReferenceTreeItem(p));
+    }
+  }
+
   private async getDependenciesInfo(info: ProjectInfo): Promise<DependenciesInfo> {
-    const bytes = await vscode.workspace.fs.readFile(info.uri);
-    const csprojText = new TextDecoder().decode(bytes);
+    const cached = this.dependenciesCache.get(info.uri.fsPath);
+    if (cached) {
+      return cached;
+    }
+    const result = await this.resolveDependenciesInfo(info);
+    this.dependenciesCache.set(info.uri.fsPath, result);
+    return result;
+  }
 
-    const packages = parsePackageReferences(csprojText).map((ref) => ({
-      kind: "packageReference" as const,
-      name: ref.name,
-      version: ref.version,
-    }));
+  private async resolveDependenciesInfo(info: ProjectInfo): Promise<DependenciesInfo> {
+    const csprojText = new TextDecoder().decode(await vscode.workspace.fs.readFile(info.uri));
 
+    // Project references always come from the .csproj — restore output records them by path, but the
+    // .csproj gives us the original relative paths needed to open the referenced projects.
     const projects = parseProjectReferences(csprojText).map((ref) => {
       const uri = vscode.Uri.joinPath(info.rootDir, ref.relativePath);
-      return {
-        kind: "projectReference" as const,
-        name: basenameWithoutExtension(uri.fsPath),
-        uri,
-      };
+      return { kind: "projectReference" as const, name: basenameWithoutExtension(uri.fsPath), uri };
     });
 
-    return { kind: "dependencies", packages, projects };
+    // Prefer the resolved restore output (project.assets.json) for full VS fidelity; fall back to
+    // parsing the .csproj directly when no restore has run.
+    const assets = await this.readProjectAssets(info);
+    if (assets) {
+      return {
+        kind: "dependencies",
+        frameworks: assets.frameworks.map((f) => ({ kind: "frameworkReference" as const, name: f.name, version: f.version })),
+        analyzers: assets.analyzers.map((a) => ({ kind: "analyzer" as const, name: a.name, version: a.version })),
+        packages: assets.packages.map((p) => toPackageReferenceInfo(p, false)),
+        projects,
+      };
+    }
+
+    const frameworkNames = new Set<string>([
+      ...deriveImplicitFrameworks(parseSdkAttribute(csprojText)),
+      ...parseFrameworkReferences(csprojText).map((f) => f.name),
+    ]);
+
+    return {
+      kind: "dependencies",
+      frameworks: [...frameworkNames].map((name) => ({ kind: "frameworkReference" as const, name })),
+      analyzers: parseAnalyzers(csprojText).map((a) => ({ kind: "analyzer" as const, name: a.name })),
+      packages: parsePackageReferences(csprojText).map((ref) => ({
+        kind: "packageReference" as const,
+        name: ref.name,
+        version: ref.version,
+      })),
+      projects,
+    };
+  }
+
+  private async readProjectAssets(info: ProjectInfo) {
+    const assetsUri = vscode.Uri.file(getAssetsFilePath(info.rootDir.fsPath));
+    try {
+      const bytes = await vscode.workspace.fs.readFile(assetsUri);
+      return parseProjectAssets(new TextDecoder().decode(bytes));
+    } catch {
+      // No restore output yet — caller falls back to .csproj parsing.
+      return undefined;
+    }
   }
 
   private getFsChildren(
@@ -338,6 +427,17 @@ function toPosixRelative(fromDir: string, toPath: string): string {
 export function basenameWithoutExtension(fsPath: string): string {
   const base = fsPath.split(/[/\\]/).pop() ?? fsPath;
   return base.replace(/\.[^.]+$/, "");
+}
+
+/** Maps an assets.json package (with its transitive subtree) to a tree `PackageReferenceInfo`. */
+function toPackageReferenceInfo(pkg: ParsedAssetPackage, isImplicit: boolean): PackageReferenceInfo {
+  return {
+    kind: "packageReference",
+    name: pkg.name,
+    version: pkg.version,
+    isImplicit,
+    dependencies: pkg.dependencies.map((child) => toPackageReferenceInfo(child, true)),
+  };
 }
 
 async function fileExists(uri: vscode.Uri): Promise<boolean> {

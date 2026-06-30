@@ -66,6 +66,10 @@ export interface PackageReferenceInfo {
   kind: "packageReference";
   name: string;
   version?: string;
+  /** True for transitive (pulled-in) packages rather than direct `<PackageReference>` entries. */
+  isImplicit?: boolean;
+  /** Transitive child packages, when known from project.assets.json. */
+  dependencies?: PackageReferenceInfo[];
 }
 
 export interface ProjectReferenceInfo {
@@ -74,8 +78,30 @@ export interface ProjectReferenceInfo {
   uri: vscode.Uri;
 }
 
+export interface FrameworkReferenceInfo {
+  kind: "frameworkReference";
+  name: string;
+  version?: string;
+}
+
+export interface AnalyzerInfo {
+  kind: "analyzer";
+  name: string;
+  version?: string;
+}
+
+export type DependencyCategory = "frameworks" | "analyzers" | "packages" | "projects";
+
+export interface DependencyCategoryInfo {
+  kind: "dependencyCategory";
+  category: DependencyCategory;
+  dependencies: DependenciesInfo;
+}
+
 export interface DependenciesInfo {
   kind: "dependencies";
+  frameworks: FrameworkReferenceInfo[];
+  analyzers: AnalyzerInfo[];
   packages: PackageReferenceInfo[];
   projects: ProjectReferenceInfo[];
 }

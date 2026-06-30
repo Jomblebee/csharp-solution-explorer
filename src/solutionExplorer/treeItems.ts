@@ -1,7 +1,11 @@
 import * as vscode from "vscode";
 import {
+  AnalyzerInfo,
   DependenciesInfo,
+  DependencyCategory,
+  DependencyCategoryInfo,
   ExcludedPaths,
+  FrameworkReferenceInfo,
   FsEntry,
   OPEN_FILE_COMMAND_ID,
   PackageReferenceInfo,
@@ -10,6 +14,20 @@ import {
   SolutionFolderInfo,
   SolutionInfo,
 } from "./types.js";
+
+const CATEGORY_LABEL: Record<DependencyCategory, string> = {
+  frameworks: "Frameworks",
+  analyzers: "Analyzers",
+  packages: "Packages",
+  projects: "Projects",
+};
+
+const CATEGORY_ICON: Record<DependencyCategory, string> = {
+  frameworks: "layers",
+  analyzers: "shield",
+  packages: "package",
+  projects: "project",
+};
 
 export class SolutionTreeItem extends vscode.TreeItem {
   constructor(public readonly info: SolutionInfo) {
@@ -61,12 +79,46 @@ export class DependenciesTreeItem extends vscode.TreeItem {
   }
 }
 
+export class DependencyCategoryTreeItem extends vscode.TreeItem {
+  constructor(public readonly info: DependencyCategoryInfo) {
+    super(CATEGORY_LABEL[info.category], vscode.TreeItemCollapsibleState.Collapsed);
+    this.contextValue = `csharpSolutionExplorer.dependencyCategory.${info.category}`;
+    this.iconPath = new vscode.ThemeIcon(CATEGORY_ICON[info.category]);
+  }
+}
+
+export class FrameworkReferenceTreeItem extends vscode.TreeItem {
+  constructor(public readonly info: FrameworkReferenceInfo) {
+    super(info.name, vscode.TreeItemCollapsibleState.None);
+    this.contextValue = "csharpSolutionExplorer.frameworkReference";
+    this.description = info.version;
+    this.iconPath = new vscode.ThemeIcon("layers");
+  }
+}
+
+export class AnalyzerTreeItem extends vscode.TreeItem {
+  constructor(public readonly info: AnalyzerInfo) {
+    super(info.name, vscode.TreeItemCollapsibleState.None);
+    this.contextValue = "csharpSolutionExplorer.analyzer";
+    this.description = info.version;
+    this.iconPath = new vscode.ThemeIcon("shield");
+  }
+}
+
 export class PackageReferenceTreeItem extends vscode.TreeItem {
   constructor(public readonly info: PackageReferenceInfo) {
-    super(info.name, vscode.TreeItemCollapsibleState.None);
+    super(
+      info.name,
+      info.dependencies?.length
+        ? vscode.TreeItemCollapsibleState.Collapsed
+        : vscode.TreeItemCollapsibleState.None,
+    );
     this.contextValue = "csharpSolutionExplorer.packageReference";
     this.description = info.version;
-    this.iconPath = new vscode.ThemeIcon("package");
+    // Transitive (pulled-in) packages are dimmed to distinguish them from direct references.
+    this.iconPath = info.isImplicit
+      ? new vscode.ThemeIcon("package", new vscode.ThemeColor("disabledForeground"))
+      : new vscode.ThemeIcon("package");
   }
 }
 
@@ -149,6 +201,9 @@ export type SolutionExplorerTreeItem =
   | SolutionFolderTreeItem
   | ProjectTreeItem
   | DependenciesTreeItem
+  | DependencyCategoryTreeItem
+  | FrameworkReferenceTreeItem
+  | AnalyzerTreeItem
   | PackageReferenceTreeItem
   | ProjectReferenceTreeItem
   | FolderTreeItem
