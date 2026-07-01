@@ -39,11 +39,14 @@ import {
   PackageReferenceTreeItem,
   ProjectReferenceTreeItem,
   ProjectTreeItem,
+  SolutionExplorerTreeItem,
   SolutionFolderTreeItem,
   SolutionTreeItem,
 } from "./treeItems.js";
 import { addProjectReference as addProjectReferenceToCsproj, removeProjectReference as removeProjectReferenceFromCsproj } from "./csprojWriter.js";
 import { addPackage, newProject as scaffoldProject, removePackage, restore } from "./dotnetCli.js";
+import { copyEntriesInto, moveEntriesInto } from "./fsOps.js";
+import { clearClipboard, getClipboard, setClipboard } from "./treeClipboard.js";
 import { getPackageVersions, NugetPackage, searchPackages } from "../nuget/nugetApi.js";
 import {
   BUILD_PROJECT_COMMAND_ID,
@@ -78,15 +81,26 @@ import {
   REBUILD_COMMAND_ID,
   TEST_COMMAND_ID,
   NEW_PROJECT_COMMAND_ID,
+  REVEAL_IN_TREE_COMMAND_ID,
+  COPY_COMMAND_ID,
+  CUT_COMMAND_ID,
+  PASTE_COMMAND_ID,
+  OPEN_IN_TERMINAL_COMMAND_ID,
+  REVEAL_IN_FINDER_COMMAND_ID,
+  REVEAL_IN_EXPLORER_COMMAND_ID,
+  REVEAL_IN_FILE_MANAGER_COMMAND_ID,
   SolutionFolderInfo,
 } from "./types.js";
 
 type NewItemTarget = FolderTreeItem | ProjectTreeItem | SolutionFolderTreeItem;
 type ExistingItemTarget = FolderTreeItem | FileTreeItem | ProjectTreeItem | SolutionFolderTreeItem;
+type FsItem = FileTreeItem | FolderTreeItem;
+type TerminalTarget = SolutionTreeItem | ProjectTreeItem | FolderTreeItem;
 
 export function registerSolutionExplorerCommands(
   context: vscode.ExtensionContext,
   provider: SolutionTreeDataProvider,
+  treeView: vscode.TreeView<SolutionExplorerTreeItem>,
 ): void {
   context.subscriptions.push(
     vscode.commands.registerCommand(REFRESH_COMMAND_ID, () => provider.refresh()),
@@ -168,7 +182,152 @@ export function registerSolutionExplorerCommands(
     vscode.commands.registerCommand(OPEN_SETTINGS_COMMAND_ID, () =>
       vscode.commands.executeCommand("workbench.action.openSettings", "@ext:jomblebee.jomblebee-csharp-solution-explorer"),
     ),
+    vscode.commands.registerCommand(REVEAL_IN_TREE_COMMAND_ID, (uri?: vscode.Uri) =>
+      withErrorHandling(() => revealInTree(uri, provider, treeView)),
+    ),
+    vscode.commands.registerCommand(COPY_COMMAND_ID, (item?: FsItem, items?: FsItem[]) =>
+      copyToClipboard(item, items, "copy", treeView),
+    ),
+    vscode.commands.registerCommand(CUT_COMMAND_ID, (item?: FsItem, items?: FsItem[]) =>
+      copyToClipboard(item, items, "cut", treeView),
+    ),
+    vscode.commands.registerCommand(PASTE_COMMAND_ID, (item?: ExistingItemTarget) =>
+      withErrorHandling(() => paste(item ?? treeView.selection[0], provider)),
+    ),
+    vscode.commands.registerCommand(OPEN_IN_TERMINAL_COMMAND_ID, (item: TerminalTarget) => openInTerminal(item)),
+    // Three OS-specific ids share one handler so the menu label matches the platform
+    // (Finder / File Explorer / file manager); the built-in command does the actual reveal.
+    vscode.commands.registerCommand(REVEAL_IN_FINDER_COMMAND_ID, (item: unknown) => revealInOS(item)),
+    vscode.commands.registerCommand(REVEAL_IN_EXPLORER_COMMAND_ID, (item: unknown) => revealInOS(item)),
+    vscode.commands.registerCommand(REVEAL_IN_FILE_MANAGER_COMMAND_ID, (item: unknown) => revealInOS(item)),
   );
+}
+
+/** Resolves the on-disk URI a tree node points at (file/folder path, or the .csproj/.sln file). */
+function resolveNodeUri(item: unknown): vscode.Uri | undefined {
+  if (item instanceof FileTreeItem || item instanceof FolderTreeItem) {
+    return item.entry.uri;
+  }
+  if (item instanceof ProjectTreeItem || item instanceof SolutionTreeItem) {
+    return item.info.uri;
+  }
+  return undefined;
+}
+
+/** Reveals the node's file/folder in the OS file manager (Finder / Explorer / file manager). */
+function revealInOS(item: unknown): void {
+  const uri = resolveNodeUri(item);
+  if (uri) {
+    void vscode.commands.executeCommand("revealFileInOS", uri);
+  }
+}
+
+/** Reveals the active editor's file (or the passed URI) in the Solution Explorer tree. */
+async function revealInTree(
+  uri: vscode.Uri | undefined,
+  provider: SolutionTreeDataProvider,
+  treeView: vscode.TreeView<SolutionExplorerTreeItem>,
+): Promise<void> {
+  const target = uri ?? vscode.window.activeTextEditor?.document.uri;
+  if (!target || target.scheme !== "file") {
+    return;
+  }
+  const item = await provider.findTreeItem(target);
+  if (item) {
+    await treeView.reveal(item, { select: true, focus: false, expand: true });
+  }
+}
+
+/**
+ * Collects the file/folder nodes to act on. Context-menu invocations pass the clicked item (and the
+ * full selection as the second arg); keyboard shortcuts pass nothing, so fall back to the tree's
+ * current selection.
+ */
+function collectFsItems(
+  item: FsItem | undefined,
+  items: FsItem[] | undefined,
+  treeView: vscode.TreeView<SolutionExplorerTreeItem>,
+): FsItem[] {
+  const explicit = items && items.length > 0 ? items : item ? [item] : [];
+  const source = explicit.length > 0 ? explicit : treeView.selection;
+  return source.filter((i): i is FsItem => i instanceof FileTreeItem || i instanceof FolderTreeItem);
+}
+
+function copyToClipboard(
+  item: FsItem | undefined,
+  items: FsItem[] | undefined,
+  mode: "copy" | "cut",
+  treeView: vscode.TreeView<SolutionExplorerTreeItem>,
+): void {
+  const entries = collectFsItems(item, items, treeView);
+  if (entries.length === 0) {
+    return; // Nothing selectable — keep any existing clipboard contents.
+  }
+  setClipboard(entries.map((i) => i.entry.uri), mode);
+}
+
+/** Resolves the directory a paste should land in from the target node (folder, project, or a file's parent). */
+function resolvePasteDir(item: unknown): vscode.Uri | undefined {
+  if (item instanceof FolderTreeItem) {
+    return item.entry.uri;
+  }
+  if (item instanceof ProjectTreeItem) {
+    return item.info.rootDir;
+  }
+  if (item instanceof FileTreeItem) {
+    return vscode.Uri.joinPath(item.entry.uri, "..");
+  }
+  return undefined;
+}
+
+async function paste(item: SolutionExplorerTreeItem | undefined, provider: SolutionTreeDataProvider): Promise<void> {
+  const clipboard = getClipboard();
+  const targetDir = resolvePasteDir(item);
+  if (!clipboard || !targetDir) {
+    return;
+  }
+
+  // Rebuild lightweight entries from the clipboard URIs (their tree items may no longer exist).
+  const entries = clipboard.uris.map((uri) => ({
+    kind: fs.statSync(uri.fsPath).isDirectory() ? ("folder" as const) : ("file" as const),
+    name: path.basename(uri.fsPath),
+    uri,
+  }));
+
+  const { changed, errors } =
+    clipboard.mode === "cut"
+      ? await moveEntriesInto(
+          entries.filter((e) => path.dirname(e.uri.fsPath) !== targetDir.fsPath),
+          targetDir,
+        )
+      : await copyEntriesInto(entries, targetDir);
+
+  if (clipboard.mode === "cut") {
+    clearClipboard();
+  }
+  if (changed) {
+    provider.refresh();
+  }
+  if (errors.length > 0) {
+    vscode.window.showErrorMessage(`C# Solution Explorer: ${errors.join(" ")}`);
+  }
+}
+
+/** Opens an integrated terminal whose working directory is the node's folder. */
+function openInTerminal(item: TerminalTarget): void {
+  let cwd: vscode.Uri;
+  let name: string;
+  if (item instanceof SolutionTreeItem) {
+    cwd = vscode.Uri.joinPath(item.info.uri, "..");
+    name = path.basename(cwd.fsPath);
+  } else if (item instanceof ProjectTreeItem) {
+    cwd = item.info.rootDir;
+    name = item.info.name;
+  } else {
+    cwd = item.entry.uri;
+    name = item.entry.name;
+  }
+  vscode.window.createTerminal({ name, cwd }).show();
 }
 
 async function withErrorHandling(action: () => Promise<void>): Promise<void> {

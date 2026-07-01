@@ -31,6 +31,7 @@ const CATEGORY_ICON: Record<DependencyCategory, string> = {
 export class SolutionTreeItem extends vscode.TreeItem {
   constructor(public readonly info: SolutionInfo) {
     super(info.name, vscode.TreeItemCollapsibleState.Expanded);
+    this.id = `solution::${info.uri.fsPath}`;
     this.contextValue = "csharpSolutionExplorer.solution";
     this.iconPath = new vscode.ThemeIcon("folder-library");
     // Surface the file type (and folder, for nested/duplicate-named solutions) so root nodes are
@@ -47,6 +48,7 @@ export class SolutionFolderTreeItem extends vscode.TreeItem {
       info.name,
       info.isVirtual ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed,
     );
+    this.id = `solutionFolder::${info.solutionUri.fsPath}::${info.stableId}`;
     this.contextValue = info.isVirtual
       ? "csharpSolutionExplorer.pathSegmentFolder"
       : "csharpSolutionExplorer.solutionFolder";
@@ -59,6 +61,7 @@ export class ProjectTreeItem extends vscode.TreeItem {
     super(info.name, vscode.TreeItemCollapsibleState.Collapsed);
     // Append `.nested` for projects inside a solution folder so "Remove from Solution Folder"
     // can be shown only when it actually applies.
+    this.id = `project::${info.uri.fsPath}`;
     this.contextValue = info.parentFolderGuid
       ? "csharpSolutionExplorer.project.nested"
       : "csharpSolutionExplorer.project";
@@ -168,6 +171,7 @@ export class FolderTreeItem extends vscode.TreeItem {
     public readonly excludedPaths: ExcludedPaths,
   ) {
     super(entry.name, vscode.TreeItemCollapsibleState.Collapsed);
+    this.id = `folder::${entry.uri.fsPath}`;
     this.contextValue = "csharpSolutionExplorer.folder";
     this.resourceUri = entry.uri;
     this.iconPath = vscode.ThemeIcon.Folder;
@@ -177,6 +181,7 @@ export class FolderTreeItem extends vscode.TreeItem {
 export class FileTreeItem extends vscode.TreeItem {
   constructor(public readonly entry: FsEntry) {
     super(entry.name, vscode.TreeItemCollapsibleState.None);
+    this.id = `file::${entry.uri.fsPath}`;
     this.contextValue = entry.isExcluded
       ? "csharpSolutionExplorer.file.excluded"
       : "csharpSolutionExplorer.file";
@@ -202,6 +207,7 @@ export class NestedFileTreeItem extends vscode.TreeItem {
     public readonly companions: FsEntry[],
   ) {
     super(entry.name, vscode.TreeItemCollapsibleState.Collapsed);
+    this.id = `file::${entry.uri.fsPath}`;
     this.contextValue = entry.isExcluded
       ? "csharpSolutionExplorer.file.excluded"
       : "csharpSolutionExplorer.file";

@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { moveEntriesInto } from "./fsOps.js";
 import { collectDescendantFolderGuids, moveProjectToFolder, moveSolutionFolderInto } from "./moveOps.js";
 import { moveSlnxFolder, moveSlnxProject } from "./slnxWriter.js";
 import { SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
@@ -170,35 +171,18 @@ export class SolutionTreeDragAndDropController
       return; // Files/folders can only be dropped onto a folder, project, or file (virtual nodes are invalid targets).
     }
 
-    const movable = items.filter((item) => path.dirname(item.entry.uri.fsPath) !== targetDir.fsPath);
+    const movable = items
+      .map((item) => item.entry)
+      .filter((entry) => path.dirname(entry.uri.fsPath) !== targetDir.fsPath);
     if (movable.length === 0) {
       return; // Everything is already in the target directory.
     }
-    if (!(await this.confirmMove(moveMessage(movable.length, movable[0].entry.name, `into '${path.basename(targetDir.fsPath)}'`)))) {
+    if (!(await this.confirmMove(moveMessage(movable.length, movable[0].name, `into '${path.basename(targetDir.fsPath)}'`)))) {
       return;
     }
 
-    const errors: string[] = [];
-    let moved = false;
-
-    for (const item of movable) {
-      const sourceUri = item.entry.uri;
-
-      if (item instanceof FolderTreeItem && isInsideOrEqual(targetDir.fsPath, sourceUri.fsPath)) {
-        errors.push(`'${item.entry.name}' cannot be moved into itself.`);
-        continue;
-      }
-
-      const destUri = vscode.Uri.joinPath(targetDir, item.entry.name);
-      try {
-        await vscode.workspace.fs.rename(sourceUri, destUri, { overwrite: false });
-        moved = true;
-      } catch {
-        errors.push(`'${item.entry.name}' could not be moved (a file or folder with that name may already exist).`);
-      }
-    }
-
-    if (moved) {
+    const { changed, errors } = await moveEntriesInto(movable, targetDir);
+    if (changed) {
       this.provider.refresh();
     }
     if (errors.length > 0) {
@@ -211,14 +195,6 @@ export class SolutionTreeDragAndDropController
 function moveMessage(count: number, firstName: string, target: string): string {
   const what = count === 1 ? `'${firstName}'` : `${count} items`;
   return `Move ${what} ${target}?`;
-}
-
-/** True when `candidate` is `base` itself or a path nested below it. */
-function isInsideOrEqual(candidate: string, base: string): boolean {
-  if (candidate === base) {
-    return true;
-  }
-  return candidate.startsWith(base.endsWith(path.sep) ? base : base + path.sep);
 }
 
 function errorMessage(err: unknown): string {

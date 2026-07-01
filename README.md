@@ -20,6 +20,8 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 - **File nesting** groups related files under a parent, like Visual Studio: `appsettings.*.json` under `appsettings.json`, `.xaml.cs` under `.xaml`, `.Designer.cs`/`.cs` under `.resx`, `*.min.css`/`*.min.js` under their source, and `.razor` companions under the component. Toggle with `csharpSolutionExplorer.fileNesting.enabled`.
 - Manual refresh button and automatic refresh via a file system watcher.
 - Click a file to open it in the editor.
+- **Auto-sync**: the active editor's file is selected (and its parents expanded) in the tree automatically. Toggle with `csharpSolutionExplorer.autoReveal`, or reveal on demand from an editor tab's context menu / the Command Palette (**Show in Solution Explorer**).
+- **Copy / Cut / Paste** files and folders between folders and projects, from the context menu or with `Ctrl/Cmd+C` / `X` / `V` while the view is focused.
 
 ### Context menu commands
 
@@ -49,10 +51,15 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 | Test                     | Project, Solution                      |
 | Restore                  | Project, Solution                      |
 | Clean                    | Project, Solution                      |
+| Copy / Cut               | Folder, File                           |
+| Paste                    | Project, Folder                        |
 | Rename…                  | Project, Solution Folder, Folder, File |
 | Delete                   | Project, Solution Folder, Folder, File |
 | Remove from Solution     | Project                                |
 | Open in Editor           | Project, Solution node                 |
+| Open in Terminal         | Solution, Project, Folder              |
+| Show in Finder/Explorer  | Solution, Project, Folder, File        |
+| Show in Solution Explorer| Editor tab, Command Palette            |
 
 - **New Item submenu**: prompts for a name and creates the file in the target folder. The namespace is derived automatically from the project name and folder path. All templates are configurable — see [Settings](#settings) below.
 - **New Razor Component…**: enforces the Blazor convention that component names start with an uppercase letter.
@@ -62,6 +69,10 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 - **Remove from Solution**: removes the project reference from the solution file without deleting files on disk.
 - **New Project…**: scaffolds a new project from a `dotnet new` template (Console, Class Library, Web API, Blazor, test projects, and more), creates it in a folder next to the solution, and registers it in the `.sln`/`.slnx` file.
 - **Build / Rebuild / Run / Test / Restore / Clean**: runs the matching `dotnet` command in a dedicated VS Code terminal. Build, Rebuild, Test, Restore, and Clean work on both project and solution nodes; Run is project-only. **Rebuild** uses `dotnet build --no-incremental` to force a full recompile.
+- **Copy / Cut / Paste**: copies or moves files and folders on disk. Paste targets a folder or a project's root. Copy into a location that already has a file of that name appends a `… copy` suffix instead of overwriting; Cut moves the item and clears the clipboard.
+- **Open in Terminal**: opens an integrated terminal whose working directory is the solution folder, the project root, or the selected folder.
+- **Reveal in Finder / File Explorer**: opens the selected item in the operating system's file manager (Finder on macOS, File Explorer on Windows, the default file manager on Linux). The menu label matches your platform.
+- **Show in Solution Explorer**: reveals and selects a file in the tree — from the editor tab's context menu or the Command Palette.
 - **Open in Editor**: opens the raw `.sln`/`.slnx` (on a solution) or `.csproj` (on a project) file in the editor. The project's own `.csproj` is not listed as a child file — use this command to open it.
 
 ### Dependencies
@@ -83,6 +94,7 @@ Projects can be dragged between Solution Folders (or to the solution root) direc
 | `csharpSolutionExplorer.confirmMove`           | `true`        | Show a confirmation dialog before a drag-and-drop move.                       |
 | `csharpSolutionExplorer.nuget.checkForUpdates` | `true`        | Check nuget.org for newer versions of direct packages and flag outdated ones. |
 | `csharpSolutionExplorer.fileNesting.enabled`   | `true`        | Group related files under a parent (e.g. `appsettings.*.json`, `.xaml.cs`).   |
+| `csharpSolutionExplorer.autoReveal`            | `true`        | Automatically select the active editor's file in the Solution Explorer tree.  |
 | `csharpSolutionExplorer.templates.class`       | *(see below)* | Template for new C# class files.                                              |
 | `csharpSolutionExplorer.templates.interface`   | *(see below)* | Template for new C# interface files.                                          |
 | `csharpSolutionExplorer.templates.record`      | *(see below)* | Template for new C# record files.                                             |
