@@ -4,6 +4,16 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.8.0] – 2026-07-01
+
+### Added
+
+- **File nesting**: related files are now grouped under a parent node, like Visual Studio —
+  `appsettings.*.json` under `appsettings.json`, `.xaml.cs` code-behind under `.xaml`,
+  `.Designer.cs`/`.cs` under `.resx`, and `*.min.css`/`*.min.js` under their source. The
+  existing `.razor` companion nesting now runs through the same engine. Toggle it with the
+  new `csharpSolutionExplorer.fileNesting.enabled` setting (default: on).
+
 ## [0.7.0] – 2026-06-30
 
 ### Added

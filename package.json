@@ -2,7 +2,7 @@
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
   "description": "A lightweight Solution Explorer for C# projects in VS Code (and Open VSX-compatible editors).",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "jomblebee",
   "license": "MIT",
   "repository": {
@@ -48,6 +48,11 @@
             "type": "boolean",
             "default": true,
             "description": "Check nuget.org for newer versions of direct packages and flag outdated ones in the Dependencies tree."
+          },
+          "csharpSolutionExplorer.fileNesting.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Group related files under a parent in the Solution Explorer (e.g. appsettings.*.json under appsettings.json, .xaml.cs under .xaml)."
           }
         }
       },

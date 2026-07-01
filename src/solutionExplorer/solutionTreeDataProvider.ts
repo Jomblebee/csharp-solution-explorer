@@ -14,6 +14,7 @@ import {
   resolveExcludedPaths,
 } from "./csprojReader.js";
 import { listAllFilesRecursive, listDirectChildren, ScannedEntry } from "./diskScanner.js";
+import { computeFileNesting } from "./fileNesting.js";
 import { getAssetsFilePath, ParsedAssetPackage, parseProjectAssets } from "./projectAssetsReader.js";
 import { compareVersions, getPackageVersions } from "../nuget/nugetApi.js";
 import { buildSolutionTree, parseNestedProjects, parseSolutionFile, SolutionTreeNode } from "./slnParser.js";
@@ -34,10 +35,10 @@ import {
   FileTreeItem,
   FolderTreeItem,
   FrameworkReferenceTreeItem,
+  NestedFileTreeItem,
   PackageReferenceTreeItem,
   ProjectReferenceTreeItem,
   ProjectTreeItem,
-  RazorFileTreeItem,
   SolutionExplorerTreeItem,
   SolutionFolderTreeItem,
   SolutionTreeItem,
@@ -144,7 +145,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     if (element instanceof FolderTreeItem) {
       return this.getFsChildren(element.entry.uri, element.projectRootUri, element.excludedPaths);
     }
-    if (element instanceof RazorFileTreeItem) {
+    if (element instanceof NestedFileTreeItem) {
       return element.companions.map((c) => new FileTreeItem(c));
     }
     return [];
@@ -490,30 +491,14 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
   ): SolutionExplorerTreeItem[] {
     const scanned = listDirectChildren(dirUri.fsPath).filter((e) => e.path !== hiddenFsPath);
 
-    const razorLowerNames = scanned
-      .filter((e) => e.kind === "file" && e.name.toLowerCase().endsWith(".razor"))
-      .map((e) => e.name.toLowerCase())
-      // Longest first so "Foo.razor" wins over a shorter prefix when both could match.
-      .sort((a, b) => b.length - a.length);
-
-    // Map each ".razor" file (lowercase name) to its companion files, e.g.
-    // "Foo.razor" → ["Foo.razor.cs", "Foo.razor.css", "Foo.razor.js"], like Visual Studio.
-    const razorToCompanions = new Map<string, ScannedEntry[]>();
-    for (const e of scanned) {
-      if (e.kind !== "file") {
-        continue;
-      }
-      const lower = e.name.toLowerCase();
-      const parentLower = razorLowerNames.find((razor) => lower.startsWith(razor + "."));
-      if (parentLower) {
-        const list = razorToCompanions.get(parentLower) ?? [];
-        list.push(e);
-        razorToCompanions.set(parentLower, list);
-      }
-    }
-    const nestedCompanionLower = new Set(
-      [...razorToCompanions.values()].flat().map((e) => e.name.toLowerCase()),
-    );
+    // Collapse related files under a parent (appsettings.*.json, .xaml.cs, .razor companions, …),
+    // like Visual Studio. Disabled → every file stays flat.
+    const nestingEnabled = vscode.workspace
+      .getConfiguration("csharpSolutionExplorer")
+      .get<boolean>("fileNesting.enabled", true);
+    const { childrenByParent, nestedChildNames } = nestingEnabled
+      ? computeFileNesting(scanned)
+      : { childrenByParent: new Map<string, ScannedEntry[]>(), nestedChildNames: new Set<string>() };
 
     const makeEntry = (s: ScannedEntry) => {
       const relativePath = toPosixRelative(projectRootUri.fsPath, s.path);
@@ -527,20 +512,16 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
 
     const items: SolutionExplorerTreeItem[] = [];
     for (const s of scanned) {
-      if (s.kind === "file" && nestedCompanionLower.has(s.name.toLowerCase())) {
-        continue; // hidden — appears as child of its .razor node
+      if (s.kind === "file" && nestedChildNames.has(s.name.toLowerCase())) {
+        continue; // hidden — appears as a child of its parent file's node
       }
       const entry = makeEntry(s);
       if (entry.kind === "folder") {
         items.push(new FolderTreeItem(entry, projectRootUri, excludedPaths));
       } else {
-        const companions = razorToCompanions.get(s.name.toLowerCase());
-        if (companions && companions.length > 0) {
-          const companionEntries = companions
-            .slice()
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map(makeEntry);
-          items.push(new RazorFileTreeItem(entry, companionEntries));
+        const children = childrenByParent.get(s.name.toLowerCase());
+        if (children && children.length > 0) {
+          items.push(new NestedFileTreeItem(entry, children.map(makeEntry)));
         } else {
           items.push(new FileTreeItem(entry));
         }
