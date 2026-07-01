@@ -32,6 +32,14 @@ export const NEW_PROJECT_COMMAND_ID = "csharpSolutionExplorer.newProject";
 export const OPEN_SOLUTION_FILE_COMMAND_ID = "csharpSolutionExplorer.openSolutionFile";
 export const OPEN_PROJECT_FILE_COMMAND_ID = "csharpSolutionExplorer.openProjectFile";
 export const OPEN_SETTINGS_COMMAND_ID = "csharpSolutionExplorer.openSettings";
+export const REVEAL_IN_TREE_COMMAND_ID = "csharpSolutionExplorer.revealInTree";
+export const COPY_COMMAND_ID = "csharpSolutionExplorer.copy";
+export const CUT_COMMAND_ID = "csharpSolutionExplorer.cut";
+export const PASTE_COMMAND_ID = "csharpSolutionExplorer.paste";
+export const OPEN_IN_TERMINAL_COMMAND_ID = "csharpSolutionExplorer.openInTerminal";
+export const REVEAL_IN_FINDER_COMMAND_ID = "csharpSolutionExplorer.revealInFinder";
+export const REVEAL_IN_EXPLORER_COMMAND_ID = "csharpSolutionExplorer.revealInExplorer";
+export const REVEAL_IN_FILE_MANAGER_COMMAND_ID = "csharpSolutionExplorer.revealInFileManager";
 
 export interface ProjectReference {
   typeGuid: string;
@@ -72,6 +80,9 @@ export interface SolutionFolderInfo {
   solutionUri: vscode.Uri;
   /** True for synthetic path-segment nodes — no corresponding XML element, no context-menu actions. */
   isVirtual?: boolean;
+  /** Structural path key (parent chain + guid), unique within the solution — used as the tree item id
+   * so `reveal` can address nested folders (`.slnx` folder guids equal their names and would collide). */
+  stableId: string;
 }
 
 export interface PackageReferenceInfo {

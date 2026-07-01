@@ -4,6 +4,25 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.9.0] – 2026-07-01
+
+### Added
+
+- **Auto-sync with the active editor**: the file of the active editor is now automatically
+  selected (and its parents expanded) in the Solution Explorer tree — including files nested
+  under a parent via file nesting. Toggle it with the new `csharpSolutionExplorer.autoReveal`
+  setting (default: on).
+- **Show in Solution Explorer**: right-click an editor tab (or use the Command Palette) to
+  reveal the current file in the tree.
+- **Copy / Cut / Paste**: files and folders can now be copied, cut, and pasted between folders
+  and projects — via the context menu or `Ctrl/Cmd+C` / `X` / `V` while the view is focused.
+  Copy resolves name collisions with a `… copy` suffix; cut reuses the existing move logic.
+- **Open in Terminal**: right-click a solution, project, or folder to open an integrated
+  terminal in that directory.
+- **Reveal in Finder / File Explorer**: right-click a solution, project, folder, or file to
+  open it in the OS file manager. The label adapts to the platform (Finder / File Explorer /
+  file manager).
+
 ## [0.8.0] – 2026-07-01
 
 ### Added

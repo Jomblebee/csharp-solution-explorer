@@ -15,6 +15,7 @@ import {
 } from "./csprojReader.js";
 import { listAllFilesRecursive, listDirectChildren, ScannedEntry } from "./diskScanner.js";
 import { computeFileNesting } from "./fileNesting.js";
+import { isInsideOrEqual, pickOwningProjectPath } from "./fsPathUtils.js";
 import { getAssetsFilePath, ParsedAssetPackage, parseProjectAssets } from "./projectAssetsReader.js";
 import { compareVersions, getPackageVersions } from "../nuget/nugetApi.js";
 import { buildSolutionTree, parseNestedProjects, parseSolutionFile, SolutionTreeNode } from "./slnParser.js";
@@ -80,6 +81,10 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
    * file edits, so clearing it would re-fetch on every save. */
   private readonly latestStableCache = new Map<string, string | undefined>();
 
+  /** Parent pointer per tree item, recorded as children are produced, so `getParent` (and therefore
+   * `TreeView.reveal`) can walk from a leaf back up to the root. */
+  private readonly parentMap = new WeakMap<SolutionExplorerTreeItem, SolutionExplorerTreeItem>();
+
   constructor() {
     this.watcher = vscode.workspace.createFileSystemWatcher("**/*");
     this.watcher.onDidCreate(() => this.scheduleRefresh());
@@ -109,7 +114,21 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     return element;
   }
 
+  getParent(element: SolutionExplorerTreeItem): SolutionExplorerTreeItem | undefined {
+    return this.parentMap.get(element);
+  }
+
   async getChildren(element?: SolutionExplorerTreeItem): Promise<SolutionExplorerTreeItem[]> {
+    const children = await this.computeChildren(element);
+    if (element) {
+      for (const child of children) {
+        this.parentMap.set(child, element);
+      }
+    }
+    return children;
+  }
+
+  private async computeChildren(element?: SolutionExplorerTreeItem): Promise<SolutionExplorerTreeItem[]> {
     if (!element) {
       return this.getRootItems();
     }
@@ -120,7 +139,13 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       const nesting = element.info.isVirtual
         ? new Map<string, string>()
         : parseNestedProjects(new TextDecoder().decode(await vscode.workspace.fs.readFile(element.info.solutionUri)));
-      return this.nodesToTreeItems(element.info.children, element.info.solutionDir, element.info.solutionUri, nesting);
+      return this.nodesToTreeItems(
+        element.info.children,
+        element.info.solutionDir,
+        element.info.solutionUri,
+        nesting,
+        element.info.stableId,
+      );
     }
     if (element instanceof ProjectTreeItem) {
       return this.getProjectChildren(element.info);
@@ -149,6 +174,87 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
       return element.companions.map((c) => new FileTreeItem(c));
     }
     return [];
+  }
+
+  /**
+   * Resolves the tree item for a file/folder URI by walking the live tree from the roots down, so the
+   * returned instance (and its recorded parents) can be handed to `TreeView.reveal`. Returns
+   * `undefined` when the path lies outside every project. Populates `parentMap` along the way.
+   */
+  async findTreeItem(uri: vscode.Uri): Promise<SolutionExplorerTreeItem | undefined> {
+    const target = uri.fsPath;
+
+    const projects: ProjectTreeItem[] = [];
+    for (const root of await this.getChildren()) {
+      if (root instanceof ProjectTreeItem) {
+        if (root.info.uri.fsPath === target) {
+          return root;
+        }
+        if (isInsideOrEqual(target, root.info.rootDir.fsPath)) {
+          projects.push(root);
+        }
+      } else if (root instanceof SolutionTreeItem) {
+        if (root.info.uri.fsPath === target) {
+          return root;
+        }
+        await this.collectContainingProjects(root, target, projects);
+      }
+    }
+
+    const ownerRoot = pickOwningProjectPath(projects.map((p) => p.info.rootDir.fsPath), target);
+    if (!ownerRoot) {
+      return undefined;
+    }
+    const owner = projects.find((p) => p.info.rootDir.fsPath === ownerRoot)!;
+    if (owner.info.uri.fsPath === target) {
+      return owner;
+    }
+    return this.findInProject(owner, target);
+  }
+
+  /** Recurses structural nodes (solution / solution folders) collecting projects that contain `target`. */
+  private async collectContainingProjects(
+    structural: SolutionTreeItem | SolutionFolderTreeItem,
+    target: string,
+    out: ProjectTreeItem[],
+  ): Promise<void> {
+    for (const child of await this.getChildren(structural)) {
+      if (child instanceof ProjectTreeItem) {
+        if (child.info.uri.fsPath === target || isInsideOrEqual(target, child.info.rootDir.fsPath)) {
+          out.push(child);
+        }
+      } else if (child instanceof SolutionFolderTreeItem) {
+        await this.collectContainingProjects(child, target, out);
+      }
+    }
+  }
+
+  /** Descends a project's file tree (through folders and file-nesting) to the item matching `target`. */
+  private async findInProject(project: ProjectTreeItem, target: string): Promise<SolutionExplorerTreeItem | undefined> {
+    let level = await this.getChildren(project);
+    while (true) {
+      const exact = level.find((c) => c.resourceUri?.fsPath === target);
+      if (exact) {
+        return exact;
+      }
+
+      const nested = level.find(
+        (c): c is NestedFileTreeItem =>
+          c instanceof NestedFileTreeItem && c.companions.some((k) => k.uri.fsPath === target),
+      );
+      if (nested) {
+        const companion = (await this.getChildren(nested)).find((c) => c.resourceUri?.fsPath === target);
+        return companion ?? nested;
+      }
+
+      const folder = level.find(
+        (c): c is FolderTreeItem => c instanceof FolderTreeItem && isInsideOrEqual(target, c.entry.uri.fsPath),
+      );
+      if (!folder) {
+        return undefined;
+      }
+      level = await this.getChildren(folder);
+    }
   }
 
   private async getRootItems(): Promise<SolutionExplorerTreeItem[]> {
@@ -203,6 +309,7 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
     solutionDir: vscode.Uri,
     solutionUri: vscode.Uri,
     nesting: Map<string, string>,
+    parentKey = "",
   ): Promise<SolutionExplorerTreeItem[]> {
     const items: SolutionExplorerTreeItem[] = [];
     for (const node of nodes) {
@@ -216,6 +323,8 @@ export class SolutionTreeDataProvider implements vscode.TreeDataProvider<Solutio
             solutionDir,
             solutionUri,
             isVirtual: node.isVirtual,
+            // Parent chain + guid keeps this unique even when sibling/nested folders share a name.
+            stableId: `${parentKey}/${node.name}#${node.guid}`,
           }),
         );
         continue;

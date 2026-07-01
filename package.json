@@ -2,7 +2,7 @@
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
   "description": "A lightweight Solution Explorer for C# projects in VS Code (and Open VSX-compatible editors).",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "publisher": "jomblebee",
   "license": "MIT",
   "repository": {
@@ -53,6 +53,11 @@
             "type": "boolean",
             "default": true,
             "description": "Group related files under a parent in the Solution Explorer (e.g. appsettings.*.json under appsettings.json, .xaml.cs under .xaml)."
+          },
+          "csharpSolutionExplorer.autoReveal": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically select the file of the active editor in the Solution Explorer tree."
           }
         }
       },
@@ -282,6 +287,47 @@
         "title": "Settings",
         "icon": "$(gear)",
         "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.revealInTree",
+        "title": "Show in Solution Explorer",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.copy",
+        "title": "Copy",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.cut",
+        "title": "Cut",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.paste",
+        "title": "Paste",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.openInTerminal",
+        "title": "Open in Terminal",
+        "icon": "$(terminal)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.revealInFinder",
+        "title": "Reveal in Finder",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.revealInExplorer",
+        "title": "Reveal in File Explorer",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.revealInFileManager",
+        "title": "Open Containing Folder",
+        "category": "C# Solution Explorer"
       }
     ],
     "submenus": [
@@ -443,9 +489,84 @@
           "command": "csharpSolutionExplorer.openProjectFile",
           "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
           "group": "0_open"
+        },
+        {
+          "command": "csharpSolutionExplorer.openInTerminal",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
+          "group": "0_open@2"
+        },
+        {
+          "command": "csharpSolutionExplorer.revealInFinder",
+          "when": "isMac && view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.file(\\.excluded)?$/ || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
+          "group": "0_open@3"
+        },
+        {
+          "command": "csharpSolutionExplorer.revealInExplorer",
+          "when": "isWindows && view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.file(\\.excluded)?$/ || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
+          "group": "0_open@3"
+        },
+        {
+          "command": "csharpSolutionExplorer.revealInFileManager",
+          "when": "isLinux && view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.file(\\.excluded)?$/ || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
+          "group": "0_open@3"
+        },
+        {
+          "command": "csharpSolutionExplorer.copy",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.file(\\.excluded)?$/)",
+          "group": "5_clipboard@1"
+        },
+        {
+          "command": "csharpSolutionExplorer.cut",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.file(\\.excluded)?$/)",
+          "group": "5_clipboard@2"
+        },
+        {
+          "command": "csharpSolutionExplorer.paste",
+          "when": "view == csharpSolutionExplorer.view && csharpSolutionExplorer.clipboardHasItems && (viewItem == csharpSolutionExplorer.folder || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/)",
+          "group": "5_clipboard@3"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "csharpSolutionExplorer.revealInTree",
+          "group": "2_files@100"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "csharpSolutionExplorer.revealInFinder",
+          "when": "false"
+        },
+        {
+          "command": "csharpSolutionExplorer.revealInExplorer",
+          "when": "false"
+        },
+        {
+          "command": "csharpSolutionExplorer.revealInFileManager",
+          "when": "false"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "csharpSolutionExplorer.copy",
+        "key": "ctrl+c",
+        "mac": "cmd+c",
+        "when": "focusedView == csharpSolutionExplorer.view"
+      },
+      {
+        "command": "csharpSolutionExplorer.cut",
+        "key": "ctrl+x",
+        "mac": "cmd+x",
+        "when": "focusedView == csharpSolutionExplorer.view"
+      },
+      {
+        "command": "csharpSolutionExplorer.paste",
+        "key": "ctrl+v",
+        "mac": "cmd+v",
+        "when": "focusedView == csharpSolutionExplorer.view && csharpSolutionExplorer.clipboardHasItems"
+      }
+    ]
   },
   "scripts": {
     "compile": "npm run check-types && npm run lint && node esbuild.js",
