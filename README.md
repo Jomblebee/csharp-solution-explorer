@@ -17,6 +17,7 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 - Falls back to a loose top-level `.csproj` when no solution file is found.
 - Folders and files are read directly from disk (no MSBuild evaluation), excluding `bin`, `obj`, `node_modules`, and hidden directories.
 - Per-project **Dependencies** tree grouped into Visual Studio-style categories (Frameworks, Analyzers, Packages, Projects), with full NuGet and project-reference management — see [Dependencies](#dependencies).
+- **File nesting** groups related files under a parent, like Visual Studio: `appsettings.*.json` under `appsettings.json`, `.xaml.cs` under `.xaml`, `.Designer.cs`/`.cs` under `.resx`, `*.min.css`/`*.min.js` under their source, and `.razor` companions under the component. Toggle with `csharpSolutionExplorer.fileNesting.enabled`.
 - Manual refresh button and automatic refresh via a file system watcher.
 - Click a file to open it in the editor.
 
@@ -81,6 +82,7 @@ Projects can be dragged between Solution Folders (or to the solution root) direc
 | ---------------------------------------------- | ------------- | ----------------------------------------------------------------------------- |
 | `csharpSolutionExplorer.confirmMove`           | `true`        | Show a confirmation dialog before a drag-and-drop move.                       |
 | `csharpSolutionExplorer.nuget.checkForUpdates` | `true`        | Check nuget.org for newer versions of direct packages and flag outdated ones. |
+| `csharpSolutionExplorer.fileNesting.enabled`   | `true`        | Group related files under a parent (e.g. `appsettings.*.json`, `.xaml.cs`).   |
 | `csharpSolutionExplorer.templates.class`       | *(see below)* | Template for new C# class files.                                              |
 | `csharpSolutionExplorer.templates.interface`   | *(see below)* | Template for new C# interface files.                                          |
 | `csharpSolutionExplorer.templates.record`      | *(see below)* | Template for new C# record files.                                             |

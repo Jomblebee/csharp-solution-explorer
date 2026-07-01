@@ -196,7 +196,7 @@ export class FileTreeItem extends vscode.TreeItem {
   }
 }
 
-export class RazorFileTreeItem extends vscode.TreeItem {
+export class NestedFileTreeItem extends vscode.TreeItem {
   constructor(
     public readonly entry: FsEntry,
     public readonly companions: FsEntry[],
@@ -233,4 +233,4 @@ export type SolutionExplorerTreeItem =
   | ProjectReferenceTreeItem
   | FolderTreeItem
   | FileTreeItem
-  | RazorFileTreeItem;
+  | NestedFileTreeItem;
