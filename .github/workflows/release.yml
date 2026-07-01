@@ -8,6 +8,7 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
 
@@ -35,3 +36,8 @@ jobs:
         with:
           files: ${{ steps.vsix.outputs.file }}
           generate_release_notes: true
+
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx ovsx publish ${{ steps.vsix.outputs.file }}
