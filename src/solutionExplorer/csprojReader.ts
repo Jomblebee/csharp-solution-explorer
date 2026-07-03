@@ -85,6 +85,22 @@ export function parseSdkAttribute(csprojText: string): string | undefined {
 }
 
 /**
+ * Parses the target framework moniker(s) of a project: the single `<TargetFramework>` (e.g.
+ * `net8.0`) or the semicolon-delimited `<TargetFrameworks>` (e.g. `net8.0;net9.0`). Returns the
+ * raw TFM tokens in document order; callers filter out non-`net<major>.0` monikers and unresolved
+ * MSBuild variables (`$(...)`) themselves.
+ */
+export function parseTargetFrameworks(csprojText: string): string[] {
+  const single = getPropertyValue(csprojText, "TargetFramework");
+  const multiple = getPropertyValue(csprojText, "TargetFrameworks");
+  const raw = multiple ?? single ?? "";
+  return raw
+    .split(";")
+    .map((tfm) => tfm.trim())
+    .filter((tfm) => tfm.length > 0);
+}
+
+/**
  * Parses explicit `<FrameworkReference Include="Microsoft.AspNetCore.App" />` elements.
  */
 export function parseFrameworkReferences(csprojText: string): CsprojFrameworkReference[] {

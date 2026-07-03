@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { registerSolutionExplorerCommands } from "./solutionExplorer/commands.js";
+import { checkDotnetSdk } from "./solutionExplorer/dotnetSdkNotifier.js";
 import { SolutionTreeDragAndDropController } from "./solutionExplorer/dragAndDropController.js";
 import { SolutionTreeDataProvider } from "./solutionExplorer/solutionTreeDataProvider.js";
 import { SolutionExplorerTreeItem } from "./solutionExplorer/treeItems.js";
@@ -15,6 +16,9 @@ export function activate(context: vscode.ExtensionContext): void {
   registerAutoReveal(context, provider, treeView);
 
   context.subscriptions.push(provider, treeView);
+
+  // Non-blocking, best-effort: warn once at startup if no SDK matching the solution's needs is installed.
+  void checkDotnetSdk();
 }
 
 /** Selects the active editor's file in the tree when `csharpSolutionExplorer.autoReveal` is on. */

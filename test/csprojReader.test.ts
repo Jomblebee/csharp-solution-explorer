@@ -9,6 +9,7 @@ import {
   parsePackageReferences,
   parseProjectReferences,
   parseSdkAttribute,
+  parseTargetFrameworks,
   resolveExcludedPaths,
 } from "../src/solutionExplorer/csprojReader.js";
 
@@ -268,5 +269,29 @@ describe("resolveExcludedPaths", () => {
 
     assert.deepEqual(compileResult, new Set(["Generated/Model.cs", "Generated/Keep.cs"]));
     assert.deepEqual(noneResult, new Set());
+  });
+});
+
+describe("parseTargetFrameworks", () => {
+  it("parses a single <TargetFramework>", () => {
+    assert.deepEqual(parseTargetFrameworks(`<PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>`), [
+      "net8.0",
+    ]);
+  });
+
+  it("parses semicolon-delimited <TargetFrameworks>", () => {
+    assert.deepEqual(
+      parseTargetFrameworks(`<TargetFrameworks>net8.0;net9.0 ; netstandard2.0</TargetFrameworks>`),
+      ["net8.0", "net9.0", "netstandard2.0"],
+    );
+  });
+
+  it("prefers <TargetFrameworks> over <TargetFramework> when both are present", () => {
+    const csproj = `<TargetFramework>net6.0</TargetFramework><TargetFrameworks>net8.0;net9.0</TargetFrameworks>`;
+    assert.deepEqual(parseTargetFrameworks(csproj), ["net8.0", "net9.0"]);
+  });
+
+  it("returns an empty array when no target framework is declared", () => {
+    assert.deepEqual(parseTargetFrameworks(`<Project Sdk="Microsoft.NET.Sdk"></Project>`), []);
   });
 });
