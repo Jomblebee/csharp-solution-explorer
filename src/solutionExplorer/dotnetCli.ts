@@ -34,6 +34,27 @@ export function removePackage(projectFsPath: string, id: string): Promise<void> 
   return runDotnet(["remove", projectFsPath, "package", id]);
 }
 
+/**
+ * Lists the version strings of the installed .NET SDKs via `dotnet --list-sdks`, whose lines look
+ * like `9.0.100 [/usr/local/share/dotnet/sdk]`. Returns an empty array when the `dotnet` CLI is not
+ * on PATH (ENOENT), so callers can treat "no SDK installed" and "CLI missing" the same way.
+ */
+export async function listInstalledSdks(): Promise<string[]> {
+  let stdout: string;
+  try {
+    ({ stdout } = await execFileAsync("dotnet", ["--list-sdks"], { windowsHide: true }));
+  } catch (err) {
+    if ((err as { code?: unknown }).code === "ENOENT") {
+      return [];
+    }
+    throw err;
+  }
+  return stdout
+    .split("\n")
+    .map((line) => line.trim().split(/\s+/)[0])
+    .filter((version) => /^\d+\.\d+\.\d+/.test(version));
+}
+
 /** Scaffolds a new project from a `dotnet new` template into `outputDir` (created if missing). */
 export function newProject(template: string, name: string, outputDir: string): Promise<void> {
   return runDotnet(["new", template, "-n", name, "-o", outputDir]);

@@ -4,6 +4,17 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.10.0] – 2026-07-03
+
+### Added
+
+- **.NET SDK check on startup**: when a workspace is opened, the extension now verifies that an SDK
+  matching the solution's needs is installed and warns (with a link to the official .NET download
+  page) if not. The requirement is derived from a `global.json` pin when present, otherwise from the
+  projects' target frameworks — so it flags a missing SDK, an unavailable pinned version, or a
+  solution targeting a newer .NET than any installed SDK. Build/Run/Test require the SDK, so this
+  replaces the previous raw `command not found` in the terminal with an actionable hint.
+
 ## [0.9.1] – 2026-07-03
 
 ### Fixed
