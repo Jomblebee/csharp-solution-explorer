@@ -33,7 +33,10 @@ function registerAutoReveal(
     try {
       const item = await provider.findTreeItem(editor.document.uri);
       if (item) {
-        await treeView.reveal(item, { select: true, focus: false, expand: true });
+        // No `expand: true`: reveal always expands ancestors so the file becomes visible (e.g. a
+        // nested child's parent), but we must not expand the target node itself — otherwise focusing
+        // a nesting parent (e.g. a .razor with companions) would auto-expand it on every open.
+        await treeView.reveal(item, { select: true, focus: false });
       }
     } catch {
       // Auto-reveal is best-effort; a transient tree/read error must not surface to the user.

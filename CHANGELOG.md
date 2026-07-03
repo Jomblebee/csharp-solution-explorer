@@ -4,6 +4,17 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.9.1] – 2026-07-03
+
+### Fixed
+
+- **Reveal in Finder / File Explorer** now works on file-nesting parent nodes (e.g. a `.razor`
+  with companions), which previously did nothing because the nested-parent node was not
+  recognized.
+- **Auto-sync** no longer auto-expands a file-nesting parent when it becomes the active editor.
+  Opening a parent file now just selects it (kept collapsed); opening a nested child still
+  expands its parent so the child stays visible.
+
 ## [0.9.0] – 2026-07-01
 
 ### Added
