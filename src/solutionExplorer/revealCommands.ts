@@ -4,6 +4,7 @@ import { SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
 import {
   FileTreeItem,
   FolderTreeItem,
+  NestedFileTreeItem,
   ProjectTreeItem,
   SolutionExplorerTreeItem,
   SolutionTreeItem,
@@ -12,7 +13,7 @@ import { TerminalTarget } from "./commandUtils.js";
 
 /** Resolves the on-disk URI a tree node points at (file/folder path, or the .csproj/.sln file). */
 function resolveNodeUri(item: unknown): vscode.Uri | undefined {
-  if (item instanceof FileTreeItem || item instanceof FolderTreeItem) {
+  if (item instanceof FileTreeItem || item instanceof NestedFileTreeItem || item instanceof FolderTreeItem) {
     return item.entry.uri;
   }
   if (item instanceof ProjectTreeItem || item instanceof SolutionTreeItem) {
