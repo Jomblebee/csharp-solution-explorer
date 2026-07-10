@@ -36,6 +36,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### ASP.NET Razor TextMate grammar & language configuration — `syntaxes/aspnetcorerazor.tmLanguage.json`, `razor-language-configuration.json`
+
+Vendored from [dotnet/vscode-csharp](https://github.com/dotnet/vscode-csharp)
+(`src/razor/syntaxes/aspnetcorerazor.tmLanguage.json` and
+`src/razor/language-configuration.json`), which provide syntax highlighting and
+editor configuration for Razor (`.razor` / `.cshtml`) files.
+
+- License: MIT
+- Copyright (c) .NET Foundation and Contributors
+
+(Same MIT license text as above.)
+
 ## Bundled runtime dependencies (via npm, MIT-licensed)
 
 - [`vscode-languageclient`](https://github.com/microsoft/vscode-languageserver-node) — the LSP client used to talk to the Roslyn server.

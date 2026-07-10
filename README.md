@@ -8,7 +8,7 @@ A C# Solution Explorer for VS Code — and Open VSX-compatible editors such as V
 
 ## Vision
 
-The long-term goal is a VS Code extension that gives C# (and Razor) developers everything they need to write and debug their code, without depending on Microsoft-proprietary-only extensions (like C# Dev Kit) that aren't available on Open VSX. As a step toward that, this version can now host its **own C# language server** (Roslyn) for IntelliSense — see [C# Language Server](#c-language-server-experimental) below. Razor language features and **debugging** are still **not** part of this version.
+The long-term goal is a VS Code extension that gives C# (and Razor) developers everything they need to write and debug their code, without depending on Microsoft-proprietary-only extensions (like C# Dev Kit) that aren't available on Open VSX. As a step toward that, this version can now host its **own C# language server** (Roslyn) for IntelliSense — see [C# Language Server](#c-language-server-experimental) below. Razor (`.razor` / `.cshtml`) now gets a proper language mode and syntax highlighting, but Razor **IntelliSense** and **debugging** are still **not** part of this version.
 
 ## Features
 
@@ -127,11 +127,11 @@ The extension can provide C# language features — IntelliSense, diagnostics, ho
 - **Downloaded, not bundled.** On first use the correct build for your platform is downloaded from the public Azure feed and cached globally (per version), so the extension ships as a single cross-platform VSIX and no Microsoft binaries live in the repository. A progress notification is shown during the one-time download (~55–60 MB).
 - **Stays out of the way of the Microsoft C# extension.** If `ms-dotnettools.csharp` is installed, the bundled server automatically stays off so you never run two language servers. Disable that extension to use the bundled server.
 - **Dedicated view.** A **C# Language Server** entry in the Activity Bar shows the live status (downloading / starting / running / failed), the version and platform, the loaded solution or projects, and the current activity — with actions to **Restart Server**, **Show Server Logs**, and **Open Server Cache Folder**.
-- **Syntax highlighting** for `.cs` is contributed by the extension, so it works without the Microsoft C# extension too.
+- **Syntax highlighting** for `.cs` and for Razor (`.razor` / `.cshtml`) is contributed by the extension, so both work without the Microsoft C# extension too. Razor files also get a dedicated **ASP.NET Razor** language mode (comment toggling, bracket matching). This is highlighting and editor configuration only — Razor **IntelliSense** (completions, diagnostics, go-to-definition inside markup) is not wired up yet.
 
 Settings live under `csharpSolutionExplorer.languageServer.*` (see [Settings](#settings)): toggle it, pin a version, point at a locally installed server (`serverPath`, for offline/enterprise use), or change the log level.
 
-> Razor language features and debugging are **not** included yet.
+> Razor **language features** (IntelliSense) and **debugging** are **not** included yet — Razor currently gets syntax highlighting and a language mode only.
 
 ## Requirements
 

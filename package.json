@@ -147,6 +147,20 @@
           ".csx"
         ],
         "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "aspnetcorerazor",
+        "aliases": [
+          "ASP.NET Razor"
+        ],
+        "extensions": [
+          ".razor",
+          ".cshtml"
+        ],
+        "mimetypes": [
+          "text/x-cshtml"
+        ],
+        "configuration": "./razor-language-configuration.json"
       }
     ],
     "grammars": [
@@ -154,6 +168,14 @@
         "language": "csharp",
         "scopeName": "source.cs",
         "path": "./syntaxes/csharp.tmLanguage"
+      },
+      {
+        "language": "aspnetcorerazor",
+        "scopeName": "text.aspnetcorerazor",
+        "path": "./syntaxes/aspnetcorerazor.tmLanguage.json",
+        "unbalancedBracketScopes": [
+          "text.aspnetcorerazor"
+        ]
       }
     ],
     "viewsContainers": {

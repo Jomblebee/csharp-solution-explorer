@@ -24,6 +24,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **C# language definition and syntax highlighting**: the extension now contributes the `csharp`
   language and a TextMate grammar, so `.cs` files get syntax highlighting even without the Microsoft
   C# extension.
+- **Razor syntax highlighting and language mode**: the extension now contributes the
+  `aspnetcorerazor` language and a TextMate grammar (vendored MIT from `dotnet/vscode-csharp`), so
+  `.razor` and `.cshtml` files get syntax highlighting and a dedicated **ASP.NET Razor** language
+  mode (comment toggling, bracket matching) — without the Microsoft C# extension and on Open VSX.
+  This is highlighting and editor configuration only; Razor language features (IntelliSense) are
+  still out of scope (see Notes).
 
 ### Changed
 
@@ -33,7 +39,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Notes
 
-- Razor language features and debugging are still out of scope and remain planned for later.
+- Razor now has syntax highlighting and a language mode, but Razor **language features**
+  (IntelliSense) and **debugging** are still out of scope and remain planned for later.
 - Running the language server requires a .NET runtime (already needed for Build/Run/Test); the
   RID-specific server packages are ReadyToRun but framework-dependent, not self-contained.
 
