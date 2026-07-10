@@ -1,6 +1,6 @@
 # C# Solution Explorer
 
-A lightweight Solution Explorer for C# projects in VS Code — and in Open VSX-compatible editors such as VSCodium.
+A C# Solution Explorer for VS Code — and Open VSX-compatible editors such as VSCodium — with an **optional bundled Roslyn language server**, so you can get IntelliSense without any Microsoft-proprietary extension.
 
 ![C# Solution Explorer Tree View](resources/screenshots/tree-view.png)
 
@@ -8,7 +8,7 @@ A lightweight Solution Explorer for C# projects in VS Code — and in Open VSX-c
 
 ## Vision
 
-The long-term goal is a VS Code extension that gives C# (and Razor) developers everything they need to write and debug their code, without depending on Microsoft-proprietary-only extensions (like C# Dev Kit) that aren't available on Open VSX. That full scope — language features, IntelliSense, debugging — is **not** part of this version.
+The long-term goal is a VS Code extension that gives C# (and Razor) developers everything they need to write and debug their code, without depending on Microsoft-proprietary-only extensions (like C# Dev Kit) that aren't available on Open VSX. As a step toward that, this version can now host its **own C# language server** (Roslyn) for IntelliSense — see [C# Language Server](#c-language-server-experimental) below. Razor language features and **debugging** are still **not** part of this version.
 
 ## Features
 
@@ -89,18 +89,22 @@ Projects can be dragged between Solution Folders (or to the solution root) direc
 
 ### Settings
 
-| Setting                                        | Default       | Description                                                                   |
-| ---------------------------------------------- | ------------- | ----------------------------------------------------------------------------- |
-| `csharpSolutionExplorer.confirmMove`           | `true`        | Show a confirmation dialog before a drag-and-drop move.                       |
-| `csharpSolutionExplorer.nuget.checkForUpdates` | `true`        | Check nuget.org for newer versions of direct packages and flag outdated ones. |
-| `csharpSolutionExplorer.fileNesting.enabled`   | `true`        | Group related files under a parent (e.g. `appsettings.*.json`, `.xaml.cs`).   |
-| `csharpSolutionExplorer.autoReveal`            | `true`        | Automatically select the active editor's file in the Solution Explorer tree.  |
-| `csharpSolutionExplorer.templates.class`       | *(see below)* | Template for new C# class files.                                              |
-| `csharpSolutionExplorer.templates.interface`   | *(see below)* | Template for new C# interface files.                                          |
-| `csharpSolutionExplorer.templates.record`      | *(see below)* | Template for new C# record files.                                             |
-| `csharpSolutionExplorer.templates.enum`        | *(see below)* | Template for new C# enum files.                                               |
-| `csharpSolutionExplorer.templates.struct`      | *(see below)* | Template for new C# struct files.                                             |
-| `csharpSolutionExplorer.templates.razor`       | *(see below)* | Template for new Razor component files.                                       |
+| Setting                                            | Default       | Description                                                                                        |
+| -------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------- |
+| `csharpSolutionExplorer.confirmMove`               | `true`        | Show a confirmation dialog before a drag-and-drop move.                                            |
+| `csharpSolutionExplorer.nuget.checkForUpdates`     | `true`        | Check nuget.org for newer versions of direct packages and flag outdated ones.                      |
+| `csharpSolutionExplorer.fileNesting.enabled`       | `true`        | Group related files under a parent (e.g. `appsettings.*.json`, `.xaml.cs`).                        |
+| `csharpSolutionExplorer.autoReveal`                | `true`        | Automatically select the active editor's file in the Solution Explorer tree.                       |
+| `csharpSolutionExplorer.languageServer.enabled`    | `true`        | Run the bundled Roslyn C# language server (auto-off when the Microsoft C# extension is installed). |
+| `csharpSolutionExplorer.languageServer.version`    | *(pinned)*    | Pin a specific `Microsoft.CodeAnalysis.LanguageServer` version; empty uses the bundled default.    |
+| `csharpSolutionExplorer.languageServer.serverPath` | *(empty)*     | Path to a locally installed server (skips the download) — for offline/enterprise use.              |
+| `csharpSolutionExplorer.languageServer.logLevel`   | `Information` | Log verbosity passed to the language server.                                                       |
+| `csharpSolutionExplorer.templates.class`           | *(see below)* | Template for new C# class files.                                                                   |
+| `csharpSolutionExplorer.templates.interface`       | *(see below)* | Template for new C# interface files.                                                               |
+| `csharpSolutionExplorer.templates.record`          | *(see below)* | Template for new C# record files.                                                                  |
+| `csharpSolutionExplorer.templates.enum`            | *(see below)* | Template for new C# enum files.                                                                    |
+| `csharpSolutionExplorer.templates.struct`          | *(see below)* | Template for new C# struct files.                                                                  |
+| `csharpSolutionExplorer.templates.razor`           | *(see below)* | Template for new Razor component files.                                                            |
 
 All template settings support the following variables:
 
@@ -116,11 +120,25 @@ Clearing a template setting causes an error to be shown instead of creating the 
 
 The gear icon in the view title opens the extension settings directly.
 
+## C# Language Server (experimental)
+
+The extension can provide C# language features — IntelliSense, diagnostics, hover, go-to-definition — itself, using the open-source **Roslyn** language server (`Microsoft.CodeAnalysis.LanguageServer`). This is the first step toward a C#/.NET experience that does not depend on any Microsoft-proprietary extension.
+
+- **Downloaded, not bundled.** On first use the correct build for your platform is downloaded from the public Azure feed and cached globally (per version), so the extension ships as a single cross-platform VSIX and no Microsoft binaries live in the repository. A progress notification is shown during the one-time download (~55–60 MB).
+- **Stays out of the way of the Microsoft C# extension.** If `ms-dotnettools.csharp` is installed, the bundled server automatically stays off so you never run two language servers. Disable that extension to use the bundled server.
+- **Dedicated view.** A **C# Language Server** entry in the Activity Bar shows the live status (downloading / starting / running / failed), the version and platform, the loaded solution or projects, and the current activity — with actions to **Restart Server**, **Show Server Logs**, and **Open Server Cache Folder**.
+- **Syntax highlighting** for `.cs` is contributed by the extension, so it works without the Microsoft C# extension too.
+
+Settings live under `csharpSolutionExplorer.languageServer.*` (see [Settings](#settings)): toggle it, pin a version, point at a locally installed server (`serverPath`, for offline/enterprise use), or change the log level.
+
+> Razor language features and debugging are **not** included yet.
+
 ## Requirements
 
 - **VS Code ≥ 1.85** (or a compatible Open VSX editor).
 - **.NET CLI** (`dotnet`) must be on your `PATH` for the Build, Rebuild, Run, Test, Restore, Clean, New Project, and NuGet package commands (Add/Update/Remove Package).
-- **Internet access** to nuget.org is needed for the package search and the outdated-package check (both can be ignored if you only manage references offline).
+- A **.NET runtime** is required to run the bundled C# language server (the `dotnet` SDK above provides one). The downloaded server is ReadyToRun but framework-dependent, not self-contained.
+- **Internet access** is needed on first use of the language server (to download it from the Azure feed) and to nuget.org for package search and the outdated-package check. All are optional — set `csharpSolutionExplorer.languageServer.serverPath` to run the server fully offline.
 
 ## Development
 

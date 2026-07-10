@@ -4,6 +4,39 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Bundled C# language server (Roslyn)**: the extension can now provide C# language features
+  (IntelliSense, diagnostics, hover, go-to-definition) itself, without the Microsoft C# extension —
+  a step toward a fully open-source C#/.NET experience that also works on Open VSX editors. The
+  server (`Microsoft.CodeAnalysis.LanguageServer`) is **not bundled**: it is downloaded from the
+  public Azure feed on first use and cached globally per version, so the extension stays a single
+  cross-platform VSIX. Enabled by default, but it **automatically stays off when the Microsoft C#
+  extension (`ms-dotnettools.csharp`) is installed**, to avoid running two language servers.
+  Configurable via `csharpSolutionExplorer.languageServer.*` (enable, pinned version, local server
+  path for offline/enterprise, log level).
+- **Dedicated "C# Language Server" view**: a new Activity Bar entry shows the server's live status
+  (downloading / starting / running / failed), version, platform, the loaded solution or projects,
+  and the current activity, with actions to restart the server, show its logs, and open the cache
+  folder.
+- **C# language definition and syntax highlighting**: the extension now contributes the `csharp`
+  language and a TextMate grammar, so `.cs` files get syntax highlighting even without the Microsoft
+  C# extension.
+
+### Changed
+
+- The extension is no longer positioned as a purely "lightweight" Solution Explorer: it can now host
+  its own C# language server. Language features remain **optional and off when the Microsoft C#
+  extension is present**.
+
+### Notes
+
+- Razor language features and debugging are still out of scope and remain planned for later.
+- Running the language server requires a .NET runtime (already needed for Build/Run/Test); the
+  RID-specific server packages are ReadyToRun but framework-dependent, not self-contained.
+
 ## [0.10.0] – 2026-07-03
 
 ### Added

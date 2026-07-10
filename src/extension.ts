@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { activateLanguageServer } from "./languageServer/activate.js";
 import { registerSolutionExplorerCommands } from "./solutionExplorer/commands.js";
 import { checkDotnetSdk } from "./solutionExplorer/dotnetSdkNotifier.js";
 import { SolutionTreeDragAndDropController } from "./solutionExplorer/dragAndDropController.js";
@@ -16,6 +17,10 @@ export function activate(context: vscode.ExtensionContext): void {
   registerAutoReveal(context, provider, treeView);
 
   context.subscriptions.push(provider, treeView);
+
+  // The bundled C# language server (Roslyn): downloads on first use and runs unless the Microsoft
+  // C# extension is present. Best-effort — never blocks activation of the Solution Explorer.
+  activateLanguageServer(context);
 
   // Non-blocking, best-effort: warn once at startup if no SDK matching the solution's needs is installed.
   void checkDotnetSdk();

@@ -1,7 +1,7 @@
 {
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
-  "description": "A lightweight Solution Explorer for C# projects in VS Code (and Open VSX-compatible editors).",
+  "description": "A C# Solution Explorer for VS Code and Open VSX editors, with an optional bundled Roslyn language server for IntelliSense — no proprietary extensions required.",
   "version": "0.10.0",
   "publisher": "jomblebee",
   "license": "MIT",
@@ -97,6 +97,63 @@
             "description": "Template for new Razor component files (.razor). Variables: ${namespace}, ${name}, ${filename}, ${date}, ${cursor} (sets initial cursor position). Clear to show an error instead of creating the file."
           }
         }
+      },
+      {
+        "id": "csharpSolutionExplorer.languageServer",
+        "title": "C# Language Server",
+        "order": 2,
+        "properties": {
+          "csharpSolutionExplorer.languageServer.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Run the bundled C# language server (Roslyn) for IntelliSense, diagnostics, and hover. The server is downloaded on first use and cached globally. Automatically stays off when the Microsoft C# extension (ms-dotnettools.csharp) is installed, to avoid running two language servers."
+          },
+          "csharpSolutionExplorer.languageServer.version": {
+            "type": "string",
+            "default": "",
+            "description": "Pin a specific Microsoft.CodeAnalysis.LanguageServer version to download. Leave empty to use the version bundled with this extension."
+          },
+          "csharpSolutionExplorer.languageServer.serverPath": {
+            "type": "string",
+            "default": "",
+            "description": "Absolute path to a locally installed C# language server (the Microsoft.CodeAnalysis.LanguageServer executable or DLL). When set, the server is used as-is and nothing is downloaded — useful for offline or enterprise environments."
+          },
+          "csharpSolutionExplorer.languageServer.logLevel": {
+            "type": "string",
+            "enum": [
+              "Trace",
+              "Debug",
+              "Information",
+              "Warning",
+              "Error",
+              "Critical",
+              "None"
+            ],
+            "default": "Information",
+            "description": "Log verbosity passed to the C# language server (--logLevel)."
+          }
+        }
+      }
+    ],
+    "languages": [
+      {
+        "id": "csharp",
+        "aliases": [
+          "C#",
+          "csharp"
+        ],
+        "extensions": [
+          ".cs",
+          ".csx"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "csharp",
+        "scopeName": "source.cs",
+        "path": "./syntaxes/csharp.tmLanguage"
       }
     ],
     "viewsContainers": {
@@ -105,6 +162,11 @@
           "id": "csharp-solution-explorer-activitybar",
           "title": "C# Solution Explorer",
           "icon": "resources/solution-explorer-icon.svg"
+        },
+        {
+          "id": "csharp-language-server-activitybar",
+          "title": "C# Language Server",
+          "icon": "resources/language-server-icon.svg"
         }
       ]
     },
@@ -114,12 +176,23 @@
           "id": "csharpSolutionExplorer.view",
           "name": "Solution Explorer"
         }
+      ],
+      "csharp-language-server-activitybar": [
+        {
+          "id": "csharpSolutionExplorer.languageServerView",
+          "name": "C# Language Server"
+        }
       ]
     },
     "viewsWelcome": [
       {
         "view": "csharpSolutionExplorer.view",
         "contents": "No .sln file was found in this workspace.\n[Open Folder](command:vscode.openFolder)\nIf you have a solution file, open the folder that contains it."
+      },
+      {
+        "view": "csharpSolutionExplorer.languageServerView",
+        "contents": "The C# language server is not running.\nEnable it with the `csharpSolutionExplorer.languageServer.enabled` setting. It will be downloaded on first use.\n[Open Settings](command:csharpSolutionExplorer.openSettings)",
+        "when": "!csharpSolutionExplorer.languageServer.running"
       }
     ],
     "commands": [
@@ -328,6 +401,24 @@
         "command": "csharpSolutionExplorer.revealInFileManager",
         "title": "Open Containing Folder",
         "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.languageServer.restart",
+        "title": "Restart Server",
+        "icon": "$(refresh)",
+        "category": "C# Language Server"
+      },
+      {
+        "command": "csharpSolutionExplorer.languageServer.showLogs",
+        "title": "Show Server Logs",
+        "icon": "$(output)",
+        "category": "C# Language Server"
+      },
+      {
+        "command": "csharpSolutionExplorer.languageServer.openCacheFolder",
+        "title": "Open Server Cache Folder",
+        "icon": "$(folder)",
+        "category": "C# Language Server"
       }
     ],
     "submenus": [
@@ -348,6 +439,21 @@
           "command": "csharpSolutionExplorer.openSettings",
           "when": "view == csharpSolutionExplorer.view",
           "group": "navigation@99"
+        },
+        {
+          "command": "csharpSolutionExplorer.languageServer.restart",
+          "when": "view == csharpSolutionExplorer.languageServerView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "csharpSolutionExplorer.languageServer.showLogs",
+          "when": "view == csharpSolutionExplorer.languageServerView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "csharpSolutionExplorer.languageServer.openCacheFolder",
+          "when": "view == csharpSolutionExplorer.languageServerView",
+          "group": "1_cache@1"
         }
       ],
       "csharpSolutionExplorer.newItem": [
@@ -578,11 +684,14 @@
     "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
-    "minimatch": "^10.2.5"
+    "minimatch": "^10.2.5",
+    "vscode-languageclient": "^9.0.1",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
+    "@types/yauzl": "^3.4.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vscode/vsce": "^3.9.2",
