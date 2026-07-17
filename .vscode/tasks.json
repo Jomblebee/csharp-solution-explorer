@@ -24,6 +24,14 @@
       "dependsOn": ["watch:esbuild", "watch:tsc"],
       "presentation": { "reveal": "never" },
       "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "type": "npm",
+      "script": "vsix",
+      "label": "Build VSIX",
+      "detail": "Production build + create .vsix (vsce package)",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
     }
   ]
 }

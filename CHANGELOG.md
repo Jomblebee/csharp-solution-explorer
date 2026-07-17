@@ -4,6 +4,16 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.11.1] – 2026-07-17
+
+### Fixed
+
+- **Duplicate Razor language features**: in `.razor` / `.cshtml` files every "N references" CodeLens
+  and every hover appeared twice. The Roslyn server already registers the Razor document
+  capabilities dynamically when cohosting, so also listing `aspnetcorerazor` in the client's static
+  document selector registered a second set of providers. The selector is now C#-only (matching
+  `dotnet/vscode-csharp`), and each feature runs once again.
+
 ## [0.11.0] – 2026-07-17
 
 ### Added
