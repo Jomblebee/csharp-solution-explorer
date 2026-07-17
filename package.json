@@ -1,8 +1,8 @@
 {
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
-  "description": "A lightweight Solution Explorer for C# projects in VS Code (and Open VSX-compatible editors).",
-  "version": "0.10.0",
+  "description": "A C# Solution Explorer for VS Code and Open VSX editors, with an optional bundled Roslyn language server for IntelliSense — no proprietary extensions required.",
+  "version": "0.11.0",
   "publisher": "jomblebee",
   "license": "MIT",
   "repository": {
@@ -97,6 +97,810 @@
             "description": "Template for new Razor component files (.razor). Variables: ${namespace}, ${name}, ${filename}, ${date}, ${cursor} (sets initial cursor position). Clear to show an error instead of creating the file."
           }
         }
+      },
+      {
+        "id": "csharpSolutionExplorer.languageServer",
+        "title": "C# Language Server",
+        "order": 2,
+        "properties": {
+          "csharpSolutionExplorer.languageServer.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Run the bundled C# language server (Roslyn) for IntelliSense, diagnostics, and hover. The server is downloaded on first use and cached globally. Automatically stays off when the Microsoft C# extension (ms-dotnettools.csharp) is installed, to avoid running two language servers."
+          },
+          "csharpSolutionExplorer.languageServer.version": {
+            "type": "string",
+            "default": "",
+            "description": "Pin a specific roslyn-language-server version to download from the Roslyn language server feed. Leave empty to use the version bundled with this extension."
+          },
+          "csharpSolutionExplorer.languageServer.serverPath": {
+            "type": "string",
+            "default": "",
+            "description": "Absolute path to a locally installed C# language server (the Microsoft.CodeAnalysis.LanguageServer executable or DLL). When set, the server is used as-is and nothing is downloaded — useful for offline or enterprise environments. Razor cohosting expects the Razor files (RazorExtension.dll, Targets/) next to it, as in the roslyn-language-server package."
+          },
+          "csharpSolutionExplorer.languageServer.logLevel": {
+            "type": "string",
+            "enum": [
+              "Trace",
+              "Debug",
+              "Information",
+              "Warning",
+              "Error",
+              "Critical",
+              "None"
+            ],
+            "default": "Information",
+            "description": "Log verbosity passed to the C# language server (--logLevel)."
+          },
+          "csharpSolutionExplorer.languageServer.razor.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Provide Razor (.razor / .cshtml) language features by cohosting — the Razor service (bundled inside the C# language server package) is loaded into the same process, with no second server. Roslyn handles the C# parts and VS Code's built-in HTML service the HTML parts. The bundled 5.10 server has built-in Razor support, so this works out of the box; an older server set via a version/serverPath override falls back to syntax highlighting only. Has no effect when the C# language server itself is off."
+          }
+        }
+      }
+    ],
+    "languages": [
+      {
+        "id": "csharp",
+        "aliases": [
+          "C#",
+          "csharp"
+        ],
+        "extensions": [
+          ".cs",
+          ".csx"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "aspnetcorerazor",
+        "aliases": [
+          "ASP.NET Razor"
+        ],
+        "extensions": [
+          ".razor",
+          ".cshtml"
+        ],
+        "mimetypes": [
+          "text/x-cshtml"
+        ],
+        "configuration": "./razor-language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "csharp",
+        "scopeName": "source.cs",
+        "path": "./syntaxes/csharp.tmLanguage"
+      },
+      {
+        "language": "aspnetcorerazor",
+        "scopeName": "text.aspnetcorerazor",
+        "path": "./syntaxes/aspnetcorerazor.tmLanguage.json",
+        "unbalancedBracketScopes": [
+          "text.aspnetcorerazor"
+        ]
+      }
+    ],
+    "semanticTokenTypes": [
+      {
+        "id": "razorComponentElement",
+        "description": "A Razor component element"
+      },
+      {
+        "id": "razorComponentAttribute",
+        "description": "A Razor component attribute"
+      },
+      {
+        "id": "razorTagHelperElement",
+        "description": "A Razor TagHelper Element"
+      },
+      {
+        "id": "razorTagHelperAttribute",
+        "description": "A Razor TagHelper Attribute"
+      },
+      {
+        "id": "razorTransition",
+        "description": "A Razor transition"
+      },
+      {
+        "id": "razorDirectiveAttribute",
+        "description": "A Razor Directive Attribute"
+      },
+      {
+        "id": "razorDirectiveColon",
+        "description": "A colon between directive attribute parameters"
+      },
+      {
+        "id": "razorDirective",
+        "description": "A Razor directive such as 'code' or 'function'"
+      },
+      {
+        "id": "razorComment",
+        "description": "A Razor comment"
+      },
+      {
+        "id": "markupCommentPunctuation",
+        "description": "The '@' or '*' of a Razor comment."
+      },
+      {
+        "id": "markupTagDelimiter",
+        "description": "Markup delimiters like '<', '>', and '/'."
+      },
+      {
+        "id": "markupOperator",
+        "description": "Delimiter for Markup Attribute Key-Value pairs."
+      },
+      {
+        "id": "markupElement",
+        "description": "The name of a Markup element."
+      },
+      {
+        "id": "markupAttribute",
+        "description": "The name of a Markup attribute."
+      },
+      {
+        "id": "markupAttributeQuote",
+        "description": "A token that represents an attribute quote in a Markup attribute."
+      },
+      {
+        "id": "markupAttributeValue",
+        "description": "The value of a Markup attribute."
+      },
+      {
+        "id": "markupComment",
+        "description": "The contents of a Markup comment."
+      },
+      {
+        "id": "markupCommentPunctuation",
+        "description": "The begining or ending punctuation of a Markup comment."
+      },
+      {
+        "id": "excludedCode",
+        "description": "A token that represents inactive code."
+      },
+      {
+        "id": "controlKeyword",
+        "description": "A token that represents a control-flow keyword.",
+        "superType": "keyword"
+      },
+      {
+        "id": "operatorOverloaded",
+        "description": "A declaration or reference to an overloaded operator."
+      },
+      {
+        "id": "whitespace",
+        "description": "A token that represents whitespace."
+      },
+      {
+        "id": "text",
+        "description": "A token that represents text."
+      },
+      {
+        "id": "preprocessorText",
+        "description": "Text associated with a preprocessor directive."
+      },
+      {
+        "id": "punctuation",
+        "description": "A token that represents punctuation."
+      },
+      {
+        "id": "stringVerbatim",
+        "superType": "string",
+        "description": "A token that represents a verbatim string."
+      },
+      {
+        "id": "stringEscapeCharacter",
+        "superType": "string",
+        "description": "An escape character within a string."
+      },
+      {
+        "id": "recordClass",
+        "superType": "class",
+        "description": "A definition or reference to a record class type."
+      },
+      {
+        "id": "delegate",
+        "superType": "method",
+        "description": "A definition or reference to a delegate type."
+      },
+      {
+        "id": "module",
+        "superType": "namespace",
+        "description": "A definition or reference to a module name."
+      },
+      {
+        "id": "recordStruct",
+        "superType": "struct",
+        "description": "A definition or reference to a record struct type."
+      },
+      {
+        "id": "field",
+        "superType": "property",
+        "description": "A definition or reference to a field."
+      },
+      {
+        "id": "constant",
+        "superType": "variable",
+        "description": "A definition or reference to a constant."
+      },
+      {
+        "id": "extensionMethod",
+        "superType": "method",
+        "description": "A definition or reference to an extension method"
+      },
+      {
+        "id": "xmlDocCommentAttributeName",
+        "description": "A token that represents an attribute in an XML documentation comment"
+      },
+      {
+        "id": "xmlDocCommentAttributeQuotes",
+        "description": "A token that represents an attribute quote in an XML documentation comment"
+      },
+      {
+        "id": "xmlDocCommentAttributeValue",
+        "description": "A token that represents an attribute value in an XML documentation comment"
+      },
+      {
+        "id": "xmlDocCommentCDataSection",
+        "description": "A token that represents a CDATA section in an XML documentation comment"
+      },
+      {
+        "id": "xmlDocCommentComment",
+        "description": "A token that represents a comment in an XML documentation comment"
+      },
+      {
+        "id": "xmlDocCommentDelimiter",
+        "description": "A token that represents a delimeter in an XML documentation comment"
+      },
+      {
+        "id": "xmlDocCommentEntityReference",
+        "description": "A token that represents reference to an entity in an XML documentation comment"
+      },
+      {
+        "id": "xmlDocCommentName",
+        "description": "A token that represents a name in an XML documentation comment"
+      },
+      {
+        "id": "xmlDocCommentProcessingInstruction",
+        "description": "A token that represents a processing instruction in an XML documentation comment"
+      },
+      {
+        "id": "xmlDocCommentText",
+        "description": "A token that represents text in an XML documentation comment"
+      },
+      {
+        "id": "xmlLiteralAttributeName",
+        "description": "A token that represents an attribute name in an XML literal"
+      },
+      {
+        "id": "xmlLiteralAttributeQuotes",
+        "description": "A token that represents an attribute quote in an XML literal"
+      },
+      {
+        "id": "xmlLiteralAttributeValue",
+        "description": "A token that represents an attribute value in an XML literal"
+      },
+      {
+        "id": "xmlLiteralCDataSection",
+        "description": "A token that represents a CDATA section in an XML literal"
+      },
+      {
+        "id": "xmlLiteralComment",
+        "description": "A token that represents a comment in an XML literal"
+      },
+      {
+        "id": "xmlLiteralDelimiter",
+        "description": "A token that represents a delimiter in an XML literal"
+      },
+      {
+        "id": "xmlLiteralEmbeddedExpression",
+        "description": "A token that represents an emebedded expression in an XML literal"
+      },
+      {
+        "id": "xmlLiteralEntityReference",
+        "description": "A token that represents a reference to an entity in an XML literal"
+      },
+      {
+        "id": "xmlLiteralName",
+        "description": "A token that represents a name in an XML literal"
+      },
+      {
+        "id": "xmlLiteralProcessingInstruction",
+        "description": "A token that represents a processing instruction in an XML literal"
+      },
+      {
+        "id": "xmlLiteralText",
+        "description": "A token that represents text in an XML literal"
+      },
+      {
+        "id": "regexComment",
+        "description": "A token that represents a comment in a regex string"
+      },
+      {
+        "id": "regexCharacterClass",
+        "description": "A token that represents a character class in a regex string"
+      },
+      {
+        "id": "regexAnchor",
+        "description": "A token that represents an anchor in a regex string"
+      },
+      {
+        "id": "regexQuantifier",
+        "description": "A token that represents a quantifier in a regex string"
+      },
+      {
+        "id": "regexGrouping",
+        "description": "A token that represents a group in a regex string"
+      },
+      {
+        "id": "regexAlternation",
+        "description": "A token that represents an alternation in a regex string"
+      },
+      {
+        "id": "regexText",
+        "description": "A token that represents text in a regex string"
+      },
+      {
+        "id": "regexSelfEscapedCharacter",
+        "description": "A token that represents a self escaped character in a regex string"
+      },
+      {
+        "id": "regexOtherEscape",
+        "description": "A token that represents an escape in a regex string"
+      },
+      {
+        "id": "jsonComment",
+        "description": "A token that represents a comment in a JSON string"
+      },
+      {
+        "id": "jsonNumber",
+        "description": "A token that represents a number in a JSON string"
+      },
+      {
+        "id": "jsonString",
+        "description": "A token that represents a string in a JSON string"
+      },
+      {
+        "id": "jsonKeyword",
+        "description": "A token that represents a keyword in a JSON string"
+      },
+      {
+        "id": "jsonText",
+        "description": "A token that represents text in a JSON string"
+      },
+      {
+        "id": "jsonOperator",
+        "description": "A token that represents an operator in a JSON string"
+      },
+      {
+        "id": "jsonPunctuation",
+        "description": "A token that represents punctuation in a JSON string"
+      },
+      {
+        "id": "jsonArray",
+        "description": "A token that represents an array in a JSON string"
+      },
+      {
+        "id": "jsonObject",
+        "description": "A token that represents an object in a JSON string"
+      },
+      {
+        "id": "jsonPropertyName",
+        "description": "A token that represents a property name in a JSON string"
+      },
+      {
+        "id": "jsonConstructorName",
+        "description": "A token that represents a constructor in a JSON string"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "aspnetcorerazor",
+        "scopes": {
+          "razorComponentElement": [
+            "entity.name.class.element.component"
+          ],
+          "razorComponentAttribute": [
+            "entity.name.class.attribute.component"
+          ],
+          "razorTagHelperElement": [
+            "entity.name.class.element.taghelper"
+          ],
+          "razorTagHelperAttribute": [
+            "entity.name.class.attribute.taghelper"
+          ],
+          "razorTransition": [
+            "keyword.control.razor.transition"
+          ],
+          "razorDirectiveAttribute": [
+            "keyword.control.razor.directive.attribute",
+            "keyword.control.cshtml.directive.attribute"
+          ],
+          "razorDirectiveColon": [
+            "keyword.control.razor.directive.colon",
+            "keyword.control.cshtml.directive.colon"
+          ],
+          "razorDirective": [
+            "keyword.control.razor.directive",
+            "keyword.control.cshtml.directive"
+          ],
+          "razorComment": [
+            "comment.block.razor"
+          ],
+          "razorCommentTransition": [
+            "meta.comment.razor",
+            "keyword.control.cshtml.transition"
+          ],
+          "razorCommentStar": [
+            "keyword.control.razor.comment.star",
+            "meta.comment.razor"
+          ],
+          "angleBracket": [
+            "punctuation.definition.tag"
+          ],
+          "forwardSlash": [
+            "punctuation.definition.tag"
+          ],
+          "equals": [
+            "punctuation.separator.key-value.html"
+          ],
+          "markupElement": [
+            "entity.name.tag.html"
+          ],
+          "markupAttribute": [
+            "entity.other.attribute-name.html"
+          ],
+          "markupAttributeQuote": [
+            "punctuation.definition.tag.html"
+          ],
+          "markupAttributeValue": [
+            "punctuation.definition.entity.html"
+          ],
+          "markupComment": [
+            "comment.block.html"
+          ],
+          "markupCommentPunctuation": [
+            "punctuation.definition.comment.html",
+            "comment.block.html"
+          ],
+          "markupTagDelimiter": [
+            "punctuation.definition.tag.html"
+          ],
+          "keyword": [
+            "keyword.cs"
+          ],
+          "excludedCode": [
+            "support.other.excluded.cs"
+          ],
+          "controlKeyword": [
+            "keyword.control.cs"
+          ],
+          "operatorOverloaded": [
+            "entity.name.function.member.overload.cs"
+          ],
+          "preprocessorText": [
+            "meta.preprocessor.string.cs"
+          ],
+          "punctuation": [
+            "punctuation.cs"
+          ],
+          "stringVerbatim": [
+            "string.verbatim.cs"
+          ],
+          "stringEscapeCharacter": [
+            "constant.character.escape.cs"
+          ],
+          "delegate": [
+            "entity.name.type.delegate.cs"
+          ],
+          "module": [
+            "entity.name.type.module.cs"
+          ],
+          "field": [
+            "entity.name.variable.field.cs"
+          ],
+          "constant": [
+            "variable.other.constant"
+          ],
+          "extensionMethod": [
+            "entity.name.function.extension.cs"
+          ],
+          "xmlDocCommentAttributeName": [
+            "comment.documentation.attribute.name.cs"
+          ],
+          "xmlDocCommentAttributeQuotes": [
+            "comment.documentation.attribute.quotes.cs"
+          ],
+          "xmlDocCommentAttributeValue": [
+            "comment.documentation.attribute.value.cs"
+          ],
+          "xmlDocCommentCDataSection": [
+            "comment.documentation.cdata.cs"
+          ],
+          "xmlDocCommentComment": [
+            "comment.documentation.comment.cs"
+          ],
+          "xmlDocCommentDelimiter": [
+            "comment.documentation.delimiter.cs"
+          ],
+          "xmlDocCommentEntityReference": [
+            "comment.documentation.entityReference.cs"
+          ],
+          "xmlDocCommentName": [
+            "comment.documentation.name.cs"
+          ],
+          "xmlDocCommentProcessingInstruction": [
+            "comment.documentation.processingInstruction.cs"
+          ],
+          "xmlDocCommentText": [
+            "comment.documentation.cs"
+          ],
+          "xmlLiteralAttributeName": [
+            "entity.other.attribute-name.localname.xml"
+          ],
+          "xmlLiteralAttributeQuotes": [
+            "string.quoted.double.xml"
+          ],
+          "xmlLiteralAttributeValue": [
+            "meta.tag.xml"
+          ],
+          "xmlLiteralCDataSection": [
+            "string.quoted.double.xml"
+          ],
+          "xmlLiteralComment": [
+            "comment.block.xml"
+          ],
+          "xmlLiteralDelimiter": [
+            "text.xml"
+          ],
+          "xmlLiteralEmbeddedExpression": [
+            "meta.tag.xml"
+          ],
+          "xmlLiteralEntityReference": [
+            "meta.tag.xml"
+          ],
+          "xmlLiteralName": [
+            "entity.name.tag.localname.xml"
+          ],
+          "xmlLiteralProcessingInstruction": [
+            "meta.tag.xml"
+          ],
+          "xmlLiteralText": [
+            "text.xml"
+          ],
+          "regexComment": [
+            "string.regexp.comment.cs"
+          ],
+          "regexCharacterClass": [
+            "constant.character.character-class.regexp.cs"
+          ],
+          "regexAnchor": [
+            "keyword.control.anchor.regexp.cs"
+          ],
+          "regexQuantifier": [
+            "keyword.operator.quantifier.regexp.cs"
+          ],
+          "regexGrouping": [
+            "punctuation.definition.group.regexp.cs"
+          ],
+          "regexAlternation": [
+            "keyword.operator.or.regexp.cs"
+          ],
+          "regexText": [
+            "string.regexp"
+          ],
+          "regexSelfEscapedCharacter": [
+            "string.regexp.self-escaped-character.cs"
+          ],
+          "regexOtherEscape": [
+            "string.regexp.other-escape.cs"
+          ],
+          "jsonComment": [
+            "comment.line.double-slash.js"
+          ],
+          "jsonNumber": [
+            "constant.numeric.json"
+          ],
+          "jsonString": [
+            "string.quoted.double.json"
+          ],
+          "jsonKeyword": [
+            "constant.language.json"
+          ],
+          "jsonText": [
+            "string.quoted.double.json"
+          ],
+          "jsonOperator": [
+            "string.quoted.double.json"
+          ],
+          "jsonPunctuation": [
+            "punctuation.separator.dictionary.key-value.json"
+          ],
+          "jsonArray": [
+            "punctuation.definition.array.begin.json"
+          ],
+          "jsonObject": [
+            "punctuation.definition.dictionary.begin.json"
+          ],
+          "jsonPropertyName": [
+            "support.type.property-name.json"
+          ],
+          "jsonConstructorName": [
+            "support.type.property-name.json"
+          ]
+        }
+      },
+      {
+        "language": "csharp",
+        "scopes": {
+          "typeParameter": [
+            "entity.name.type.type-parameter"
+          ],
+          "keyword": [
+            "keyword.cs"
+          ],
+          "excludedCode": [
+            "support.other.excluded.cs"
+          ],
+          "controlKeyword": [
+            "keyword.control.cs"
+          ],
+          "operatorOverloaded": [
+            "entity.name.function.member.overload.cs"
+          ],
+          "preprocessorText": [
+            "meta.preprocessor.string.cs"
+          ],
+          "punctuation": [
+            "punctuation.cs"
+          ],
+          "stringVerbatim": [
+            "string.verbatim.cs"
+          ],
+          "stringEscapeCharacter": [
+            "constant.character.escape.cs"
+          ],
+          "delegate": [
+            "entity.name.type.delegate.cs"
+          ],
+          "module": [
+            "entity.name.type.module.cs"
+          ],
+          "field": [
+            "entity.name.variable.field.cs"
+          ],
+          "constant": [
+            "variable.other.constant"
+          ],
+          "extensionMethod": [
+            "entity.name.function.extension.cs"
+          ],
+          "xmlDocCommentAttributeName": [
+            "comment.documentation.attribute.name.cs"
+          ],
+          "xmlDocCommentAttributeQuotes": [
+            "comment.documentation.attribute.quotes.cs"
+          ],
+          "xmlDocCommentAttributeValue": [
+            "comment.documentation.attribute.value.cs"
+          ],
+          "xmlDocCommentCDataSection": [
+            "comment.documentation.cdata.cs"
+          ],
+          "xmlDocCommentComment": [
+            "comment.documentation.comment.cs"
+          ],
+          "xmlDocCommentDelimiter": [
+            "comment.documentation.delimiter.cs"
+          ],
+          "xmlDocCommentEntityReference": [
+            "comment.documentation.entityReference.cs"
+          ],
+          "xmlDocCommentName": [
+            "comment.documentation.name.cs"
+          ],
+          "xmlDocCommentProcessingInstruction": [
+            "comment.documentation.processingInstruction.cs"
+          ],
+          "xmlDocCommentText": [
+            "comment.documentation.cs"
+          ],
+          "xmlLiteralAttributeName": [
+            "entity.other.attribute-name.localname.xml"
+          ],
+          "xmlLiteralAttributeQuotes": [
+            "string.quoted.double.xml"
+          ],
+          "xmlLiteralAttributeValue": [
+            "meta.tag.xml"
+          ],
+          "xmlLiteralCDataSection": [
+            "string.quoted.double.xml"
+          ],
+          "xmlLiteralComment": [
+            "comment.block.xml"
+          ],
+          "xmlLiteralDelimiter": [
+            "text.xml"
+          ],
+          "xmlLiteralEmbeddedExpression": [
+            "meta.tag.xml"
+          ],
+          "xmlLiteralEntityReference": [
+            "meta.tag.xml"
+          ],
+          "xmlLiteralName": [
+            "entity.name.tag.localname.xml"
+          ],
+          "xmlLiteralProcessingInstruction": [
+            "meta.tag.xml"
+          ],
+          "xmlLiteralText": [
+            "text.xml"
+          ],
+          "regexComment": [
+            "string.regexp.comment.cs"
+          ],
+          "regexCharacterClass": [
+            "constant.character.character-class.regexp.cs"
+          ],
+          "regexAnchor": [
+            "keyword.control.anchor.regexp.cs"
+          ],
+          "regexQuantifier": [
+            "keyword.operator.quantifier.regexp.cs"
+          ],
+          "regexGrouping": [
+            "punctuation.definition.group.regexp.cs"
+          ],
+          "regexAlternation": [
+            "keyword.operator.or.regexp.cs"
+          ],
+          "regexText": [
+            "string.regexp"
+          ],
+          "regexSelfEscapedCharacter": [
+            "string.regexp.self-escaped-character.cs"
+          ],
+          "regexOtherEscape": [
+            "string.regexp.other-escape.cs"
+          ],
+          "jsonComment": [
+            "comment.line.double-slash.js"
+          ],
+          "jsonNumber": [
+            "constant.numeric.json"
+          ],
+          "jsonString": [
+            "string.quoted.double.json"
+          ],
+          "jsonKeyword": [
+            "constant.language.json"
+          ],
+          "jsonText": [
+            "string.quoted.double.json"
+          ],
+          "jsonOperator": [
+            "string.quoted.double.json"
+          ],
+          "jsonPunctuation": [
+            "punctuation.separator.dictionary.key-value.json"
+          ],
+          "jsonArray": [
+            "punctuation.definition.array.begin.json"
+          ],
+          "jsonObject": [
+            "punctuation.definition.dictionary.begin.json"
+          ],
+          "jsonPropertyName": [
+            "support.type.property-name.json"
+          ],
+          "jsonConstructorName": [
+            "support.type.property-name.json"
+          ]
+        }
       }
     ],
     "viewsContainers": {
@@ -105,6 +909,11 @@
           "id": "csharp-solution-explorer-activitybar",
           "title": "C# Solution Explorer",
           "icon": "resources/solution-explorer-icon.svg"
+        },
+        {
+          "id": "csharp-language-server-activitybar",
+          "title": "C# Language Server",
+          "icon": "resources/language-server-icon.svg"
         }
       ]
     },
@@ -114,12 +923,23 @@
           "id": "csharpSolutionExplorer.view",
           "name": "Solution Explorer"
         }
+      ],
+      "csharp-language-server-activitybar": [
+        {
+          "id": "csharpSolutionExplorer.languageServerView",
+          "name": "C# Language Server"
+        }
       ]
     },
     "viewsWelcome": [
       {
         "view": "csharpSolutionExplorer.view",
         "contents": "No .sln file was found in this workspace.\n[Open Folder](command:vscode.openFolder)\nIf you have a solution file, open the folder that contains it."
+      },
+      {
+        "view": "csharpSolutionExplorer.languageServerView",
+        "contents": "The C# language server is not running.\nEnable it with the `csharpSolutionExplorer.languageServer.enabled` setting. It will be downloaded on first use.\n[Open Settings](command:csharpSolutionExplorer.openSettings)",
+        "when": "!csharpSolutionExplorer.languageServer.running"
       }
     ],
     "commands": [
@@ -328,6 +1148,30 @@
         "command": "csharpSolutionExplorer.revealInFileManager",
         "title": "Open Containing Folder",
         "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.languageServer.restart",
+        "title": "Restart Server",
+        "icon": "$(refresh)",
+        "category": "C# Language Server"
+      },
+      {
+        "command": "csharpSolutionExplorer.languageServer.showLogs",
+        "title": "Show Server Logs",
+        "icon": "$(output)",
+        "category": "C# Language Server"
+      },
+      {
+        "command": "csharpSolutionExplorer.languageServer.openCacheFolder",
+        "title": "Open Server Cache Folder",
+        "icon": "$(folder)",
+        "category": "C# Language Server"
+      },
+      {
+        "command": "csharpSolutionExplorer.languageServer.clearCache",
+        "title": "Clear Server Cache",
+        "icon": "$(trash)",
+        "category": "C# Language Server"
       }
     ],
     "submenus": [
@@ -348,6 +1192,26 @@
           "command": "csharpSolutionExplorer.openSettings",
           "when": "view == csharpSolutionExplorer.view",
           "group": "navigation@99"
+        },
+        {
+          "command": "csharpSolutionExplorer.languageServer.restart",
+          "when": "view == csharpSolutionExplorer.languageServerView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "csharpSolutionExplorer.languageServer.showLogs",
+          "when": "view == csharpSolutionExplorer.languageServerView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "csharpSolutionExplorer.languageServer.openCacheFolder",
+          "when": "view == csharpSolutionExplorer.languageServerView",
+          "group": "1_cache@1"
+        },
+        {
+          "command": "csharpSolutionExplorer.languageServer.clearCache",
+          "when": "view == csharpSolutionExplorer.languageServerView",
+          "group": "1_cache@2"
         }
       ],
       "csharpSolutionExplorer.newItem": [
@@ -578,11 +1442,14 @@
     "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
-    "minimatch": "^10.2.5"
+    "minimatch": "^10.2.5",
+    "vscode-languageclient": "^9.0.1",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
+    "@types/yauzl": "^3.4.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vscode/vsce": "^3.9.2",

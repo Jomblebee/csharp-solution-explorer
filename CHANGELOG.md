@@ -4,6 +4,41 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.11.0] – 2026-07-17
+
+### Added
+
+- **Bundled C# language server (Roslyn)**: the extension can now provide C# language features —
+  IntelliSense, diagnostics, hover, go-to-definition — on its own, without the Microsoft C#
+  extension. The server (the open-source `roslyn-language-server` package, MIT) is downloaded on
+  first use from Microsoft's public Azure feed and cached per version, so the extension stays a
+  single cross-platform VSIX. Enabled by default, but it automatically stays off when the Microsoft
+  C# extension (`ms-dotnettools.csharp`) is installed. Configure it under
+  `csharpSolutionExplorer.languageServer.*` (enable, pinned version, local server path, log level).
+  Requires a .NET 10 runtime (the `dotnet` SDK already needed for Build/Run/Test provides one).
+- **Dedicated "C# Language Server" view**: a new Activity Bar entry shows the server's live status
+  (downloading / starting / running / failed), version, platform, the loaded solution or projects,
+  and the current activity, with actions to restart the server, show its logs, open the cache
+  folder, and clear the cache. Superseded server versions are also pruned automatically on start, so
+  the cache doesn't grow across version bumps.
+- **C# syntax highlighting**: the extension now contributes the `csharp` language and a TextMate
+  grammar, so `.cs` files get syntax highlighting even without the Microsoft C# extension.
+- **Razor syntax highlighting and language mode**: the extension now contributes the
+  `aspnetcorerazor` language and a TextMate grammar (vendored MIT from `dotnet/vscode-csharp`), so
+  `.razor` and `.cshtml` files get syntax highlighting and a dedicated **ASP.NET Razor** language
+  mode (comment toggling, bracket matching) — without the Microsoft C# extension and on Open VSX.
+- **Razor IntelliSense**: `.razor` / `.cshtml` files now get hover, completion, semantic
+  highlighting, and diagnostics, by cohosting the Razor language service inside the same Roslyn
+  process — no second server and nothing extra to download. On by default; toggle with the new
+  `csharpSolutionExplorer.languageServer.razor.enabled` setting. An older pinned server falls back to
+  syntax highlighting only. Razor **debugging** remains out of scope.
+
+### Changed
+
+- The extension is no longer positioned as a purely "lightweight" Solution Explorer: it can now host
+  its own C# language server. Language features remain **optional and off when the Microsoft C#
+  extension is present**.
+
 ## [0.10.0] – 2026-07-03
 
 ### Added
