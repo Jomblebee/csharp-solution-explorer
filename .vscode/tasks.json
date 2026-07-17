@@ -32,6 +32,14 @@
       "detail": "Production build + create .vsix (vsce package)",
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "type": "npm",
+      "script": "release:tag",
+      "label": "Tag & publish release",
+      "detail": "Push tag v<package.json version> → triggers the Release workflow (VSIX + GitHub Release + Open VSX). Guards: on main, clean tree, in sync, tag unused.",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
     }
   ]
 }
