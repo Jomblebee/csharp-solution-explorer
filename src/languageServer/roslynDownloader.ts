@@ -16,10 +16,13 @@ import yauzl from "yauzl";
 import { Rid } from "./rid.js";
 import {
   ROSLYN_FEED_INDEX,
+  ROSLYN_FEED_INDEX_FALLBACK,
   nupkgUrl,
   packageContentPrefix,
   parsePackageBaseAddress,
+  resolveBaseAddressFrom,
   serverEntry,
+  versionsToPrune,
 } from "./roslynPackage.js";
 
 export interface ResolvedServer {
@@ -123,18 +126,25 @@ function makeReporter(progress: vscode.Progress<{ message?: string; increment?: 
   };
 }
 
+/**
+ * Resolves the flat-container (PackageBaseAddress) endpoint from the primary feed, falling back to the
+ * mirror if the primary is unreachable or doesn't advertise one. Only if both fail do we surface a
+ * `FeedUnreachableError` (the primary's cause) so the user gets an actionable message.
+ */
 async function resolveBaseAddress(): Promise<string> {
-  let json: unknown;
   try {
-    const res = await fetch(ROSLYN_FEED_INDEX, { headers: { accept: "application/json" } });
-    if (!res.ok) {
-      throw new Error(`${res.status} ${res.statusText}`);
-    }
-    json = await res.json();
+    return await resolveBaseAddressFrom([ROSLYN_FEED_INDEX, ROSLYN_FEED_INDEX_FALLBACK], fetchBaseAddress);
   } catch (err) {
     throw new FeedUnreachableError(err);
   }
-  const base = parsePackageBaseAddress(json);
+}
+
+async function fetchBaseAddress(indexUrl: string): Promise<string> {
+  const res = await fetch(indexUrl, { headers: { accept: "application/json" } });
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}`);
+  }
+  const base = parsePackageBaseAddress(await res.json());
   if (!base) {
     throw new Error("The C# language server feed did not advertise a package base address.");
   }
@@ -242,4 +252,41 @@ async function exists(p: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Absolute path to the global server cache root (`<storage>/roslyn`). */
+function cacheRoot(storageRoot: vscode.Uri): string {
+  return path.join(storageRoot.fsPath, "roslyn");
+}
+
+/**
+ * Removes every cached server version except `keepVersion`, so old builds don't accumulate after a
+ * version bump. Best-effort: a missing cache root or a failed individual removal is ignored (the
+ * caller runs this fire-and-forget after a successful download). Returns the version folder names
+ * that were removed, for logging.
+ */
+export async function pruneServerCache(storageRoot: vscode.Uri, keepVersion: string): Promise<string[]> {
+  const root = cacheRoot(storageRoot);
+  let entries: import("node:fs").Dirent[];
+  try {
+    entries = await fsp.readdir(root, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const names = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  const removed: string[] = [];
+  for (const name of versionsToPrune(names, keepVersion)) {
+    try {
+      await fsp.rm(path.join(root, name), { recursive: true, force: true });
+      removed.push(name);
+    } catch {
+      // Leave a version we couldn't remove; it will be retried on a later start.
+    }
+  }
+  return removed;
+}
+
+/** Deletes the entire server cache (`<storage>/roslyn`). Used by the "Clear Server Cache" command. */
+export async function clearServerCache(storageRoot: vscode.Uri): Promise<void> {
+  await fsp.rm(cacheRoot(storageRoot), { recursive: true, force: true });
 }

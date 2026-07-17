@@ -8,7 +8,7 @@ A C# Solution Explorer for VS Code — and Open VSX-compatible editors such as V
 
 ## Vision
 
-The long-term goal is a VS Code extension that gives C# (and Razor) developers everything they need to write and debug their code, without depending on Microsoft-proprietary-only extensions (like C# Dev Kit) that aren't available on Open VSX. As a step toward that, this version can now host its **own C# language server** (Roslyn) for IntelliSense — see [C# Language Server](#c-language-server-experimental) below. Razor (`.razor` / `.cshtml`) now gets a proper language mode and syntax highlighting, but Razor **IntelliSense** and **debugging** are still **not** part of this version.
+The long-term goal is a VS Code extension that gives C# (and Razor) developers everything they need to write and debug their code, without depending on Microsoft-proprietary-only extensions (like C# Dev Kit) that aren't available on Open VSX. As a step toward that, this version can now host its **own C# language server** (Roslyn) for IntelliSense — see [C# Language Server](#c-language-server-experimental) below. Razor (`.razor` / `.cshtml`) gets a proper language mode and syntax highlighting; **cohosting** for full Razor IntelliSense (the Razor service inside the same Roslyn process) is **on by default**, using the bundled server's built-in Razor support. Razor **debugging** is still **not** part of this version.
 
 ## Features
 
@@ -96,9 +96,10 @@ Projects can be dragged between Solution Folders (or to the solution root) direc
 | `csharpSolutionExplorer.fileNesting.enabled`       | `true`        | Group related files under a parent (e.g. `appsettings.*.json`, `.xaml.cs`).                        |
 | `csharpSolutionExplorer.autoReveal`                | `true`        | Automatically select the active editor's file in the Solution Explorer tree.                       |
 | `csharpSolutionExplorer.languageServer.enabled`    | `true`        | Run the bundled Roslyn C# language server (auto-off when the Microsoft C# extension is installed). |
-| `csharpSolutionExplorer.languageServer.version`    | *(pinned)*    | Pin a specific `Microsoft.CodeAnalysis.LanguageServer` version; empty uses the bundled default.    |
+| `csharpSolutionExplorer.languageServer.version`    | *(pinned)*    | Pin a specific `roslyn-language-server` version (from the feed); empty uses the bundled default.   |
 | `csharpSolutionExplorer.languageServer.serverPath` | *(empty)*     | Path to a locally installed server (skips the download) — for offline/enterprise use.              |
 | `csharpSolutionExplorer.languageServer.logLevel`   | `Information` | Log verbosity passed to the language server.                                                       |
+| `csharpSolutionExplorer.languageServer.razor.enabled` | `true`     | Razor (`.razor`/`.cshtml`) language features via cohosting inside the C# server (older pinned server falls back to highlighting).       |
 | `csharpSolutionExplorer.templates.class`           | *(see below)* | Template for new C# class files.                                                                   |
 | `csharpSolutionExplorer.templates.interface`       | *(see below)* | Template for new C# interface files.                                                               |
 | `csharpSolutionExplorer.templates.record`          | *(see below)* | Template for new C# record files.                                                                  |
@@ -126,19 +127,20 @@ The extension can provide C# language features — IntelliSense, diagnostics, ho
 
 - **Downloaded, not bundled.** On first use the correct build for your platform is downloaded from the public Azure feed and cached globally (per version), so the extension ships as a single cross-platform VSIX and no Microsoft binaries live in the repository. A progress notification is shown during the one-time download (~55–60 MB).
 - **Stays out of the way of the Microsoft C# extension.** If `ms-dotnettools.csharp` is installed, the bundled server automatically stays off so you never run two language servers. Disable that extension to use the bundled server.
-- **Dedicated view.** A **C# Language Server** entry in the Activity Bar shows the live status (downloading / starting / running / failed), the version and platform, the loaded solution or projects, and the current activity — with actions to **Restart Server**, **Show Server Logs**, and **Open Server Cache Folder**.
-- **Syntax highlighting** for `.cs` and for Razor (`.razor` / `.cshtml`) is contributed by the extension, so both work without the Microsoft C# extension too. Razor files also get a dedicated **ASP.NET Razor** language mode (comment toggling, bracket matching). This is highlighting and editor configuration only — Razor **IntelliSense** (completions, diagnostics, go-to-definition inside markup) is not wired up yet.
+- **Dedicated view.** A **C# Language Server** entry in the Activity Bar shows the live status (downloading / starting / running / failed), the version and platform, the loaded solution or projects, and the current activity — with actions to **Restart Server**, **Show Server Logs**, **Open Server Cache Folder**, and **Clear Server Cache** (stops the server, deletes the download cache, and re-downloads the current version). Superseded versions are pruned automatically on start.
+- **Syntax highlighting** for `.cs` and for Razor (`.razor` / `.cshtml`) is contributed by the extension, so both work without the Microsoft C# extension too. Razor files also get a dedicated **ASP.NET Razor** language mode (comment toggling, bracket matching).
+- **Razor language features via cohosting (on by default).** The open-source Razor language service ships **inside** the Roslyn server package and loads **into the same Roslyn process** (no second server), with Roslyn handling the C# parts and VS Code's built-in HTML service the HTML parts. It is **enabled by default** (`csharpSolutionExplorer.languageServer.razor.enabled`): the bundled `5.10` server has built-in Razor support that the server wires up itself, so `.razor` / `.cshtml` files get hover, completion, semantic highlighting and diagnostics with no extra setup. An older server set via a `version` / `serverPath` override falls back to syntax highlighting and the language mode.
 
-Settings live under `csharpSolutionExplorer.languageServer.*` (see [Settings](#settings)): toggle it, pin a version, point at a locally installed server (`serverPath`, for offline/enterprise use), or change the log level.
+Settings live under `csharpSolutionExplorer.languageServer.*` (see [Settings](#settings)): toggle the server or Razor cohosting, pin a version, point at a locally installed server (`serverPath`, for offline/enterprise use), or change the log level.
 
-> Razor **language features** (IntelliSense) and **debugging** are **not** included yet — Razor currently gets syntax highlighting and a language mode only.
+> Razor **debugging** is **not** included yet. The current Razor status (cohosting vs. highlighting only, with the reason) is shown in the **C# Language Server** view.
 
 ## Requirements
 
 - **VS Code ≥ 1.85** (or a compatible Open VSX editor).
 - **.NET CLI** (`dotnet`) must be on your `PATH` for the Build, Rebuild, Run, Test, Restore, Clean, New Project, and NuGet package commands (Add/Update/Remove Package).
 - A **.NET runtime** is required to run the bundled C# language server (the `dotnet` SDK above provides one). The downloaded server is ReadyToRun but framework-dependent, not self-contained.
-- **Internet access** is needed on first use of the language server (to download it from the Azure feed) and to nuget.org for package search and the outdated-package check. All are optional — set `csharpSolutionExplorer.languageServer.serverPath` to run the server fully offline.
+- **Internet access** is needed on first use of the language server (to download it from the Roslyn language server feed) and to nuget.org for package search and the outdated-package check. All are optional — set `csharpSolutionExplorer.languageServer.serverPath` to run the server fully offline.
 
 ## Development
 

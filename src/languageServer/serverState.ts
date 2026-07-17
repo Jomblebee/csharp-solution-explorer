@@ -30,6 +30,12 @@ export interface ServerStatus {
   activity?: string;
   /** Extra detail or an error message for the failed/conflict phases. */
   detail?: string;
+  /**
+   * Razor cohosting status (Stufe 2): whether the Razor extension was loaded into the server. Absent
+   * means Razor cohosting was not attempted (disabled); `loaded: false` with a `detail` means it was
+   * attempted but is unavailable (offline or incompatible), so Razor stays highlighting-only.
+   */
+  razor?: { loaded: boolean; version?: string; detail?: string };
 }
 
 /** Small observable store around a single `ServerStatus`. */

@@ -34,6 +34,9 @@ export function activateLanguageServer(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("csharpSolutionExplorer.languageServer.openCacheFolder", () =>
       openCacheFolder(context),
     ),
+    vscode.commands.registerCommand("csharpSolutionExplorer.languageServer.clearCache", () =>
+      clearCache(controller),
+    ),
     // Restart when a language-server setting changes (enable/disable, version, path, log level).
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration("csharpSolutionExplorer.languageServer")) {
@@ -51,6 +54,18 @@ export function activateLanguageServer(context: vscode.ExtensionContext): void {
   );
 
   void controller.start();
+}
+
+/** Confirms, then resets the server cache (stop → delete → re-download the current version). */
+async function clearCache(controller: LanguageServerController): Promise<void> {
+  const confirm = await vscode.window.showWarningMessage(
+    "Clear the C# language server cache? The server will be stopped and the current version re-downloaded (~55 MB).",
+    { modal: true },
+    "Clear and Re-download",
+  );
+  if (confirm) {
+    await controller.clearCache();
+  }
 }
 
 /** Opens the global server cache directory in the OS file manager (creating it if absent). */

@@ -18,6 +18,44 @@ describe("buildServerLaunch", () => {
       launch: "dotnet",
     });
   });
+
+  // Only `--csharpDesignTimePath` is passed; the Razor extension must NOT be passed via `--extension`
+  // (the built-in-Razor server auto-loads it — passing it explicitly breaks the source-generator wiring).
+  const razor = { csharpDesignTimePath: "/rz/Targets/CS.targets" };
+
+  it("adds only --csharpDesignTimePath (no --extension) before --stdio", () => {
+    assert.deepEqual(buildServerLaunch({ entryPath: "/srv/lsp", kind: "exe" }, "Information", "/logs", razor), {
+      command: "/srv/lsp",
+      args: [
+        "--logLevel=Information",
+        "--extensionLogDirectory",
+        "/logs",
+        "--csharpDesignTimePath",
+        "/rz/Targets/CS.targets",
+        "--stdio",
+      ],
+      launch: "native",
+    });
+  });
+
+  it("does not pass --extension for the Razor cohost extension", () => {
+    const { args } = buildServerLaunch({ entryPath: "/srv/lsp", kind: "exe" }, "Information", "/logs", razor);
+    assert.ok(!args.includes("--extension"), "the Razor extension must not be passed via --extension");
+  });
+
+  it("threads the Razor arg through the `dotnet exec` launch too", () => {
+    const { args } = buildServerLaunch({ entryPath: "/srv/lsp.dll", kind: "dll" }, "Warning", "/logs", razor);
+    assert.deepEqual(args, [
+      "exec",
+      "/srv/lsp.dll",
+      "--logLevel=Warning",
+      "--extensionLogDirectory",
+      "/logs",
+      "--csharpDesignTimePath",
+      "/rz/Targets/CS.targets",
+      "--stdio",
+    ]);
+  });
 });
 
 describe("localServerKind", () => {

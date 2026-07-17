@@ -83,6 +83,23 @@ function buildRows(s: ServerStatus): StatusRow[] {
   } else if (s.projects && s.projects.length > 0) {
     rows.push({ label: "Projects", value: String(s.projects.length), icon: "folder-library" });
   }
+  if (s.razor) {
+    rows.push(
+      s.razor.loaded
+        ? {
+            label: "Razor",
+            value: s.razor.version ? `cohosting (${s.razor.version})` : "cohosting",
+            icon: "pass-filled",
+            tooltip: "Razor cohosting is running inside this server.",
+          }
+        : {
+            label: "Razor",
+            value: "highlighting only",
+            icon: "info",
+            tooltip: s.razor.detail ?? "Razor cohosting is not available.",
+          },
+    );
+  }
   if (s.detail && (s.phase === "failed" || s.phase === "msExtConflict" || s.phase === "disabled")) {
     rows.push({ label: s.detail, icon: s.phase === "failed" ? "error" : "info" });
   }

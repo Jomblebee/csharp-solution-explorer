@@ -48,6 +48,19 @@ editor configuration for Razor (`.razor` / `.cshtml`) files.
 
 (Same MIT license text as above.)
 
+### Razor cohosting client — `src/languageServer/razor/`
+
+The virtual-HTML-document manager and the cohosting request handlers
+(`htmlDocumentManager.ts`, `razorEndpoints.ts`) are adapted from
+[dotnet/vscode-csharp](https://github.com/dotnet/vscode-csharp)
+(`src/lsptoolshost/razor/**` and `src/razor/src/**`), simplified for a plain
+`vscode-languageclient` client.
+
+- License: MIT
+- Copyright (c) .NET Foundation and Contributors
+
+(Same MIT license text as above.)
+
 ## Bundled runtime dependencies (via npm, MIT-licensed)
 
 - [`vscode-languageclient`](https://github.com/microsoft/vscode-languageserver-node) — the LSP client used to talk to the Roslyn server.
@@ -56,11 +69,19 @@ editor configuration for Razor (`.razor` / `.cshtml`) files.
 
 ## Downloaded at runtime (not distributed with this extension)
 
-### Microsoft.CodeAnalysis.LanguageServer (Roslyn)
+### roslyn-language-server (Roslyn C# + Razor language server)
 
-The C# language server is downloaded on first use from the public Azure DevOps
-`vs-impl` feed and cached locally. It is **not** bundled with this extension.
+The C# language server is downloaded on first use from Microsoft's anonymous Azure
+DevOps `azure-public/vside` feed (`msft_consumption`, with a `vs-impl` fallback) — the
+official `roslyn-language-server.{rid}` .NET tool packages, published by Microsoft from
+the Roslyn source — and cached locally. It is **not** bundled with this extension. (The
+`msft_consumption` feed carries the pinned `5.10` built-in-Razor builds; nuget.org caps
+this package at `5.9`, which is why the Azure feed is used.) The same package also
+contains the Razor cohost service (`Microsoft.VisualStudioCode.RazorExtension.dll` and
+the Razor compiler/targets), which is loaded into the same Roslyn process (cohosting) to
+provide Razor language features — there is no separate download.
 
-- Source: <https://github.com/dotnet/roslyn>
+- Source: <https://github.com/dotnet/roslyn> (bundles Razor bits from <https://github.com/dotnet/razor>)
+- Packages: `roslyn-language-server.{rid}` from the Azure DevOps `azure-public/vside` feeds (`msft_consumption`, fallback `vs-impl`)
 - License: MIT
 - Copyright (c) .NET Foundation and Contributors

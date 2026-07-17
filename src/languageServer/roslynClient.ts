@@ -7,22 +7,31 @@ import { LanguageClient, LanguageClientOptions, ServerOptions } from "vscode-lan
 import { restore } from "../solutionExplorer/dotnetCli.js";
 import { ResolvedServer } from "./roslynDownloader.js";
 import { decideHandshake } from "./roslynHandshake.js";
-import { buildServerLaunch } from "./roslynServer.js";
+import { buildServerLaunch, RazorLaunch } from "./roslynServer.js";
 import { ServerStateStore } from "./serverState.js";
 
 const EXCLUDE_GLOB = "**/{node_modules,bin,obj,.git,.vs}/**";
 
+/**
+ * Builds the LSP client for the Roslyn server. When `razor` is supplied, the server is launched with
+ * the Razor cohost extension and `.razor`/`.cshtml` documents are routed to it too (Stufe 2);
+ * otherwise the client is C#-only.
+ */
 export function createLanguageClient(
   server: ResolvedServer,
   logLevel: string,
   logDir: string,
   outputChannel: vscode.OutputChannel,
+  razor?: RazorLaunch,
 ): LanguageClient {
-  const launch = buildServerLaunch(server, logLevel, logDir);
+  const launch = buildServerLaunch(server, logLevel, logDir, razor);
   const executable = { command: launch.command, args: launch.args };
   const serverOptions: ServerOptions = { run: executable, debug: executable };
+  const documentSelector = razor
+    ? [{ language: "csharp" }, { language: "aspnetcorerazor" }]
+    : [{ language: "csharp" }];
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [{ language: "csharp" }],
+    documentSelector,
     outputChannel,
     progressOnInitialization: true,
   };
@@ -31,6 +40,35 @@ export function createLanguageClient(
     "C# Language Server",
     serverOptions,
     clientOptions,
+  );
+}
+
+/**
+ * Registers the client-side commands the Roslyn server points its CodeLens / completion items at. These
+ * are global commands (not tied to a client instance), so register once for the extension's lifetime —
+ * NOT per client start, or the second `registerCommand` throws "command already exists".
+ *
+ * `roslyn.client.peekReferences` is what the "N references" CodeLens above a member invokes; without it
+ * VS Code shows "command 'roslyn.client.peekReferences' not found" on click. Ported (MIT) from
+ * vscode-csharp `src/lsptoolshost/server/serverCommands.ts`. Arguments come straight from the server as
+ * JSON, so they are plain objects (no vscode prototypes) — parse the uri/position ourselves.
+ */
+export function registerServerCommands(): vscode.Disposable {
+  return vscode.commands.registerCommand(
+    "roslyn.client.peekReferences",
+    async (uriStr: string, position: { line: number; character: number }) => {
+      const uri = vscode.Uri.parse(uriStr, true);
+      const at = new vscode.Position(position.line, position.character);
+      const references = await vscode.commands.executeCommand<vscode.Location[]>(
+        "vscode.executeReferenceProvider",
+        uri,
+        at,
+      );
+      if (Array.isArray(references)) {
+        // Resilient to the document having moved on since the CodeLens was computed.
+        await vscode.commands.executeCommand("editor.action.showReferences", uri, at, references);
+      }
+    },
   );
 }
 
