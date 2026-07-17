@@ -14,8 +14,15 @@ const EXCLUDE_GLOB = "**/{node_modules,bin,obj,.git,.vs}/**";
 
 /**
  * Builds the LSP client for the Roslyn server. When `razor` is supplied, the server is launched with
- * the Razor cohost extension and `.razor`/`.cshtml` documents are routed to it too (Stufe 2);
- * otherwise the client is C#-only.
+ * the Razor cohost extension so it handles `.razor`/`.cshtml` itself (Stufe 2); otherwise the client
+ * is C#-only.
+ *
+ * The static `documentSelector` is ALWAYS `csharp`-only — even with Razor cohosting. In cohosting the
+ * server registers the Razor document capabilities (hover, references CodeLens, definition, …)
+ * *dynamically* via `client/registerCapability` for `.razor`/`.cshtml`. Adding `aspnetcorerazor` to
+ * the static selector too registers a second set of providers on top of those, so every Razor feature
+ * runs twice (duplicate CodeLens/hover). This matches dotnet/vscode-csharp, whose Roslyn client
+ * selector is `['csharp']` regardless of cohosting.
  */
 export function createLanguageClient(
   server: ResolvedServer,
@@ -27,9 +34,7 @@ export function createLanguageClient(
   const launch = buildServerLaunch(server, logLevel, logDir, razor);
   const executable = { command: launch.command, args: launch.args };
   const serverOptions: ServerOptions = { run: executable, debug: executable };
-  const documentSelector = razor
-    ? [{ language: "csharp" }, { language: "aspnetcorerazor" }]
-    : [{ language: "csharp" }];
+  const documentSelector = [{ language: "csharp" }];
   const clientOptions: LanguageClientOptions = {
     documentSelector,
     outputChannel,
