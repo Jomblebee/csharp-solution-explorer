@@ -2,7 +2,15 @@ import * as vscode from "vscode";
 import { SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
 import { addPackage, removePackage, restore } from "./dotnetCli.js";
 import { getPackageVersions, NugetPackage, searchPackages } from "../nuget/nugetApi.js";
-import { PackageReferenceTreeItem } from "./treeItems.js";
+import { findWorkspaceSolutions } from "../nuget/nugetManagerService.js";
+import { NugetManagerPanel } from "../nuget/nugetManagerPanel.js";
+import {
+  DependenciesTreeItem,
+  DependencyCategoryTreeItem,
+  PackageReferenceTreeItem,
+  ProjectTreeItem,
+  SolutionTreeItem,
+} from "./treeItems.js";
 import { errorMessage, resolveOwningProjectUri } from "./commandUtils.js";
 
 interface PackagePickItem extends vscode.QuickPickItem {
@@ -173,6 +181,57 @@ export async function updatePackageReference(
   }
   await installPackage(projectUri, item.info.name, version, `Updating ${item.info.name} to ${version}…`);
   provider.refresh();
+}
+
+/** The solution to manage plus the project to pre-check, derived from the right-clicked tree node. */
+function resolveManagerContext(item: unknown): { solutionUri?: vscode.Uri; preselectFsPath?: string } {
+  if (item instanceof SolutionTreeItem) {
+    return { solutionUri: item.info.uri };
+  }
+  if (item instanceof ProjectTreeItem) {
+    return { solutionUri: item.info.solutionUri, preselectFsPath: item.info.uri.fsPath };
+  }
+  if (item instanceof DependenciesTreeItem) {
+    return { solutionUri: item.project.solutionUri, preselectFsPath: item.project.uri.fsPath };
+  }
+  if (item instanceof DependencyCategoryTreeItem) {
+    return { preselectFsPath: item.info.dependencies.projectUri.fsPath };
+  }
+  if (item instanceof PackageReferenceTreeItem) {
+    return { preselectFsPath: item.info.projectUri?.fsPath };
+  }
+  return {};
+}
+
+/** Opens the rich, solution-wide NuGet package manager webview. */
+export async function openPackageManager(
+  item: unknown,
+  provider: SolutionTreeDataProvider,
+  context: vscode.ExtensionContext,
+): Promise<void> {
+  const { solutionUri: fromNode, preselectFsPath } = resolveManagerContext(item);
+  let solutionUri = fromNode;
+  if (!solutionUri) {
+    const solutions = await findWorkspaceSolutions();
+    if (solutions.length === 0) {
+      vscode.window.showInformationMessage(
+        "The NuGet Package Manager works on a solution (.sln/.slnx), but none was found in this workspace.",
+      );
+      return;
+    }
+    solutionUri =
+      solutions.length === 1
+        ? solutions[0]
+        : (
+            await vscode.window.showQuickPick(
+              solutions.map((uri) => ({ label: vscode.workspace.asRelativePath(uri), uri })),
+              { placeHolder: "Select the solution to manage packages for" },
+            )
+          )?.uri;
+  }
+  if (solutionUri) {
+    NugetManagerPanel.createOrShow(context, provider, solutionUri, preselectFsPath);
+  }
 }
 
 /** One-click update of an outdated package to the latest version already resolved on its tree item. */

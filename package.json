@@ -2,7 +2,7 @@
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
   "description": "A C# Solution Explorer for VS Code and Open VSX editors, with an optional bundled Roslyn language server for IntelliSense — no proprietary extensions required.",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "publisher": "jomblebee",
   "license": "MIT",
   "repository": {
@@ -909,11 +909,6 @@
           "id": "csharp-solution-explorer-activitybar",
           "title": "C# Solution Explorer",
           "icon": "resources/solution-explorer-icon.svg"
-        },
-        {
-          "id": "csharp-language-server-activitybar",
-          "title": "C# Language Server",
-          "icon": "resources/language-server-icon.svg"
         }
       ]
     },
@@ -922,12 +917,11 @@
         {
           "id": "csharpSolutionExplorer.view",
           "name": "Solution Explorer"
-        }
-      ],
-      "csharp-language-server-activitybar": [
+        },
         {
           "id": "csharpSolutionExplorer.languageServerView",
-          "name": "C# Language Server"
+          "name": "C# Language Server",
+          "visibility": "collapsed"
         }
       ]
     },
@@ -1055,6 +1049,12 @@
       {
         "command": "csharpSolutionExplorer.removePackageReference",
         "title": "Remove Package",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.openPackageManager",
+        "title": "Manage NuGet Packages...",
+        "icon": "$(package)",
         "category": "C# Solution Explorer"
       },
       {
@@ -1189,6 +1189,11 @@
           "group": "navigation"
         },
         {
+          "command": "csharpSolutionExplorer.openPackageManager",
+          "when": "view == csharpSolutionExplorer.view",
+          "group": "navigation@50"
+        },
+        {
           "command": "csharpSolutionExplorer.openSettings",
           "when": "view == csharpSolutionExplorer.view",
           "group": "navigation@99"
@@ -1282,6 +1287,11 @@
         {
           "command": "csharpSolutionExplorer.addPackageReference",
           "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.dependencies || viewItem == csharpSolutionExplorer.dependencyCategory.packages)",
+          "group": "1_new"
+        },
+        {
+          "command": "csharpSolutionExplorer.openPackageManager",
+          "when": "view == csharpSolutionExplorer.view && (viewItem == csharpSolutionExplorer.solution || viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.dependencies || viewItem == csharpSolutionExplorer.dependencyCategory.packages)",
           "group": "1_new"
         },
         {
