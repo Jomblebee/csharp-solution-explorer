@@ -4,6 +4,27 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.12.0] – 2026-07-18
+
+### Added
+
+- **NuGet Package Manager**: a full editor-area panel in the spirit of Visual Studio's "Manage
+  Packages for Solution", opened from the view's toolbar, from a solution/project/Dependencies
+  context menu, or from the Command Palette (**Manage NuGet Packages…**). It has **Browse**,
+  **Installed**, **Updates** and **Consolidate** tabs over a solution-wide project checklist, so a
+  package can be installed, updated or removed across several projects in one action. The detail
+  pane shows the package's metadata, dependencies per target framework, its rendered README, and
+  badges for deprecated versions and security advisories. Everything runs against the public,
+  unauthenticated nuget.org v3 API and the `dotnet` CLI — no proprietary dependency.
+- **Consolidate tab**: lists packages that sit at different versions across the solution and
+  settles them on a version you pick. Unlike an update this may move a project *down* onto the
+  chosen version, which is the point of consolidating.
+- **Central Package Management is recognised**: when a project's versions come from a
+  `Directory.Packages.props`, the manager reads its `<PackageVersion>` entries (so the package list
+  is populated even before the first restore) and refuses to write, explaining that the props file
+  is the place to edit. Detection follows MSBuild and resolves the props file from each *project*
+  directory upwards, so projects outside the solution folder are handled correctly.
+
 ## [0.11.1] – 2026-07-17
 
 ### Fixed

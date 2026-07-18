@@ -17,6 +17,7 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 - Falls back to a loose top-level `.csproj` when no solution file is found.
 - Folders and files are read directly from disk (no MSBuild evaluation), excluding `bin`, `obj`, `node_modules`, and hidden directories.
 - Per-project **Dependencies** tree grouped into Visual Studio-style categories (Frameworks, Analyzers, Packages, Projects), with full NuGet and project-reference management — see [Dependencies](#dependencies).
+- **NuGet Package Manager** panel with Browse / Installed / Updates / Consolidate tabs over a solution-wide project checklist, package READMEs, and deprecation and vulnerability badges — see [NuGet Package Manager](#nuget-package-manager).
 - **File nesting** groups related files under a parent, like Visual Studio: `appsettings.*.json` under `appsettings.json`, `.xaml.cs` under `.xaml`, `.Designer.cs`/`.cs` under `.resx`, `*.min.css`/`*.min.js` under their source, and `.razor` companions under the component. Toggle with `csharpSolutionExplorer.fileNesting.enabled`.
 - Manual refresh button and automatic refresh via a file system watcher.
 - Click a file to open it in the editor.
@@ -45,6 +46,7 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 | Update Package…          | Package                                |
 | Update to Latest Version | Outdated package                       |
 | Remove Package           | Package                                |
+| Manage NuGet Packages…   | Solution, Project, Dependencies        |
 | Build                    | Project, Solution                      |
 | Rebuild                  | Project, Solution                      |
 | Run Project              | Project                                |
@@ -79,9 +81,23 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 
 Each project has a **Dependencies** node that mirrors Visual Studio, grouping references into **Frameworks**, **Analyzers**, **Packages**, and **Projects** (empty categories are hidden). It is resolved from `project.assets.json` after a restore — so it reflects exactly what was restored, including transitive packages — and falls back to reading the `.csproj` directly when no restore has run.
 
-- **NuGet packages**: **Add Package…** opens a Quick Pick that searches nuget.org live as you type, followed by a version pick. Direct packages offer **Update Package…** (pick any version) and **Remove Package**. All writes go through the `dotnet` CLI, so versions resolve and a restore keeps the tree in sync.
+- **NuGet packages**: **Add Package…** opens a Quick Pick that searches nuget.org live as you type, followed by a version pick. Direct packages offer **Update Package…** (pick any version) and **Remove Package**. All writes go through the `dotnet` CLI, so versions resolve and a restore keeps the tree in sync. For solution-wide work — installing into several projects at once, or reconciling versions between them — use the [NuGet Package Manager](#nuget-package-manager) panel instead.
 - **Outdated packages**: when `csharpSolutionExplorer.nuget.checkForUpdates` is enabled (default), expanding the **Packages** node checks nuget.org for newer stable versions. Outdated direct packages are highlighted as `installed → latest` with an **Update to Latest Version** one-click action. Results are cached for the session.
 - **Project references**: **Add Project Reference…** lets you select one or more other projects to reference; **Remove** drops a direct reference. Each reference can be expanded to reveal the referenced project's own references — fully recursive, dimmed, with cycle protection.
+
+### NuGet Package Manager
+
+For anything spanning more than one project, **Manage NuGet Packages…** opens a full panel in the editor area — the view's toolbar button, a context menu on the solution, a project or **Dependencies**, or the Command Palette. It mirrors Visual Studio's "Manage Packages for Solution": a project checklist on the right applies every action across the projects you tick.
+
+- **Browse** searches nuget.org as you type (with an **Include prerelease** toggle) and installs the version you pick into the checked projects.
+- **Installed** lists every package in the solution with the versions in use and how many projects reference each.
+- **Updates** lists packages with a newer stable release and offers **Update all**, or one package at a time. An update only ever moves a project *up*.
+- **Consolidate** lists packages sitting at different versions across the solution and settles them on a version you choose — this one may move a project *down* onto that version, which is the point.
+- The **detail pane** shows description, authors, license, project link, dependencies per target framework and the package's README, plus badges for deprecated versions (with the author's suggested replacement) and security advisories (linking to the advisory). READMEs are rendered by a small built-in sanitizer, and their links open in your browser.
+
+Long-running operations run in a cancellable progress notification and report per project, so one failing project never aborts the rest.
+
+**Central Package Management**: when versions come from a `Directory.Packages.props`, the panel reads its `<PackageVersion>` entries — so packages are listed even before the first restore — and disables install/update/uninstall with a banner naming the file, since the version belongs there and not in the project. The props file is resolved from each project directory upwards, the way MSBuild does.
 
 ### Drag and drop
 
@@ -138,9 +154,9 @@ Settings live under `csharpSolutionExplorer.languageServer.*` (see [Settings](#s
 ## Requirements
 
 - **VS Code ≥ 1.85** (or a compatible Open VSX editor).
-- **.NET CLI** (`dotnet`) must be on your `PATH` for the Build, Rebuild, Run, Test, Restore, Clean, New Project, and NuGet package commands (Add/Update/Remove Package).
+- **.NET CLI** (`dotnet`) must be on your `PATH` for the Build, Rebuild, Run, Test, Restore, Clean, New Project, and NuGet package commands (Add/Update/Remove Package, and the NuGet Package Manager panel).
 - A **.NET runtime** is required to run the bundled C# language server (the `dotnet` SDK above provides one). The downloaded server is ReadyToRun but framework-dependent, not self-contained.
-- **Internet access** is needed on first use of the language server (to download it from the Roslyn language server feed) and to nuget.org for package search and the outdated-package check. All are optional — set `csharpSolutionExplorer.languageServer.serverPath` to run the server fully offline.
+- **Internet access** is needed on first use of the language server (to download it from the Roslyn language server feed) and to nuget.org for package search, package details and README, and the outdated-package check. All are optional — set `csharpSolutionExplorer.languageServer.serverPath` to run the server fully offline.
 
 ## Development
 

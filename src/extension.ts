@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { activateLanguageServer } from "./languageServer/activate.js";
+import { NUGET_MANAGER_VIEW_TYPE, NugetManagerPanel } from "./nuget/nugetManagerPanel.js";
 import { registerSolutionExplorerCommands } from "./solutionExplorer/commands.js";
 import { checkDotnetSdk } from "./solutionExplorer/dotnetSdkNotifier.js";
 import { SolutionTreeDragAndDropController } from "./solutionExplorer/dragAndDropController.js";
@@ -16,7 +17,15 @@ export function activate(context: vscode.ExtensionContext): void {
   registerSolutionExplorerCommands(context, provider, treeView);
   registerAutoReveal(context, provider, treeView);
 
-  context.subscriptions.push(provider, treeView);
+  context.subscriptions.push(
+    provider,
+    treeView,
+    // Bring the NuGet manager back with its solution after a window reload, instead of an empty panel.
+    vscode.window.registerWebviewPanelSerializer(NUGET_MANAGER_VIEW_TYPE, {
+      deserializeWebviewPanel: (panel, state: unknown) =>
+        NugetManagerPanel.revive(panel, context, provider, state as { solutionFsPath?: string } | undefined),
+    }),
+  );
 
   // The bundled C# language server (Roslyn): downloads on first use and runs unless the Microsoft
   // C# extension is present. Best-effort — never blocks activation of the Solution Explorer.

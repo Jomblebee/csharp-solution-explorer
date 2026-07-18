@@ -22,6 +22,7 @@ export const ADD_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.addPacka
 export const REMOVE_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.removePackageReference";
 export const UPDATE_PACKAGE_REFERENCE_COMMAND_ID = "csharpSolutionExplorer.updatePackageReference";
 export const UPDATE_PACKAGE_TO_LATEST_COMMAND_ID = "csharpSolutionExplorer.updatePackageToLatest";
+export const OPEN_PACKAGE_MANAGER_COMMAND_ID = "csharpSolutionExplorer.openPackageManager";
 export const RESTORE_COMMAND_ID = "csharpSolutionExplorer.restore";
 export const CLEAN_COMMAND_ID = "csharpSolutionExplorer.clean";
 export const BUILD_PROJECT_COMMAND_ID = "csharpSolutionExplorer.buildProject";

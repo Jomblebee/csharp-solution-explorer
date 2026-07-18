@@ -34,6 +34,7 @@ import {
   REMOVE_PACKAGE_REFERENCE_COMMAND_ID,
   UPDATE_PACKAGE_REFERENCE_COMMAND_ID,
   UPDATE_PACKAGE_TO_LATEST_COMMAND_ID,
+  OPEN_PACKAGE_MANAGER_COMMAND_ID,
   RESTORE_COMMAND_ID,
   CLEAN_COMMAND_ID,
   REBUILD_COMMAND_ID,
@@ -75,6 +76,7 @@ import {
 import { addProjectReference, removeProjectReference } from "./referenceCommands.js";
 import {
   addPackageReference,
+  openPackageManager,
   removePackageReference,
   updatePackageReference,
   updatePackageToLatest,
@@ -156,6 +158,9 @@ export function registerSolutionExplorerCommands(
     ),
     vscode.commands.registerCommand(UPDATE_PACKAGE_TO_LATEST_COMMAND_ID, (item: PackageReferenceTreeItem) =>
       withErrorHandling(() => updatePackageToLatest(item, provider)),
+    ),
+    vscode.commands.registerCommand(OPEN_PACKAGE_MANAGER_COMMAND_ID, (item: unknown) =>
+      withErrorHandling(() => openPackageManager(item, provider, context)),
     ),
     vscode.commands.registerCommand(BUILD_PROJECT_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => buildTarget(item)),
     vscode.commands.registerCommand(REBUILD_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => rebuildTarget(item)),
