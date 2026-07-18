@@ -70,10 +70,22 @@
     return node;
   }
 
+  function toSafeImageUrl(raw) {
+    if (typeof raw !== "string" || !raw.trim()) return null;
+    try {
+      const parsed = new URL(raw, window.location.href);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+      return parsed.href;
+    } catch {
+      return null;
+    }
+  }
+
   function sanitizeIconUrl(url) {
     if (typeof url !== "string" || !url.trim()) return null;
-    try {
-      const parsed = new URL(url, window.location.href);
+    const safeUrl = toSafeImageUrl(url);
+    if (safeUrl) {
+      img.src = safeUrl;
       if (parsed.protocol === "https:" || parsed.protocol === "http:") {
         return parsed.href;
       }
