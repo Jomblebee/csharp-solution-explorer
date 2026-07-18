@@ -63,7 +63,9 @@
     }
     for (const child of children || []) {
       if (child == null) continue;
-      node.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+      if (typeof child === "string") node.appendChild(document.createTextNode(child));
+      else if (child instanceof Node) node.appendChild(child);
+      else node.appendChild(document.createTextNode(String(child)));
     }
     return node;
   }
