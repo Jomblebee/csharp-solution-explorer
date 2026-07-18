@@ -70,10 +70,24 @@
     return node;
   }
 
+  function sanitizeIconUrl(url) {
+    if (typeof url !== "string" || !url.trim()) return null;
+    try {
+      const parsed = new URL(url, window.location.href);
+      if (parsed.protocol === "https:" || parsed.protocol === "http:") {
+        return parsed.href;
+      }
+    } catch (_) {
+      // Invalid URL, fall through to null.
+    }
+    return null;
+  }
+
   function icon(url, cls) {
     const img = el("img", { class: cls || "icon", alt: "" });
-    if (url) {
-      img.src = url;
+    const safeUrl = sanitizeIconUrl(url);
+    if (safeUrl) {
+      img.src = safeUrl;
       img.addEventListener("error", () => (img.style.visibility = "hidden"));
     } else {
       img.style.visibility = "hidden";
