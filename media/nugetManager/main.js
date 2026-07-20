@@ -81,23 +81,9 @@
     }
   }
 
-  function sanitizeIconUrl(url) {
-    if (typeof url !== "string" || !url.trim()) return null;
-    const safeUrl = toSafeImageUrl(url);
-    if (safeUrl) {
-      img.src = safeUrl;
-      if (parsed.protocol === "https:" || parsed.protocol === "http:") {
-        return parsed.href;
-      }
-    } catch (_) {
-      // Invalid URL, fall through to null.
-    }
-    return null;
-  }
-
   function icon(url, cls) {
     const img = el("img", { class: cls || "icon", alt: "" });
-    const safeUrl = sanitizeIconUrl(url);
+    const safeUrl = toSafeImageUrl(url);
     if (safeUrl) {
       img.src = safeUrl;
       img.addEventListener("error", () => (img.style.visibility = "hidden"));
