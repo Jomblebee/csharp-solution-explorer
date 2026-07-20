@@ -21,6 +21,45 @@ async function runDotnet(args: string[]): Promise<void> {
   }
 }
 
+export interface BuildResult {
+  ok: boolean;
+  /** Combined stdout+stderr, so compiler diagnostics can be shown to the user verbatim. */
+  output: string;
+}
+
+/**
+ * Builds a project and waits for the result. Unlike the tree's Build command (which fires into the
+ * integrated terminal and cannot be awaited), the debugger has to know whether the build succeeded
+ * before it launches anything.
+ *
+ * Deliberately does not throw on a non-zero exit: a compile error is an expected outcome, not an
+ * exceptional one, so the caller decides how to present it.
+ */
+export async function build(
+  targetFsPath: string,
+  opts: { framework?: string; configuration?: string } = {},
+): Promise<BuildResult> {
+  const args = ["build", targetFsPath, "-c", opts.configuration ?? "Debug"];
+  if (opts.framework) {
+    args.push("-f", opts.framework);
+  }
+  try {
+    // A solution-wide build easily exceeds execFile's 1 MB default buffer.
+    const { stdout, stderr } = await execFileAsync("dotnet", args, {
+      windowsHide: true,
+      maxBuffer: 32 * 1024 * 1024,
+    });
+    return { ok: true, output: `${stdout}${stderr}` };
+  } catch (err) {
+    if ((err as { code?: unknown }).code === "ENOENT") {
+      throw new Error("The 'dotnet' CLI was not found on PATH. Install the .NET SDK to build and debug.");
+    }
+    const { stdout = "", stderr = "" } = err as { stdout?: string; stderr?: string };
+    const output = `${stdout}${stderr}`.trim();
+    return { ok: false, output: output || (err instanceof Error ? err.message : String(err)) };
+  }
+}
+
 /** Installs (or, for an already-referenced package, changes the version of) a NuGet package. */
 export function addPackage(projectFsPath: string, id: string, version?: string): Promise<void> {
   const args = ["add", projectFsPath, "package", id];

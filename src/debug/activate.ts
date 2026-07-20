@@ -1,0 +1,53 @@
+// Wires up the debugger: the adapter factory, the configuration provider (registered twice — see
+// below), and the debug-related commands. Mirrors `languageServer/activate.ts`.
+
+import * as vscode from "vscode";
+import { clearDebuggerCache } from "./netcoredbgDownloader.js";
+import { DEBUG_TYPE } from "./debugConfig.js";
+import { NetcoredbgConfigurationProvider, setAsDefaultDebugger } from "./debugConfigurationProvider.js";
+import { DebuggerStateStore } from "./debugState.js";
+import { NetcoredbgDescriptorFactory } from "./netcoredbgAdapter.js";
+
+const CONFIG_SECTION = "csharpSolutionExplorer.debug";
+
+export function activateDebugger(context: vscode.ExtensionContext): void {
+  if (!vscode.workspace.getConfiguration(CONFIG_SECTION).get<boolean>("enabled", true)) {
+    return;
+  }
+
+  const state = new DebuggerStateStore();
+  const output = vscode.window.createOutputChannel("C# Debugger");
+  const provider = new NetcoredbgConfigurationProvider(state, output);
+
+  context.subscriptions.push(
+    state,
+    output,
+    vscode.debug.registerDebugAdapterDescriptorFactory(
+      DEBUG_TYPE,
+      new NetcoredbgDescriptorFactory(context, state, output),
+    ),
+    // The full provider (resolve hooks + provideDebugConfigurations) is registered for the default
+    // kind, so its resolve hooks run exactly once per session. The Dynamic kind — which fills the
+    // F5 picker / Run and Debug dropdown when there is no launch.json — gets a *provide-only* object:
+    // VS Code chains resolve hooks across every registration, so registering the same provider twice
+    // would run resolve twice, and the second pass sees the already-resolved config (which no longer
+    // carries `project`) and aborts the whole session.
+    vscode.debug.registerDebugConfigurationProvider(DEBUG_TYPE, provider),
+    vscode.debug.registerDebugConfigurationProvider(
+      DEBUG_TYPE,
+      { provideDebugConfigurations: () => provider.provideDebugConfigurations() },
+      vscode.DebugConfigurationProviderTriggerKind.Dynamic,
+    ),
+    vscode.commands.registerCommand("csharpSolutionExplorer.debug.setAsDefault", () => setAsDefaultDebugger()),
+    vscode.commands.registerCommand("csharpSolutionExplorer.debug.showLogs", () => output.show(true)),
+    vscode.commands.registerCommand("csharpSolutionExplorer.debug.clearCache", async () => {
+      await clearDebuggerCache(context.globalStorageUri);
+      vscode.window.showInformationMessage("The downloaded .NET debugger was removed. It will be fetched again on the next debug session.");
+    }),
+    vscode.debug.onDidTerminateDebugSession((session) => {
+      if (session.type === DEBUG_TYPE) {
+        state.set({ phase: "idle" });
+      }
+    }),
+  );
+}

@@ -2,6 +2,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { parseTargetFrameworks } from "./csprojReader.js";
 import {
   DependenciesTreeItem,
   DependencyCategoryTreeItem,
@@ -65,6 +66,37 @@ export function toPosixRelative(fromDirPath: string, toPath: string): string {
 
 export function generateSlnGuid(): string {
   return `{${crypto.randomUUID().toUpperCase()}}`;
+}
+
+/** Returned when the user dismissed the target-framework prompt, as distinct from "not needed". */
+export const CANCELLED = Symbol("cancelled");
+
+/**
+ * The target framework to build/run/debug with. `dotnet` refuses to choose for a multi-targeted
+ * project, so ask; single-target projects return `undefined` and get no `--framework` flag at all.
+ * Shared by the Run command and the debugger so the two cannot disagree.
+ */
+export async function resolveRunFramework(
+  projectUri: vscode.Uri,
+  projectName: string,
+): Promise<string | undefined | typeof CANCELLED> {
+  let frameworks: string[];
+  try {
+    const text = new TextDecoder().decode(await vscode.workspace.fs.readFile(projectUri));
+    // Unresolved MSBuild variables ($(Var)) come through unfiltered; only concrete monikers are usable.
+    frameworks = parseTargetFrameworks(text).filter((tfm) => /^net(\d+)\.\d+$/i.test(tfm.trim()));
+  } catch {
+    return undefined;
+  }
+  if (frameworks.length < 2) {
+    return undefined;
+  }
+
+  const picked = await vscode.window.showQuickPick(frameworks, {
+    title: `Target framework — ${projectName}`,
+    placeHolder: "Select the framework to use",
+  });
+  return picked ?? CANCELLED;
 }
 
 /** The .csproj that should receive a new reference, derived from the right-clicked node. */

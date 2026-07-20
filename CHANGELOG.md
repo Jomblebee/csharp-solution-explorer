@@ -4,6 +4,56 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+
+- **C# debugging (F5)**: the extension now brings its own debugger, so breakpoints, stepping, the
+  call stack and locals work without any Microsoft-proprietary extension. It uses
+  **[netcoredbg](https://github.com/Samsung/netcoredbg)** (Samsung, MIT), which speaks the Debug
+  Adapter Protocol directly; the ~3.4 MB adapter is downloaded on the **first debug session** (not
+  at startup) and cached. Microsoft's `vsdbg` is deliberately not used — its licence restricts it
+  to Microsoft products.
+- **F5 works with no `launch.json`**: pressing F5 builds the startup project, applies its selected
+  `launchSettings.json` profile (environment variables, `applicationUrl`, arguments) and starts
+  debugging. Which assembly to launch comes from MSBuild, so the debugger and **Run Project** always
+  agree — including projects that relocate their output via `Directory.Build.props` or
+  `UseArtifactsOutput`. Multi-targeted projects ask which framework to debug.
+- **Set as Default Debugger** writes a `launch.json` with this debugger first, which is the only way
+  to pin F5 when another C# debug extension is also installed — VS Code has no API for "one
+  extension owns F5". `csharpSolutionExplorer.debug.offerConfigurations` controls whether these
+  configurations appear in the F5 picker at all, and `csharpSolutionExplorer.debug.enabled` turns
+  the debugger off entirely.
+
+  **Known limits of netcoredbg** (it is not on par with the proprietary `vsdbg`): expression
+  evaluation is weak — simple locals and arithmetic work, but property access such as
+  `text.Length`, calling a lambda, and LINQ queries fail in the watch window; hovering a variable
+  while stopped shows no value; there are no logpoints or hit-count breakpoints; collections show
+  their internal fields rather than a friendly element view; and async call stacks show raw
+  state-machine frames. There is no Just My Code, Hot Reload, Source Link or dump debugging.
+  Breakpoints (including conditional ones), stepping, the call stack and the locals view are solid.
+  Verified against .NET 10 on macOS arm64, for console and ASP.NET Core apps. Published netcoredbg
+  builds exist for macOS arm64, Linux x64/arm64 and Windows x64; on other platforms (Intel macOS,
+  Windows on ARM, Alpine) point `csharpSolutionExplorer.debug.debuggerPath` at a locally built one.
+
+- **Launch profiles**: the extension now reads a project's `Properties/launchSettings.json` — the
+  same profiles Visual Studio shows in its run dropdown. **Select Launch Profile…** (project
+  context menu, the status bar, or the Command Palette) picks the profile a project runs with, and
+  **Run Project** passes it through as `dotnet run --launch-profile`, so the profile's environment
+  variables and `applicationUrl` apply. "Run without a launch profile" and "Use the default
+  profile" are offered too. Profiles whose `commandName` is not `Project` (e.g. `IISExpress`) are
+  listed but cannot be selected — they need Windows-only tooling. Requires .NET SDK 6 or newer for
+  the `--launch-profile` option.
+- **Startup project**: **Set as Startup Project** on a project marks it with a green play icon and
+  a `startup` label in the tree, and shows it in the status bar together with its launch profile.
+  The choice is remembered per workspace. **Clear Startup Project** (Command Palette) removes it.
+
+### Fixed
+
+- **Run Project on multi-targeted projects**: `dotnet run` refuses to choose when a project sets
+  `<TargetFrameworks>`, so the run command now asks which framework to use and passes
+  `--framework`. Single-target projects are unaffected.
+
 ## [0.12.0] – 2026-07-18
 
 ### Added
