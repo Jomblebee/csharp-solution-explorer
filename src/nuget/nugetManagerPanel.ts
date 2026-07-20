@@ -367,6 +367,18 @@ export class NugetManagerPanel {
 </head>
 <body>
   <div id="app" aria-busy="true"></div>
+  <script nonce="${nonce}">
+    // Safety net: if main.js fails to parse or throws while initialising, the whole script never
+    // runs — so its own error handler can't fire and the panel would just sit blank. This inline
+    // boundary runs first and catches those top-level failures, surfacing them in the panel.
+    window.addEventListener("error", function (event) {
+      var app = document.getElementById("app");
+      if (!app) return;
+      app.removeAttribute("aria-busy");
+      app.textContent = "The NuGet Package Manager failed to load: " +
+        ((event && event.message) || "unknown error") + ". Please reload the window.";
+    });
+  </script>
   <script nonce="${nonce}" src="${asset("main.js")}"></script>
 </body>
 </html>`;
