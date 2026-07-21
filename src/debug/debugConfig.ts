@@ -22,6 +22,40 @@ export interface NetcoredbgLaunchConfig {
   console: "internalConsole" | "integratedTerminal";
 }
 
+export interface NetcoredbgAttachConfig {
+  type: string;
+  request: "attach";
+  name: string;
+  processId: number;
+  /** For PDB/symbol resolution — netcoredbg's `attach` accepts this alongside `processId`. */
+  program: string;
+}
+
+/** No precedence merging here — `buildLaunchConfig` already resolves `program` for the caller. */
+export function buildAttachConfig(name: string, program: string, processId: number): NetcoredbgAttachConfig {
+  return { type: DEBUG_TYPE, request: "attach", name, processId, program };
+}
+
+export interface NetcoredbgExternalAttachConfig {
+  type: string;
+  /**
+   * Disguised as `launch` on purpose: VS Code's debug toolbar defaults an `attach` session's Stop
+   * button to "Disconnect" (leave the process running, tucking real Stop behind a dropdown) — correct
+   * for attaching to something you don't own, wrong here, since we spawned this process ourselves.
+   * `netcoredbgProxy.ts`'s `rewriteOutgoing` rewrites the wire-level `launch` request into a real
+   * `attach` before netcoredbg ever sees it, and rewrites the response back for VS Code.
+   */
+  request: "launch";
+  name: string;
+  processId: number;
+  program: string;
+}
+
+/** Only for `startDebuggingInExternalTerminal` — see `NetcoredbgExternalAttachConfig`'s doc comment. */
+export function buildExternalAttachConfig(name: string, program: string, processId: number): NetcoredbgExternalAttachConfig {
+  return { type: DEBUG_TYPE, request: "launch", name, processId, program };
+}
+
 export interface BuildLaunchConfigInput {
   name: string;
   output: ProjectOutput;

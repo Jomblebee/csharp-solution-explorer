@@ -8,7 +8,7 @@ import { detectRid } from "../languageServer/rid.js";
 import { DebuggerStateStore } from "./debugState.js";
 import { ensureDebuggerDownloaded, pruneDebuggerCache } from "./netcoredbgDownloader.js";
 import { binaryRelPath, buildAdapterExecutable, DebugRid, NETCOREDBG_VERSION, toDebugRid } from "./netcoredbgPackage.js";
-import { NetcoredbgProxyAdapter } from "./netcoredbgProxy.js";
+import { ExternalAttach, NetcoredbgProxyAdapter } from "./netcoredbgProxy.js";
 
 const CONFIG_SECTION = "csharpSolutionExplorer.debug";
 
@@ -19,7 +19,7 @@ export class NetcoredbgDescriptorFactory implements vscode.DebugAdapterDescripto
     private readonly output: vscode.OutputChannel,
   ) {}
 
-  async createDebugAdapterDescriptor(): Promise<vscode.DebugAdapterDescriptor> {
+  async createDebugAdapterDescriptor(session: vscode.DebugSession): Promise<vscode.DebugAdapterDescriptor> {
     const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
     const logging = config.get<boolean>("logging", false);
 
@@ -27,8 +27,12 @@ export class NetcoredbgDescriptorFactory implements vscode.DebugAdapterDescripto
     const { command, args } = buildAdapterExecutable(binaryPath, logging);
     this.output.appendLine(`Starting debug adapter: ${command} ${args.join(" ")}`);
     this.state.update({ phase: "debugging", activity: undefined, detail: undefined });
-    // Spawned by us rather than by VS Code, so `threads` responses can be given readable names.
-    return new vscode.DebugAdapterInlineImplementation(new NetcoredbgProxyAdapter(command, args, this.output));
+    // Spawned by us rather than by VS Code, so `threads` responses can be given readable names, and
+    // so the disguised-as-launch external-terminal flow can be rewritten into a real attach — see
+    // externalAttachFrom() and netcoredbgProxy.ts's rewriteOutgoing().
+    return new vscode.DebugAdapterInlineImplementation(
+      new NetcoredbgProxyAdapter(command, args, this.output, externalAttachFrom(session.configuration)),
+    );
   }
 
   private async resolveBinary(config: vscode.WorkspaceConfiguration): Promise<string> {
@@ -57,6 +61,22 @@ export class NetcoredbgDescriptorFactory implements vscode.DebugAdapterDescripto
     });
     return resolved.binaryPath;
   }
+}
+
+/**
+ * Reads the marker `startDebuggingInExternalTerminal` sets on its disguised-as-launch config
+ * (`ownsExternalProcess`, `processId`, `program`) — undefined for every ordinary launch/attach
+ * session, which is the common case and leaves `NetcoredbgProxyAdapter` untouched.
+ */
+function externalAttachFrom(config: vscode.DebugConfiguration): ExternalAttach | undefined {
+  if (config.ownsExternalProcess !== true) {
+    return undefined;
+  }
+  return {
+    processId: config.processId as number,
+    program: config.program as string | undefined,
+    preSessionLog: Array.isArray(config.preSessionLog) ? (config.preSessionLog as string[]) : undefined,
+  };
 }
 
 /**

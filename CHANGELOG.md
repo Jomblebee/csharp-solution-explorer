@@ -22,12 +22,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **F5 starts the startup project directly** — no `launch.json`, no debugger picker. **Ctrl+F5**
   (**Cmd+F5** on macOS) runs it without debugging, in an external terminal with a real console.
   Because VS Code has no API for "one extension owns F5", the extension contributes its own `F5`
-  keybinding and only claims it when nothing else has a stake: the workspace defines no launch
-  configurations of its own, the Microsoft C# extension is not installed, and
-  `offerConfigurations` is not `never`. Otherwise F5 behaves exactly as it would without this
-  extension. Turn it off with `csharpSolutionExplorer.debug.handleF5`, or simply create a
-  `launch.json` — either hands F5 straight back to VS Code. If no startup project is set yet and the
-  workspace has more than one project, you are asked once and the choice is remembered.
+  keybinding and only claims it when nothing else has a stake: the Microsoft C# extension is not
+  installed and `offerConfigurations` is not `never`. F5 keeps the extension's own startup project
+  even when the workspace has its own `launch.json` — turn off
+  `csharpSolutionExplorer.debug.ignoreLaunchJson` to make `launch.json` the escape hatch again.
+  `csharpSolutionExplorer.debug.handleF5` disables the takeover entirely, handing F5 straight back
+  to VS Code. If no startup project is set yet and the workspace has more than one project, you are
+  asked once and the choice is remembered.
 - **Debug and run buttons in the editor title bar**: the same two actions sit as icons to the right
   of the tabs, so they are reachable with the mouse and keep working even once a `launch.json`
   exists. Hide either one with a right-click on the title bar, VS Code's own way of managing editor

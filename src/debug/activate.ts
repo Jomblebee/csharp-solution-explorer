@@ -7,25 +7,32 @@ import { DEBUG_TYPE } from "./debugConfig.js";
 import { NetcoredbgConfigurationProvider, setAsDefaultDebugger } from "./debugConfigurationProvider.js";
 import { CONFIG_SECTION } from "./debugSettings.js";
 import { DebuggerStateStore } from "./debugState.js";
+import { startDebuggingInExternalTerminal } from "./externalTerminalDebug.js";
 import { registerF5Ownership } from "./f5Ownership.js";
 import { NetcoredbgDescriptorFactory } from "./netcoredbgAdapter.js";
 
 export function activateDebugger(context: vscode.ExtensionContext): void {
   const enabled = vscode.workspace.getConfiguration(CONFIG_SECTION).get<boolean>("enabled", true);
+  // Created unconditionally (cheap: an event emitter and an output channel) so the F5 external-
+  // terminal flow can reuse the same instances whether it is reached from that command or from F5
+  // itself — `startDebugging` below never calls it when `enabled` is false.
+  const state = new DebuggerStateStore();
+  const output = vscode.window.createOutputChannel("C# Debugger");
+  context.subscriptions.push(state, output);
+
   // Wired up even when the debugger is off: it reads `enabled` as a snapshot and simply never claims
   // F5, while its commands stay in the palette and defer to VS Code's own actions.
-  registerF5Ownership(context, { debuggerEnabled: enabled });
+  registerF5Ownership(context, {
+    debuggerEnabled: enabled,
+    startInExternalTerminal: () => startDebuggingInExternalTerminal(state, output),
+  });
   if (!enabled) {
     return;
   }
 
-  const state = new DebuggerStateStore();
-  const output = vscode.window.createOutputChannel("C# Debugger");
   const provider = new NetcoredbgConfigurationProvider(state, output);
 
   context.subscriptions.push(
-    state,
-    output,
     vscode.debug.registerDebugAdapterDescriptorFactory(
       DEBUG_TYPE,
       new NetcoredbgDescriptorFactory(context, state, output),
@@ -48,6 +55,9 @@ export function activateDebugger(context: vscode.ExtensionContext): void {
       vscode.DebugConfigurationProviderTriggerKind.Dynamic,
     ),
     vscode.commands.registerCommand("csharpSolutionExplorer.debug.setAsDefault", () => setAsDefaultDebugger()),
+    vscode.commands.registerCommand("csharpSolutionExplorer.debug.startInExternalTerminal", () =>
+      startDebuggingInExternalTerminal(state, output),
+    ),
     vscode.commands.registerCommand("csharpSolutionExplorer.debug.showLogs", () => output.show(true)),
     vscode.commands.registerCommand("csharpSolutionExplorer.debug.clearCache", async () => {
       await clearDebuggerCache(context.globalStorageUri);

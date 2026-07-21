@@ -9,15 +9,11 @@ import {
   findWorkspaceProjects,
   projectFromUri,
   promptForStartupProject,
-  readLaunchSettings,
+  resolveActiveProfile,
   TargetProject,
 } from "../solutionExplorer/launchProfileCommands.js";
-import {
-  getActiveProfileName,
-  getStartupProjectFsPath,
-  NO_PROFILE,
-} from "../solutionExplorer/launchProfileState.js";
-import { findProfile, getDefaultProfile, resolveLaunchProfile } from "../solutionExplorer/launchSettingsReader.js";
+import { getStartupProjectFsPath } from "../solutionExplorer/launchProfileState.js";
+import { makeReporter } from "../shared/httpDownload.js";
 import { buildLaunchConfig, DEBUG_TYPE, NetcoredbgLaunchConfig } from "./debugConfig.js";
 import { CONFIG_SECTION, shouldOfferConfigurations } from "./debugSettings.js";
 import { DebuggerStateStore } from "./debugState.js";
@@ -38,6 +34,18 @@ interface PartialConfig extends vscode.DebugConfiguration {
   console?: "internalConsole" | "integratedTerminal";
   internalConsoleOptions?: "neverOpen" | "openOnFirstSessionStart" | "openOnSessionStart";
   build?: boolean;
+  /** Set by startDebuggingInExternalTerminal()'s disguised-as-launch attach config — see its guard below. */
+  ownsExternalProcess?: boolean;
+}
+
+/**
+ * True for a config this provider must not touch: a hand-authored `attach` (real attach semantics,
+ * e.g. attaching to some other already-running process) or our own external-terminal flow's
+ * disguised-as-launch attach (already fully resolved by `startDebuggingInExternalTerminal` — this
+ * provider only knows how to resolve `launch`).
+ */
+function isPreResolved(config: vscode.DebugConfiguration): boolean {
+  return config.request === "attach" || (config as PartialConfig).ownsExternalProcess === true;
 }
 
 export class NetcoredbgConfigurationProvider implements vscode.DebugConfigurationProvider {
@@ -97,6 +105,9 @@ export class NetcoredbgConfigurationProvider implements vscode.DebugConfiguratio
     _folder: vscode.WorkspaceFolder | undefined,
     config: vscode.DebugConfiguration,
   ): Promise<vscode.DebugConfiguration | undefined | null> {
+    if (isPreResolved(config)) {
+      return config;
+    }
     const partial = config as PartialConfig;
     this.output.appendLine(
       `F5 / debug requested (type='${config.type || "(none)"}', project='${partial.project ?? "(startup)"}').`,
@@ -137,6 +148,9 @@ export class NetcoredbgConfigurationProvider implements vscode.DebugConfiguratio
     _folder: vscode.WorkspaceFolder | undefined,
     config: vscode.DebugConfiguration,
   ): Promise<vscode.DebugConfiguration | undefined> {
+    if (isPreResolved(config)) {
+      return config;
+    }
     const partial = config as PartialConfig;
     if (!partial.project) {
       this.abort(
@@ -157,7 +171,10 @@ export class NetcoredbgConfigurationProvider implements vscode.DebugConfiguratio
 
       this.state.update({ phase: "debugging", activity: `Resolving ${project.name}…` });
       const output = await queryProjectOutput(project.uri.fsPath, partial.targetFramework, configuration);
-      const profile = await this.resolveProfile(project, partial);
+      const profile = await resolveActiveProfile(project, {
+        noLaunchProfile: partial.noLaunchProfile,
+        launchProfile: partial.launchProfile,
+      });
 
       const launch: NetcoredbgLaunchConfig = buildLaunchConfig({
         name: partial.name,
@@ -214,7 +231,19 @@ export class NetcoredbgConfigurationProvider implements vscode.DebugConfiguratio
     this.state.set({ phase: "building", activity: `Building ${project.name}…` });
     const result = await vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: `Building ${project.name}…`, cancellable: false },
-      () => build(project.uri.fsPath, { framework, configuration }),
+      (progress) => {
+        const report = makeReporter(progress);
+        return build(project.uri.fsPath, {
+          framework,
+          configuration,
+          onProgress: (message, fraction) => {
+            report(message, fraction);
+            if (message !== undefined) {
+              this.state.update({ activity: message });
+            }
+          },
+        });
+      },
     );
     this.output.appendLine(result.output);
     if (!result.ok) {
@@ -247,23 +276,6 @@ export class NetcoredbgConfigurationProvider implements vscode.DebugConfiguratio
       return projects[0];
     }
     return (await promptForStartupProject()) ?? undefined;
-  }
-
-  private async resolveProfile(project: TargetProject, partial: PartialConfig) {
-    if (partial.noLaunchProfile) {
-      return undefined;
-    }
-    const settings = await readLaunchSettings(project.rootDir);
-    if (partial.launchProfile) {
-      const named = findProfile(settings, partial.launchProfile);
-      return named ? resolveLaunchProfile(named) : undefined;
-    }
-    const pinned = getActiveProfileName(project.uri.fsPath);
-    if (pinned === NO_PROFILE) {
-      return undefined;
-    }
-    const profile = (pinned !== undefined ? findProfile(settings, pinned) : undefined) ?? getDefaultProfile(settings);
-    return profile ? resolveLaunchProfile(profile) : undefined;
   }
 
   private buildBeforeLaunch(): boolean {

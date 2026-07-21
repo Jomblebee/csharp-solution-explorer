@@ -14,7 +14,7 @@ import { runProjectInExternalTerminal } from "../solutionExplorer/buildCommands.
 import { findWorkspaceProjects } from "../solutionExplorer/launchProfileCommands.js";
 import { getStartupProjectFsPath } from "../solutionExplorer/launchProfileState.js";
 import { DEBUG_TYPE } from "./debugConfig.js";
-import { CONFIG_SECTION, isMsCsharpInstalled, readOfferConfigurationsMode } from "./debugSettings.js";
+import { CONFIG_SECTION, isMsCsharpInstalled, readF5ConsoleMode, readOfferConfigurationsMode } from "./debugSettings.js";
 import { computeOwnsF5 } from "./f5Policy.js";
 
 const CONTEXT_KEY = "csharpSolutionExplorer.debug.ownsF5";
@@ -29,7 +29,7 @@ const START_WITHOUT_DEBUGGING_COMMAND = "csharpSolutionExplorer.debug.startWitho
  */
 export function registerF5Ownership(
   context: vscode.ExtensionContext,
-  options: { debuggerEnabled: boolean },
+  options: { debuggerEnabled: boolean; startInExternalTerminal: () => Promise<void> },
 ): void {
   const refresh = (): void => {
     const owns = computeOwnsF5({
@@ -38,6 +38,7 @@ export function registerF5Ownership(
       offerMode: readOfferConfigurationsMode(),
       msCsharpInstalled: isMsCsharpInstalled(),
       hasLaunchConfigurations: hasLaunchConfigurations(),
+      overrideLaunchJson: vscode.workspace.getConfiguration(CONFIG_SECTION).get<boolean>("ignoreLaunchJson", true),
     });
     void vscode.commands.executeCommand("setContext", CONTEXT_KEY, owns);
   };
@@ -62,7 +63,9 @@ export function registerF5Ownership(
     vscode.workspace.onDidChangeWorkspaceFolders(refresh),
     // Installing or removing the Microsoft C# extension flips ownership without a window reload.
     vscode.extensions.onDidChange(refresh),
-    vscode.commands.registerCommand(START_COMMAND, () => startDebugging(options.debuggerEnabled)),
+    vscode.commands.registerCommand(START_COMMAND, () =>
+      startDebugging(options.debuggerEnabled, options.startInExternalTerminal),
+    ),
     vscode.commands.registerCommand(START_WITHOUT_DEBUGGING_COMMAND, () => startWithoutDebugging()),
   );
 }
@@ -70,11 +73,19 @@ export function registerF5Ownership(
 /**
  * Starts a session from an *inline* configuration — nothing is written to disk. The configuration
  * providers then do the real work: pick the project and framework, build, read launchSettings.json.
+ *
+ * When `debug.f5Console` is `externalTerminal`, this defers to the same spawn-then-attach flow as the
+ * "Debug Startup Project in External Terminal" command instead — see `externalTerminalDebug.ts` for
+ * why `launch` alone cannot show a real console.
  */
-async function startDebugging(debuggerEnabled: boolean): Promise<void> {
+async function startDebugging(debuggerEnabled: boolean, startInExternalTerminal: () => Promise<void>): Promise<void> {
   const startup = getStartupProjectFsPath();
   if (!debuggerEnabled || !(await hasSomethingToDebug(startup))) {
     await vscode.commands.executeCommand("workbench.action.debug.start");
+    return;
+  }
+  if (readF5ConsoleMode() === "externalTerminal") {
+    await startInExternalTerminal();
     return;
   }
   await vscode.debug.startDebugging(folderFor(startup), {

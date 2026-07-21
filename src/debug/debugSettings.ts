@@ -14,6 +14,18 @@ export function readOfferConfigurationsMode(): OfferConfigurationsMode {
     .get<OfferConfigurationsMode>("offerConfigurations", "always");
 }
 
+/** Milliseconds to delay the program's start before attaching, in the external-terminal debug flow. */
+export function readExternalTerminalAttachDelayMs(): number {
+  return vscode.workspace.getConfiguration(CONFIG_SECTION).get<number>("externalTerminalAttachDelayMs", 0);
+}
+
+export type F5ConsoleMode = "internalConsole" | "externalTerminal";
+
+/** Whether F5 launches netcoredbg directly (Debug Console output) or via the external-terminal attach flow. */
+export function readF5ConsoleMode(): F5ConsoleMode {
+  return vscode.workspace.getConfiguration(CONFIG_SECTION).get<F5ConsoleMode>("f5Console", "internalConsole");
+}
+
 export function isMsCsharpInstalled(): boolean {
   return vscode.extensions.getExtension(MS_CSHARP_EXTENSION) !== undefined;
 }

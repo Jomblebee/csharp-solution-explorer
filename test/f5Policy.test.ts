@@ -9,6 +9,7 @@ const owning = (overrides: Partial<OwnsF5Input> = {}): OwnsF5Input => ({
   offerMode: "always",
   msCsharpInstalled: false,
   hasLaunchConfigurations: false,
+  overrideLaunchJson: true,
   ...overrides,
 });
 
@@ -33,8 +34,15 @@ describe("computeOwnsF5", () => {
     assert.equal(computeOwnsF5(owning({ offerMode: "never" })), false);
   });
 
-  it("stands aside when the workspace has launch configurations of its own", () => {
-    assert.equal(computeOwnsF5(owning({ hasLaunchConfigurations: true })), false);
+  it("still owns F5 when the workspace has launch configurations of its own by default", () => {
+    assert.equal(computeOwnsF5(owning({ hasLaunchConfigurations: true })), true);
+  });
+
+  it("stands aside when the workspace has launch configurations and the override is off", () => {
+    assert.equal(
+      computeOwnsF5(owning({ hasLaunchConfigurations: true, overrideLaunchJson: false })),
+      false,
+    );
   });
 
   it("never takes F5 from the Microsoft C# extension, not even under 'always'", () => {

@@ -2,10 +2,12 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   deriveImplicitFrameworks,
+  isDebuggableProject,
   isImplicitItemGlobEnabled,
   parseAnalyzers,
   parseFrameworkReferences,
   parseItemRules,
+  parseOutputType,
   parsePackageReferences,
   parseProjectReferences,
   parseSdkAttribute,
@@ -293,5 +295,45 @@ describe("parseTargetFrameworks", () => {
 
   it("returns an empty array when no target framework is declared", () => {
     assert.deepEqual(parseTargetFrameworks(`<Project Sdk="Microsoft.NET.Sdk"></Project>`), []);
+  });
+});
+
+describe("parseOutputType", () => {
+  it("parses <OutputType>", () => {
+    assert.equal(parseOutputType(`<PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>`), "Exe");
+  });
+
+  it("returns undefined when not declared", () => {
+    assert.equal(parseOutputType(`<Project Sdk="Microsoft.NET.Sdk"></Project>`), undefined);
+  });
+});
+
+describe("isDebuggableProject", () => {
+  it("treats explicit Exe as debuggable", () => {
+    assert.equal(isDebuggableProject("Microsoft.NET.Sdk", "Exe"), true);
+  });
+
+  it("treats explicit WinExe as debuggable", () => {
+    assert.equal(isDebuggableProject("Microsoft.NET.Sdk", "WinExe"), true);
+  });
+
+  it("treats explicit Library as not debuggable, even under Sdk.Web", () => {
+    assert.equal(isDebuggableProject("Microsoft.NET.Sdk.Web", "Library"), false);
+  });
+
+  it("defaults Sdk.Web with no OutputType to debuggable", () => {
+    assert.equal(isDebuggableProject("Microsoft.NET.Sdk.Web", undefined), true);
+  });
+
+  it("defaults Sdk.BlazorWebAssembly with no OutputType to debuggable", () => {
+    assert.equal(isDebuggableProject("Microsoft.NET.Sdk.BlazorWebAssembly", undefined), true);
+  });
+
+  it("defaults plain Microsoft.NET.Sdk with no OutputType to not debuggable", () => {
+    assert.equal(isDebuggableProject("Microsoft.NET.Sdk", undefined), false);
+  });
+
+  it("defaults to not debuggable when the Sdk is unknown", () => {
+    assert.equal(isDebuggableProject(undefined, undefined), false);
   });
 });

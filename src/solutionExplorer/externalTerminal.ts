@@ -4,6 +4,16 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
+export interface ExternalTerminalOptions {
+  /**
+   * Whether the window stays open (a live shell prompt) after `command` exits. Default `true` —
+   * matches Ctrl+F5's Visual-Studio-style "console stays open so you can read the output". The
+   * external-terminal debug flow (`attachTerminal.ts`) passes `false`: its own wrapper script decides
+   * whether to pause, so nothing should re-open a shell behind it once that script exits.
+   */
+  keepOpenAfterExit?: boolean;
+}
+
 /**
  * Runs `command` in a native OS terminal window with working directory `cwd`. This is the
  * "run without a debugger, in a real console" path: netcoredbg cannot place a *debugged* program in
@@ -11,14 +21,15 @@ import * as vscode from "vscode";
  * for a plain run. VS Code has no cross-platform external-terminal API, hence the per-OS branches.
  * The `detached`/`unref` pair lets the window outlive the extension host.
  */
-export async function runInExternalTerminal(cwd: string, command: string): Promise<void> {
+export async function runInExternalTerminal(cwd: string, command: string, opts: ExternalTerminalOptions = {}): Promise<void> {
+  const keepOpenAfterExit = opts.keepOpenAfterExit ?? true;
   try {
     if (process.platform === "darwin") {
       await runOnMac(cwd, command);
     } else if (process.platform === "win32") {
-      runOnWindows(cwd, command);
+      runOnWindows(cwd, command, keepOpenAfterExit);
     } else {
-      runOnLinux(cwd, command);
+      runOnLinux(cwd, command, keepOpenAfterExit);
     }
   } catch (err) {
     vscode.window.showErrorMessage(
@@ -28,7 +39,7 @@ export async function runInExternalTerminal(cwd: string, command: string): Promi
 }
 
 /** POSIX-shell single-quote escaping. */
-function shQuote(value: string): string {
+export function shQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
@@ -41,10 +52,12 @@ async function runOnMac(cwd: string, command: string): Promise<void> {
   detached("open", ["-a", "Terminal", script]);
 }
 
-function runOnWindows(cwd: string, command: string): void {
-  // `start "" cmd /k <command>` opens a console that stays open after the program exits (`/k`).
+function runOnWindows(cwd: string, command: string, keepOpenAfterExit: boolean): void {
+  // `cmd /k <command>` opens a console that stays open (a fresh prompt) after the program exits;
+  // `cmd /c` closes the window as soon as `command` finishes, leaving `command` itself in charge of
+  // any "press a key to close" pause.
   // windowsVerbatimArguments keeps Node from re-quoting the paths already quoted inside `command`.
-  const child = spawn("cmd.exe", ["/c", `start "" cmd /k ${command}`], {
+  const child = spawn("cmd.exe", ["/c", `start "" cmd /${keepOpenAfterExit ? "k" : "c"} ${command}`], {
     cwd,
     detached: true,
     stdio: "ignore",
@@ -54,12 +67,17 @@ function runOnWindows(cwd: string, command: string): void {
   child.unref();
 }
 
-function runOnLinux(cwd: string, command: string): void {
+function runOnLinux(cwd: string, command: string, keepOpenAfterExit: boolean): void {
   // Honour VS Code's configured external terminal; `x-terminal-emulator` is the Debian alternatives
-  // entry present on most desktops. `exec bash` keeps the window open after the program exits.
+  // entry present on most desktops. `exec bash` keeps the window open (a fresh prompt) after the
+  // program exits; omitting it lets the terminal emulator close the window on its own once `command`
+  // finishes, leaving `command` itself in charge of any "press a key to close" pause.
   const exec =
     vscode.workspace.getConfiguration("terminal.external").get<string>("linuxExec")?.trim() || "x-terminal-emulator";
-  detached(exec, ["-e", "bash", "-c", `cd ${shQuote(cwd)}; ${command}; exec bash`]);
+  const shellCommand = keepOpenAfterExit
+    ? `cd ${shQuote(cwd)}; ${command}; exec bash`
+    : `cd ${shQuote(cwd)}; ${command}`;
+  detached(exec, ["-e", "bash", "-c", shellCommand]);
 }
 
 function detached(cmd: string, args: string[]): void {

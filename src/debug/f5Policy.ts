@@ -15,6 +15,8 @@ export interface OwnsF5Input {
   msCsharpInstalled: boolean;
   /** True when any workspace folder (or the .code-workspace) defines launch configurations. */
   hasLaunchConfigurations: boolean;
+  /** `csharpSolutionExplorer.debug.ignoreLaunchJson`. */
+  overrideLaunchJson: boolean;
 }
 
 /**
@@ -22,8 +24,9 @@ export interface OwnsF5Input {
  * debugger is fair game, but silently taking a global keybinding away from it is not — so the
  * Microsoft C# extension blocks the takeover even under `offerConfigurations: "always"`.
  *
- * A workspace that defines any launch configuration has expressed its own intent, so we stand aside;
- * that is also the documented escape hatch for anyone who wants F5 back.
+ * A workspace that defines its own launch configurations only stands in the way when
+ * `ignoreLaunchJson` has been turned off — that is the documented escape hatch for anyone who wants
+ * F5 back. By default we keep F5 on our own startup project regardless of `launch.json`.
  */
 export function computeOwnsF5(input: OwnsF5Input): boolean {
   if (!input.handleF5 || !input.debuggerEnabledAtActivation) {
@@ -32,5 +35,8 @@ export function computeOwnsF5(input: OwnsF5Input): boolean {
   if (input.offerMode === "never" || input.msCsharpInstalled) {
     return false;
   }
-  return !input.hasLaunchConfigurations;
+  if (input.hasLaunchConfigurations && !input.overrideLaunchJson) {
+    return false;
+  }
+  return true;
 }

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildLaunchConfig, DEBUG_TYPE } from "../src/debug/debugConfig.js";
+import { buildAttachConfig, buildExternalAttachConfig, buildLaunchConfig, DEBUG_TYPE } from "../src/debug/debugConfig.js";
 import type { ProjectOutput } from "../src/debug/projectOutput.js";
 import type { ResolvedLaunchProfile } from "../src/solutionExplorer/launchSettingsReader.js";
 
@@ -133,5 +133,32 @@ describe("buildLaunchConfig", () => {
 
     assert.equal(config.stopAtEntry, true);
     assert.equal(config.console, "integratedTerminal");
+  });
+});
+
+describe("buildAttachConfig", () => {
+  it("builds an attach body with no launch-only fields", () => {
+    assert.deepEqual(buildAttachConfig("C#: Web (external terminal)", "/repo/src/Web/bin/Debug/net10.0/Web.dll", 4242), {
+      type: DEBUG_TYPE,
+      request: "attach",
+      name: "C#: Web (external terminal)",
+      processId: 4242,
+      program: "/repo/src/Web/bin/Debug/net10.0/Web.dll",
+    });
+  });
+});
+
+describe("buildExternalAttachConfig", () => {
+  it("disguises the request as 'launch' — netcoredbgProxy.ts rewrites it to a real attach on the wire", () => {
+    assert.deepEqual(
+      buildExternalAttachConfig("C#: Web (external terminal)", "/repo/src/Web/bin/Debug/net10.0/Web.dll", 4242),
+      {
+        type: DEBUG_TYPE,
+        request: "launch",
+        name: "C#: Web (external terminal)",
+        processId: 4242,
+        program: "/repo/src/Web/bin/Debug/net10.0/Web.dll",
+      },
+    );
   });
 });

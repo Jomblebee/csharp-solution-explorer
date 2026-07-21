@@ -170,7 +170,25 @@
           "csharpSolutionExplorer.debug.handleF5": {
             "type": "boolean",
             "default": true,
-            "description": "Start the Solution Explorer's startup project when you press F5, with no launch.json and no debugger picker (Ctrl+F5 runs it in an external terminal, without debugging). Applies only while the workspace defines no launch configurations of its own, the Microsoft C# extension is not installed, and 'offerConfigurations' is not 'never' — otherwise F5 keeps its normal VS Code behaviour. Changes to 'csharpSolutionExplorer.debug.enabled' need a window reload before they apply here."
+            "description": "Start the Solution Explorer's startup project when you press F5, with no launch.json and no debugger picker (Ctrl+F5 runs it in an external terminal, without debugging). Applies only while the Microsoft C# extension is not installed and 'offerConfigurations' is not 'never' — otherwise F5 keeps its normal VS Code behaviour. See 'csharpSolutionExplorer.debug.ignoreLaunchJson' for what happens when the workspace also defines its own launch.json. Changes to 'csharpSolutionExplorer.debug.enabled' need a window reload before they apply here."
+          },
+          "csharpSolutionExplorer.debug.ignoreLaunchJson": {
+            "type": "boolean",
+            "default": true,
+            "description": "Keep F5 on the Solution Explorer's startup project even when the workspace defines its own launch.json. Turn this off to make a launch.json the escape hatch again — F5 then reverts to VS Code's normal launch.json-driven behaviour whenever the workspace has configurations of its own."
+          },
+          "csharpSolutionExplorer.debug.f5Console": {
+            "type": "string",
+            "enum": [
+              "internalConsole",
+              "externalTerminal"
+            ],
+            "enumDescriptions": [
+              "F5 launches and owns the program directly; its console output goes to the Debug Console.",
+              "F5 spawns the program in a real external terminal first, then attaches the debugger to it — same mechanism as 'Debug Startup Project in External Terminal'. Breakpoints hit very early in Main() may be missed; see 'externalTerminalAttachDelayMs'."
+            ],
+            "default": "internalConsole",
+            "description": "Where F5's program output appears. netcoredbg cannot show real console output for a program it launches directly, so 'externalTerminal' works around that by spawning the program externally first and attaching instead."
           },
           "csharpSolutionExplorer.debug.buildBeforeLaunch": {
             "type": "boolean",
@@ -191,6 +209,12 @@
             "type": "boolean",
             "default": false,
             "description": "Write a netcoredbg trace log next to the debug adapter. Only useful when diagnosing debugger problems."
+          },
+          "csharpSolutionExplorer.debug.externalTerminalAttachDelayMs": {
+            "type": "number",
+            "default": 0,
+            "minimum": 0,
+            "description": "Milliseconds to delay the program's start after 'Debug Startup Project in External Terminal' opens the terminal, before netcoredbg attaches. netcoredbg cannot launch a program directly into a real console (see that command's tooltip), so this only biases — it does not guarantee — catching breakpoints hit very early in Main(). 0 disables the delay."
           }
         }
       }
@@ -277,6 +301,21 @@
                 "type": "boolean",
                 "default": true,
                 "description": "Build the project before launching."
+              }
+            }
+          },
+          "attach": {
+            "required": [
+              "processId"
+            ],
+            "properties": {
+              "processId": {
+                "type": "string",
+                "description": "Process ID of an already-running .NET process to attach to. Prefer the 'Debug Startup Project in External Terminal' command, which spawns the process and fills this in automatically."
+              },
+              "program": {
+                "type": "string",
+                "description": "Path to the process's .dll, used for symbol (PDB) resolution."
               }
             }
           }
@@ -1313,6 +1352,12 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.debug.startInExternalTerminal",
+        "title": "Debug Startup Project in External Terminal",
+        "icon": "$(terminal)",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.debug.setAsDefault",
         "title": "Set as Default Debugger",
         "category": "C# Solution Explorer"
@@ -1665,6 +1710,11 @@
           "command": "csharpSolutionExplorer.debug.startWithoutDebugging",
           "when": "csharpSolutionExplorer.debug.available",
           "group": "navigation@2"
+        },
+        {
+          "command": "csharpSolutionExplorer.debug.startInExternalTerminal",
+          "when": "csharpSolutionExplorer.debug.available",
+          "group": "navigation@3"
         }
       ],
       "editor/title/context": [
@@ -1700,6 +1750,10 @@
         },
         {
           "command": "csharpSolutionExplorer.debug.startWithoutDebugging",
+          "when": "config.csharpSolutionExplorer.debug.enabled"
+        },
+        {
+          "command": "csharpSolutionExplorer.debug.startInExternalTerminal",
           "when": "config.csharpSolutionExplorer.debug.enabled"
         }
       ]
