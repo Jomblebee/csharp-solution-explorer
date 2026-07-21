@@ -1,6 +1,7 @@
 # C# Solution Explorer
 
 [![Open VSX](https://img.shields.io/open-vsx/v/jomblebee/jomblebee-csharp-solution-explorer?style=flat-square&label=Open%20VSX&color=a60ee5)](https://open-vsx.org/extension/jomblebee/jomblebee-csharp-solution-explorer)
+[![VS Marketplace](https://img.shields.io/visual-studio-marketplace/v/jomblebee.jomblebee-csharp-solution-explorer?style=flat-square&label=VS%20Marketplace&color=0066b8)](https://marketplace.visualstudio.com/items?itemName=jomblebee.jomblebee-csharp-solution-explorer)
 [![VS Code ≥ 1.85](https://img.shields.io/badge/VS%20Code-%E2%89%A51.85-007ACC?style=flat-square)](https://code.visualstudio.com/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
