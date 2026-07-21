@@ -19,11 +19,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   debugging. Which assembly to launch comes from MSBuild, so the debugger and **Run Project** always
   agree — including projects that relocate their output via `Directory.Build.props` or
   `UseArtifactsOutput`. Multi-targeted projects ask which framework to debug.
-- **Set as Default Debugger** writes a `launch.json` with this debugger first, which is the only way
-  to pin F5 when another C# debug extension is also installed — VS Code has no API for "one
-  extension owns F5". `csharpSolutionExplorer.debug.offerConfigurations` controls whether these
-  configurations appear in the F5 picker at all, and `csharpSolutionExplorer.debug.enabled` turns
-  the debugger off entirely.
+- **F5 starts the startup project directly** — no `launch.json`, no debugger picker. **Ctrl+F5**
+  (**Cmd+F5** on macOS) runs it without debugging, in an external terminal with a real console.
+  Because VS Code has no API for "one extension owns F5", the extension contributes its own `F5`
+  keybinding and only claims it when nothing else has a stake: the workspace defines no launch
+  configurations of its own, the Microsoft C# extension is not installed, and
+  `offerConfigurations` is not `never`. Otherwise F5 behaves exactly as it would without this
+  extension. Turn it off with `csharpSolutionExplorer.debug.handleF5`, or simply create a
+  `launch.json` — either hands F5 straight back to VS Code. If no startup project is set yet and the
+  workspace has more than one project, you are asked once and the choice is remembered.
+- **Debug and run buttons in the editor title bar**: the same two actions sit as icons to the right
+  of the tabs, so they are reachable with the mouse and keep working even once a `launch.json`
+  exists. Hide either one with a right-click on the title bar, VS Code's own way of managing editor
+  actions.
+- **Readable thread names in the call stack**: netcoredbg only reports a thread's managed
+  `Thread.Name`, and the runtime's own threads have none — so the call stack was a column of
+  `<No name>`. The thread ids it reports are OS thread ids, so on Linux the names are recovered from
+  `/proc/<tid>/comm` and shown as `.NET Finalizer (234574)`, `.NET TP Worker (234591)`,
+  `Kestrel Timer (234596)`. The id is appended because a process has several identically named
+  threadpool workers. Threads you named yourself keep that name. The kernel truncates names at 15
+  characters, hence `.NET Tiered Com`. macOS and Windows have no equivalent to `/proc`, so every
+  thread but the main one is labelled `Thread <id>` there — unique, just not descriptive. Reading
+  the names natively (`GetThreadDescription`, `proc_pidinfo`) would mean a native dependency and
+  per-platform builds, which is not worth it for a label.
+- **Set as Default Debugger** writes a `launch.json` with this debugger first — useful when another
+  C# debug extension is installed and F5 is therefore not taken over.
+  `csharpSolutionExplorer.debug.offerConfigurations` controls whether these configurations appear in
+  the F5 picker at all, and `csharpSolutionExplorer.debug.enabled` turns the debugger off entirely.
 
   **Known limits of netcoredbg** (it is not on par with the proprietary `vsdbg`): expression
   evaluation is weak — simple locals and arithmetic work, but property access such as
@@ -45,8 +67,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   listed but cannot be selected — they need Windows-only tooling. Requires .NET SDK 6 or newer for
   the `--launch-profile` option.
 - **Startup project**: **Set as Startup Project** on a project marks it with a green play icon and
-  a `startup` label in the tree, and shows it in the status bar together with its launch profile.
-  The choice is remembered per workspace. **Clear Startup Project** (Command Palette) removes it.
+  a `startup` label in the tree. The choice is remembered per workspace. **Clear Startup Project**
+  (Command Palette) removes it.
+- **Two status bar items**, like the Visual Studio toolbar: the left one shows the startup project,
+  the right one its launch profile, and each opens its own picker on a single click — no
+  intermediate menu. Clicking the profile item without a startup project asks for the project
+  first, then goes straight on to the profile. The profile list is exactly what the project's
+  `Properties/launchSettings.json` contains. Whether the browser opens is decided by that profile's
+  own `launchBrowser` field alone; there is no separate toggle to keep in sync.
 
 ### Fixed
 
