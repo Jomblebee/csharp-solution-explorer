@@ -33,6 +33,9 @@
   ],
   "icon": "resources/icon.png",
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/*.{sln,slnx,csproj,fsproj,vbproj}"
+  ],
   "contributes": {
     "configuration": [
       {
@@ -162,7 +165,12 @@
               "Never offer them; a launch.json entry of type 'csharp-netcoredbg' still works."
             ],
             "default": "always",
-            "description": "Whether debug configurations from this extension appear in the F5 picker and the Run and Debug dropdown. VS Code has no way to make one extension own F5, so when several C# debuggers are installed you choose between them — or run 'Set as Default Debugger' to pin this one in a launch.json."
+            "description": "Whether debug configurations from this extension appear in the F5 picker and the Run and Debug dropdown. This covers the picker only: 'csharpSolutionExplorer.debug.handleF5' decides whether F5 skips the picker altogether, and 'Set as Default Debugger' pins this debugger in a launch.json."
+          },
+          "csharpSolutionExplorer.debug.handleF5": {
+            "type": "boolean",
+            "default": true,
+            "description": "Start the Solution Explorer's startup project when you press F5, with no launch.json and no debugger picker (Ctrl+F5 runs it in an external terminal, without debugging). Applies only while the workspace defines no launch configurations of its own, the Microsoft C# extension is not installed, and 'offerConfigurations' is not 'never' — otherwise F5 keeps its normal VS Code behaviour. Changes to 'csharpSolutionExplorer.debug.enabled' need a window reload before they apply here."
           },
           "csharpSolutionExplorer.debug.buildBeforeLaunch": {
             "type": "boolean",
@@ -1293,6 +1301,18 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.debug.start",
+        "title": "Debug Startup Project",
+        "icon": "$(debug-alt)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.debug.startWithoutDebugging",
+        "title": "Start Startup Project Without Debugging",
+        "icon": "$(play)",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.debug.setAsDefault",
         "title": "Set as Default Debugger",
         "category": "C# Solution Explorer"
@@ -1635,6 +1655,18 @@
           "group": "5_clipboard@3"
         }
       ],
+      "editor/title": [
+        {
+          "command": "csharpSolutionExplorer.debug.start",
+          "when": "csharpSolutionExplorer.debug.available",
+          "group": "navigation@1"
+        },
+        {
+          "command": "csharpSolutionExplorer.debug.startWithoutDebugging",
+          "when": "csharpSolutionExplorer.debug.available",
+          "group": "navigation@2"
+        }
+      ],
       "editor/title/context": [
         {
           "command": "csharpSolutionExplorer.revealInTree",
@@ -1661,6 +1693,14 @@
         {
           "command": "csharpSolutionExplorer.clearStartupProject",
           "when": "csharpSolutionExplorer.hasStartupProject"
+        },
+        {
+          "command": "csharpSolutionExplorer.debug.start",
+          "when": "config.csharpSolutionExplorer.debug.enabled"
+        },
+        {
+          "command": "csharpSolutionExplorer.debug.startWithoutDebugging",
+          "when": "config.csharpSolutionExplorer.debug.enabled"
         }
       ]
     },
@@ -1682,6 +1722,17 @@
         "key": "ctrl+v",
         "mac": "cmd+v",
         "when": "focusedView == csharpSolutionExplorer.view && csharpSolutionExplorer.clipboardHasItems"
+      },
+      {
+        "command": "csharpSolutionExplorer.debug.start",
+        "key": "f5",
+        "when": "debugState == 'inactive' && csharpSolutionExplorer.debug.ownsF5"
+      },
+      {
+        "command": "csharpSolutionExplorer.debug.startWithoutDebugging",
+        "key": "ctrl+f5",
+        "mac": "cmd+f5",
+        "when": "debugState == 'inactive' && csharpSolutionExplorer.debug.ownsF5"
       }
     ]
   },

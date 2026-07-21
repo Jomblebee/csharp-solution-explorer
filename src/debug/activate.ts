@@ -5,13 +5,17 @@ import * as vscode from "vscode";
 import { clearDebuggerCache } from "./netcoredbgDownloader.js";
 import { DEBUG_TYPE } from "./debugConfig.js";
 import { NetcoredbgConfigurationProvider, setAsDefaultDebugger } from "./debugConfigurationProvider.js";
+import { CONFIG_SECTION } from "./debugSettings.js";
 import { DebuggerStateStore } from "./debugState.js";
+import { registerF5Ownership } from "./f5Ownership.js";
 import { NetcoredbgDescriptorFactory } from "./netcoredbgAdapter.js";
 
-const CONFIG_SECTION = "csharpSolutionExplorer.debug";
-
 export function activateDebugger(context: vscode.ExtensionContext): void {
-  if (!vscode.workspace.getConfiguration(CONFIG_SECTION).get<boolean>("enabled", true)) {
+  const enabled = vscode.workspace.getConfiguration(CONFIG_SECTION).get<boolean>("enabled", true);
+  // Wired up even when the debugger is off: it reads `enabled` as a snapshot and simply never claims
+  // F5, while its commands stay in the palette and defer to VS Code's own actions.
+  registerF5Ownership(context, { debuggerEnabled: enabled });
+  if (!enabled) {
     return;
   }
 
@@ -32,10 +36,15 @@ export function activateDebugger(context: vscode.ExtensionContext): void {
     // VS Code chains resolve hooks across every registration, so registering the same provider twice
     // would run resolve twice, and the second pass sees the already-resolved config (which no longer
     // carries `project`) and aborts the whole session.
+    //
+    // The two registrations deliberately provide *different* lists — don't merge them back together.
+    // The default kind seeds a newly written launch.json, where every returned entry lands in the
+    // file, so it yields one project-less entry. The Dynamic kind only fills a picker and writes
+    // nothing, so it lists every project.
     vscode.debug.registerDebugConfigurationProvider(DEBUG_TYPE, provider),
     vscode.debug.registerDebugConfigurationProvider(
       DEBUG_TYPE,
-      { provideDebugConfigurations: () => provider.provideDebugConfigurations() },
+      { provideDebugConfigurations: () => provider.provideDynamicConfigurations() },
       vscode.DebugConfigurationProviderTriggerKind.Dynamic,
     ),
     vscode.commands.registerCommand("csharpSolutionExplorer.debug.setAsDefault", () => setAsDefaultDebugger()),

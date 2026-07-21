@@ -19,11 +19,9 @@ import {
 } from "../solutionExplorer/launchProfileState.js";
 import { findProfile, getDefaultProfile, resolveLaunchProfile } from "../solutionExplorer/launchSettingsReader.js";
 import { buildLaunchConfig, DEBUG_TYPE, NetcoredbgLaunchConfig } from "./debugConfig.js";
+import { CONFIG_SECTION, shouldOfferConfigurations } from "./debugSettings.js";
 import { DebuggerStateStore } from "./debugState.js";
 import { AmbiguousFrameworkError, queryProjectOutput } from "./projectOutput.js";
-
-const CONFIG_SECTION = "csharpSolutionExplorer.debug";
-const MS_CSHARP_EXTENSION = "ms-dotnettools.csharp";
 
 /** The subset of a `launch.json` entry we read before filling the rest in. */
 interface PartialConfig extends vscode.DebugConfiguration {
@@ -49,10 +47,27 @@ export class NetcoredbgConfigurationProvider implements vscode.DebugConfiguratio
   ) {}
 
   /**
-   * Populates the Run and Debug dropdown and the F5 picker without a launch.json. Whether we appear
-   * alongside the Microsoft C# extension is the user's call via `debug.offerConfigurations`.
+   * Seeds a newly created launch.json. VS Code writes *every* entry returned here into the file, so
+   * this deliberately returns a single project-less entry rather than one per project: `resolveProject`
+   * picks the startup project at launch time, which keeps the file short, portable (no absolute paths)
+   * and stable when the startup project changes. Mirrors `initialConfigurations` in package.json.
+   *
+   * The searchable per-project list belongs to `provideDynamicConfigurations` — keep the two apart.
    */
   async provideDebugConfigurations(): Promise<vscode.DebugConfiguration[]> {
+    if (!this.shouldOfferConfigurations()) {
+      return [];
+    }
+    return [{ type: DEBUG_TYPE, request: "launch", name: "C#: Debug startup project" }];
+  }
+
+  /**
+   * Populates the Run and Debug dropdown and the F5 picker without a launch.json — picking one of
+   * these starts a session directly and writes nothing to disk, so listing every project is fine
+   * here. Whether we appear alongside the Microsoft C# extension is the user's call via
+   * `debug.offerConfigurations`.
+   */
+  async provideDynamicConfigurations(): Promise<vscode.DebugConfiguration[]> {
     if (!this.shouldOfferConfigurations()) {
       return [];
     }
@@ -255,21 +270,8 @@ export class NetcoredbgConfigurationProvider implements vscode.DebugConfiguratio
     return vscode.workspace.getConfiguration(CONFIG_SECTION).get<boolean>("buildBeforeLaunch", true);
   }
 
-  /**
-   * `always` (default) offers our configurations everywhere, `never` nowhere, and `auto` steps
-   * aside when the Microsoft C# extension is installed and already owns the zero-config path.
-   */
   private shouldOfferConfigurations(): boolean {
-    const mode = vscode.workspace
-      .getConfiguration(CONFIG_SECTION)
-      .get<"always" | "auto" | "never">("offerConfigurations", "always");
-    if (mode === "never") {
-      return false;
-    }
-    if (mode === "auto") {
-      return vscode.extensions.getExtension(MS_CSHARP_EXTENSION) === undefined;
-    }
-    return true;
+    return shouldOfferConfigurations();
   }
 }
 
