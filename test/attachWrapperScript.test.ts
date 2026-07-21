@@ -106,6 +106,16 @@ describe("buildWindowsWrapperScript", () => {
     assert.ok(script.includes(String.raw`'"hello world"'`));
   });
 
+  it("doubles a trailing backslash before the closing quote (paths often end in one)", () => {
+    const script = buildWindowsWrapperScript(req({ args: ["C:\\repo\\"] }));
+    assert.ok(script.includes(String.raw`'"C:\repo\\"'`));
+  });
+
+  it("escapes an embedded quote without corrupting the backslash run before it", () => {
+    const script = buildWindowsWrapperScript(req({ args: ['foo"bar'] }));
+    assert.ok(script.includes(String.raw`'"foo\"bar"'`));
+  });
+
   it("sets environment variables via $env: before Start-Process", () => {
     const script = buildWindowsWrapperScript(req({ env: { ASPNETCORE_ENVIRONMENT: "Development" } }));
     assert.ok(script.includes("$env:ASPNETCORE_ENVIRONMENT = 'Development'\r\n"));

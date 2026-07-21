@@ -88,9 +88,31 @@ function psQuote(value: string): string {
  * Win32/CreateProcess command-line quoting for one argument, applied before the argument becomes a
  * PowerShell array element — `Start-Process -ArgumentList` on Windows PowerShell 5.1 space-joins the
  * array as-is rather than re-quoting it, so an unquoted element containing a space would be split.
+ *
+ * Follows the documented `CommandLineToArgvW` escaping rule, not just "backslash the quotes":
+ * backslashes only need doubling when they immediately precede a literal `"` (embedded, or trailing
+ * right before the closing quote this function adds) — anywhere else a backslash is already
+ * unambiguous and must be left alone. A version that unconditionally leaves backslashes untouched
+ * breaks on a value ending in `\` (any path is one), since the run of backslashes right before the
+ * closing quote would then escape *that* quote instead of terminating the argument.
  */
 function winArgQuote(value: string): string {
-  return `"${value.replace(/"/g, '\\"')}"`;
+  let result = '"';
+  let backslashes = 0;
+  for (const ch of value) {
+    if (ch === "\\") {
+      backslashes++;
+      continue;
+    }
+    if (ch === '"') {
+      result += "\\".repeat(backslashes * 2 + 1) + '"';
+    } else {
+      result += "\\".repeat(backslashes) + ch;
+    }
+    backslashes = 0;
+  }
+  result += "\\".repeat(backslashes * 2) + '"';
+  return result;
 }
 
 /**
