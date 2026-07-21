@@ -1,12 +1,8 @@
 import * as vscode from "vscode";
 import { CANCELLED, resolveOwningProjectUri, resolveRunFramework } from "./commandUtils.js";
 import { runInExternalTerminal } from "./externalTerminal.js";
-import {
-  projectFromUri,
-  promptForStartupProject,
-  resolveActiveProfileName,
-  TargetProject,
-} from "./launchProfileCommands.js";
+import { resolveActiveProfileName } from "./launchProfileCommands.js";
+import { projectFromUri, promptForStartupProject, TargetProject } from "./workspaceProjects.js";
 import { getStartupProjectFsPath, NO_PROFILE } from "./launchProfileState.js";
 import { ProjectTreeItem, SolutionTreeItem } from "./treeItems.js";
 

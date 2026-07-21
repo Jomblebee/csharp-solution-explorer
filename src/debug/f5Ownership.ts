@@ -11,7 +11,7 @@
 
 import * as vscode from "vscode";
 import { runProjectInExternalTerminal } from "../solutionExplorer/buildCommands.js";
-import { findWorkspaceProjects } from "../solutionExplorer/launchProfileCommands.js";
+import { findWorkspaceProjects } from "../solutionExplorer/workspaceProjects.js";
 import { getStartupProjectFsPath } from "../solutionExplorer/launchProfileState.js";
 import { DEBUG_TYPE } from "./debugConfig.js";
 import { CONFIG_SECTION, isMsCsharpInstalled, readF5ConsoleMode, readOfferConfigurationsMode } from "./debugSettings.js";

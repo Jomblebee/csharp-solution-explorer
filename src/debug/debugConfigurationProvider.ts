@@ -5,13 +5,13 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { CANCELLED, resolveRunFramework } from "../solutionExplorer/commandUtils.js";
 import { build } from "../solutionExplorer/dotnetCli.js";
+import { resolveActiveProfile } from "../solutionExplorer/launchProfileCommands.js";
 import {
   findWorkspaceProjects,
   projectFromUri,
   promptForStartupProject,
-  resolveActiveProfile,
   TargetProject,
-} from "../solutionExplorer/launchProfileCommands.js";
+} from "../solutionExplorer/workspaceProjects.js";
 import { getStartupProjectFsPath } from "../solutionExplorer/launchProfileState.js";
 import { makeReporter } from "../shared/httpDownload.js";
 import { buildLaunchConfig, DEBUG_TYPE, NetcoredbgLaunchConfig } from "./debugConfig.js";
