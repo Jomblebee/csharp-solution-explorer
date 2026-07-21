@@ -4,7 +4,7 @@ import {
   AttachSpawnRequest,
   buildPosixWrapperScript,
   buildWindowsWrapperScript,
-} from "../src/debug/attachWrapperScript.js";
+} from "../src/debug/externalTerminal/attachWrapperScript.js";
 
 const req = (overrides: Partial<AttachSpawnRequest> = {}): AttachSpawnRequest => ({
   cwd: "/repo/src/Web",

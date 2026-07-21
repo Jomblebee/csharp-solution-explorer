@@ -7,7 +7,7 @@ import { DEBUG_TYPE } from "./debugConfig.js";
 import { NetcoredbgConfigurationProvider, setAsDefaultDebugger } from "./debugConfigurationProvider.js";
 import { CONFIG_SECTION } from "./debugSettings.js";
 import { DebuggerStateStore } from "./debugState.js";
-import { startDebuggingInExternalTerminal } from "./externalTerminalDebug.js";
+import { startDebuggingInExternalTerminal } from "./externalTerminal/externalTerminalDebug.js";
 import { registerF5Ownership } from "./f5Ownership.js";
 import { NetcoredbgDescriptorFactory } from "./netcoredbgAdapter.js";
 

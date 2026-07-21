@@ -8,22 +8,22 @@
 // still passes an `attach`-request config straight through unresolved — see its pass-through guard.
 
 import * as vscode from "vscode";
-import { CANCELLED, resolveRunFramework } from "../solutionExplorer/commandUtils.js";
-import { build } from "../solutionExplorer/dotnetCli.js";
-import { makeReporter } from "../shared/httpDownload.js";
+import { CANCELLED, resolveRunFramework } from "../../solutionExplorer/commandUtils.js";
+import { build } from "../../solutionExplorer/dotnetCli.js";
+import { makeReporter } from "../../shared/httpDownload.js";
 import {
   findWorkspaceProjects,
   projectFromUri,
   promptForStartupProject,
   resolveActiveProfile,
   TargetProject,
-} from "../solutionExplorer/launchProfileCommands.js";
-import { getStartupProjectFsPath } from "../solutionExplorer/launchProfileState.js";
+} from "../../solutionExplorer/launchProfileCommands.js";
+import { getStartupProjectFsPath } from "../../solutionExplorer/launchProfileState.js";
 import { spawnForAttach } from "./attachTerminal.js";
-import { buildExternalAttachConfig, buildLaunchConfig } from "./debugConfig.js";
-import { CONFIG_SECTION, readExternalTerminalAttachDelayMs } from "./debugSettings.js";
-import { DebuggerStateStore } from "./debugState.js";
-import { AmbiguousFrameworkError, queryProjectOutput } from "./projectOutput.js";
+import { buildExternalAttachConfig, buildLaunchConfig } from "../debugConfig.js";
+import { CONFIG_SECTION, readExternalTerminalAttachDelayMs } from "../debugSettings.js";
+import { DebuggerStateStore } from "../debugState.js";
+import { AmbiguousFrameworkError, queryProjectOutput } from "../projectOutput.js";
 
 export async function startDebuggingInExternalTerminal(
   state: DebuggerStateStore,

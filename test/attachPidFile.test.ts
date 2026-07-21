@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parsePidFileContents } from "../src/debug/attachPidFile.js";
+import { parsePidFileContents } from "../src/debug/externalTerminal/attachPidFile.js";
 
 describe("parsePidFileContents", () => {
   it("parses a plain integer", () => {

@@ -9,7 +9,7 @@
 import * as fsp from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { runInExternalTerminal, shQuote } from "../solutionExplorer/externalTerminal.js";
+import { runInExternalTerminal, shQuote } from "../../solutionExplorer/externalTerminal.js";
 import { waitForPidFile } from "./attachPidFile.js";
 import { AttachSpawnRequest, buildPosixWrapperScript, buildWindowsWrapperScript } from "./attachWrapperScript.js";
 
