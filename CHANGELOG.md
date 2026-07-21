@@ -29,10 +29,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `csharpSolutionExplorer.debug.handleF5` disables the takeover entirely, handing F5 straight back
   to VS Code. If no startup project is set yet and the workspace has more than one project, you are
   asked once and the choice is remembered.
-- **Debug and run buttons in the editor title bar**: the same two actions sit as icons to the right
+- **Live build progress**: the "Building…" notification now tracks real progress — restore, then
+  compiling, then a per-project counter for multi-project graphs — instead of sitting on an
+  indeterminate spinner, by parsing `dotnet build`'s own output as it streams.
+- **Debug and run buttons in the editor title bar**: the same actions sit as icons to the right
   of the tabs, so they are reachable with the mouse and keep working even once a `launch.json`
-  exists. Hide either one with a right-click on the title bar, VS Code's own way of managing editor
+  exists. Hide any of them with a right-click on the title bar, VS Code's own way of managing editor
   actions.
+- **Debug Startup Project in External Terminal**: netcoredbg has no way to show a *debugged*
+  program's real console output — everything it launches gets funneled into the Debug Console,
+  breaking interactive input (`Console.ReadLine()`) and anything that depends on a real terminal.
+  This command builds the startup project, spawns it in a real OS terminal (the same mechanism as
+  Ctrl+F5), and has netcoredbg attach to that process instead of launching it directly. Available
+  from the editor title bar, the view toolbar, and the Command Palette.
+  `csharpSolutionExplorer.debug.f5Console` (`internalConsole`/`externalTerminal`) routes plain F5
+  through the same flow instead of only offering it as a separate command. Since attaching happens
+  once the process has already started, a breakpoint on the first line of `Main()` can be missed —
+  `csharpSolutionExplorer.debug.externalTerminalAttachDelayMs` biases (does not guarantee) catching
+  it by delaying the program's start.
 - **Readable thread names in the call stack**: netcoredbg only reports a thread's managed
   `Thread.Name`, and the runtime's own threads have none — so the call stack was a column of
   `<No name>`. The thread ids it reports are OS thread ids, so on Linux the names are recovered from
