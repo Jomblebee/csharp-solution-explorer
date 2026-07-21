@@ -11,8 +11,6 @@ import * as vscode from "vscode";
 const STARTUP_KEY = "csharpSolutionExplorer.startupProject";
 /** Persisted map of project fsPath → chosen launch profile name. */
 const PROFILES_KEY = "csharpSolutionExplorer.launchProfiles";
-/** Persisted map of project fsPath → "launch browser" override (unset = follow the profile). */
-const LAUNCH_BROWSER_KEY = "csharpSolutionExplorer.launchBrowser";
 /** Context key so "Clear Startup Project" only shows once one is set. */
 const CONTEXT_KEY = "csharpSolutionExplorer.hasStartupProject";
 
@@ -25,7 +23,6 @@ export const NO_PROFILE = " none";
 let workspaceState: vscode.Memento | undefined;
 let startupProjectFsPath: string | undefined;
 let profileNames: Record<string, string> = {};
-let launchBrowserOverrides: Record<string, boolean> = {};
 
 const emitter = new vscode.EventEmitter<void>();
 
@@ -40,7 +37,6 @@ export function initLaunchProfileState(context: vscode.ExtensionContext): void {
   workspaceState = context.workspaceState;
   startupProjectFsPath = context.workspaceState.get<string>(STARTUP_KEY);
   profileNames = context.workspaceState.get<Record<string, string>>(PROFILES_KEY) ?? {};
-  launchBrowserOverrides = context.workspaceState.get<Record<string, boolean>>(LAUNCH_BROWSER_KEY) ?? {};
   // Mirror the context key immediately so menus are correct on the first render after a reload.
   void vscode.commands.executeCommand("setContext", CONTEXT_KEY, startupProjectFsPath !== undefined);
 }
@@ -74,26 +70,6 @@ export function setActiveProfileName(projectFsPath: string, name: string | undef
     profileNames[projectFsPath] = name;
   }
   void workspaceState?.update(PROFILES_KEY, profileNames);
-  emitter.fire();
-}
-
-/**
- * The per-project "launch browser" override, or undefined when the project follows its launch
- * profile's own `launchBrowser`. Kept separate from the profile file so toggling it needs no edit to
- * the user's `launchSettings.json`.
- */
-export function getLaunchBrowserOverride(projectFsPath: string): boolean | undefined {
-  return launchBrowserOverrides[projectFsPath];
-}
-
-/** Passing undefined forgets the override, so the project falls back to the profile's own value. */
-export function setLaunchBrowserOverride(projectFsPath: string, value: boolean | undefined): void {
-  if (value === undefined) {
-    delete launchBrowserOverrides[projectFsPath];
-  } else {
-    launchBrowserOverrides[projectFsPath] = value;
-  }
-  void workspaceState?.update(LAUNCH_BROWSER_KEY, launchBrowserOverrides);
   emitter.fire();
 }
 

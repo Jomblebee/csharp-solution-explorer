@@ -1,24 +1,27 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { describeActiveProfile, getEffectiveLaunchBrowser } from "./launchProfileCommands.js";
+import { describeActiveProfile } from "./launchProfileCommands.js";
 import { getStartupProjectFsPath, onDidChangeLaunchProfileState } from "./launchProfileState.js";
-import { MANAGE_LAUNCH_COMMAND_ID } from "./types.js";
+import { SELECT_LAUNCH_PROFILE_COMMAND_ID, SELECT_STARTUP_PROJECT_COMMAND_ID } from "./types.js";
 
 /**
- * Shows the startup project and its launch profile — the Visual-Studio-toolbar equivalent. Stays
- * visible even with no startup project yet, so there is always an obvious place to pick one; the
- * click opens a small menu to change either the startup project or the launch profile.
+ * The Visual-Studio-toolbar equivalent, split in two: one item for the startup project, one for its
+ * launch profile. Each is a single click straight into its own picker — no intermediate menu. Both
+ * stay visible with no startup project yet, so there is always an obvious place to pick one.
  */
 export class LaunchProfileStatusBar implements vscode.Disposable {
-  private readonly item: vscode.StatusBarItem;
+  private readonly projectItem: vscode.StatusBarItem;
+  private readonly profileItem: vscode.StatusBarItem;
   private readonly subscription: vscode.Disposable;
   /** Guards against an out-of-order render when state changes while a read is in flight. */
   private renderToken = 0;
 
   constructor() {
-    // Priority 1 puts this left of the language server's item (priority 0).
-    this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1);
-    this.item.command = MANAGE_LAUNCH_COMMAND_ID;
+    // Priorities 3 and 2 keep both left of the language server's item (priority 0), in this order.
+    this.projectItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 3);
+    this.projectItem.command = SELECT_STARTUP_PROJECT_COMMAND_ID;
+    this.profileItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 2);
+    this.profileItem.command = SELECT_LAUNCH_PROFILE_COMMAND_ID;
     this.subscription = onDidChangeLaunchProfileState(() => void this.render());
     void this.render();
   }
@@ -27,10 +30,12 @@ export class LaunchProfileStatusBar implements vscode.Disposable {
     const token = ++this.renderToken;
     const startup = getStartupProjectFsPath();
     if (!startup) {
-      // No startup project yet: still visible, doubling as the "pick one" entry point.
-      this.item.text = "$(play) Select startup project";
-      this.item.tooltip = "No startup project selected. Click to choose the project to debug or run.";
-      this.item.show();
+      this.projectItem.text = "$(play-circle) Select startup project";
+      this.projectItem.tooltip = "No startup project selected. Click to choose the project to debug or run.";
+      // The profile picker asks for a project first, so this stays useful without one.
+      this.profileItem.text = "$(rocket) Select launch profile";
+      this.profileItem.tooltip = "Click to choose a startup project and its launch profile.";
+      this.show();
       return;
     }
 
@@ -38,26 +43,31 @@ export class LaunchProfileStatusBar implements vscode.Disposable {
     const rootDir = vscode.Uri.file(path.dirname(startup));
     const name = path.basename(startup, path.extname(startup));
     const { label, profile } = await describeActiveProfile(projectUri, rootDir);
-    const launchBrowser = await getEffectiveLaunchBrowser(projectUri, rootDir);
     if (token !== this.renderToken) {
       return;
     }
 
-    this.item.text = `$(play) ${name} — ${label}${launchBrowser ? " $(globe)" : ""}`;
-    this.item.tooltip = [
-      `Startup project: ${startup}`,
+    this.projectItem.text = `$(play-circle) ${name}`;
+    this.projectItem.tooltip = `Startup project: ${startup}\nClick to change the startup project`;
+    this.profileItem.text = `$(rocket) ${label}`;
+    this.profileItem.tooltip = [
       `Launch profile: ${label}`,
-      `Launch browser: ${launchBrowser ? "on" : "off"}`,
       profile?.applicationUrl ? `URL: ${profile.applicationUrl}` : undefined,
-      "Click to change the startup project, launch profile, or browser launch",
+      "Click to change the launch profile",
     ]
       .filter((line) => line !== undefined)
       .join("\n");
-    this.item.show();
+    this.show();
+  }
+
+  private show(): void {
+    this.projectItem.show();
+    this.profileItem.show();
   }
 
   dispose(): void {
     this.subscription.dispose();
-    this.item.dispose();
+    this.projectItem.dispose();
+    this.profileItem.dispose();
   }
 }

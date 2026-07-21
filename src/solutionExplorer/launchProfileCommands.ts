@@ -3,11 +3,9 @@ import * as vscode from "vscode";
 import { resolveOwningProjectUri } from "./commandUtils.js";
 import {
   getActiveProfileName,
-  getLaunchBrowserOverride,
   getStartupProjectFsPath,
   NO_PROFILE,
   setActiveProfileName,
-  setLaunchBrowserOverride,
   setStartupProject,
 } from "./launchProfileState.js";
 import {
@@ -77,62 +75,6 @@ export function clearStartupProjectCommand(): void {
  */
 export async function selectStartupProjectCommand(): Promise<void> {
   await promptForStartupProject();
-}
-
-/**
- * The status bar's click target: a small Visual-Studio-toolbar-style menu to change the startup
- * project, its launch profile, or the "launch browser" switch — all behind one obvious control.
- */
-export async function manageLaunchCommand(): Promise<void> {
-  const startup = getStartupProjectFsPath();
-  const CHANGE_PROJECT = "$(project) Change startup project…";
-  const CHANGE_PROFILE = "$(rocket) Change launch profile…";
-  const items = [CHANGE_PROJECT];
-  let toggleBrowser: string | undefined;
-  if (startup) {
-    items.push(CHANGE_PROFILE);
-    const uri = vscode.Uri.file(startup);
-    const on = await getEffectiveLaunchBrowser(uri, vscode.Uri.file(path.dirname(startup)));
-    toggleBrowser = on ? "$(globe) Launch browser: On" : "$(globe) Launch browser: Off";
-    items.push(toggleBrowser);
-  }
-
-  const picked = await vscode.window.showQuickPick(items, {
-    title: "Debug / Run",
-    placeHolder: "Choose what to change",
-  });
-  if (picked === CHANGE_PROJECT) {
-    await selectStartupProjectCommand();
-  } else if (picked === CHANGE_PROFILE) {
-    await selectLaunchProfileCommand();
-  } else if (picked !== undefined && picked === toggleBrowser) {
-    await toggleLaunchBrowserCommand();
-  }
-}
-
-/**
- * The effective "launch browser" flag for a project: the per-project override if set, otherwise the
- * active launch profile's own `launchBrowser` (Visual Studio's model — the flag lives in the
- * profile). Drives whether debugging opens the browser once the server is ready.
- */
-export async function getEffectiveLaunchBrowser(projectUri: vscode.Uri, projectRootDir: vscode.Uri): Promise<boolean> {
-  const override = getLaunchBrowserOverride(projectUri.fsPath);
-  if (override !== undefined) {
-    return override;
-  }
-  const { profile } = await describeActiveProfile(projectUri, projectRootDir);
-  return profile?.launchBrowser ?? false;
-}
-
-/** Flips the "launch browser" switch for a project (the startup project when invoked with no node). */
-export async function toggleLaunchBrowserCommand(item?: unknown): Promise<void> {
-  const project = (await resolveTargetProject(item)) ?? (await promptForStartupProject());
-  if (!project) {
-    return;
-  }
-  const next = !(await getEffectiveLaunchBrowser(project.uri, project.rootDir));
-  setLaunchBrowserOverride(project.uri.fsPath, next);
-  vscode.window.showInformationMessage(`Launch browser ${next ? "enabled" : "disabled"} for ${project.name}.`);
 }
 
 /**

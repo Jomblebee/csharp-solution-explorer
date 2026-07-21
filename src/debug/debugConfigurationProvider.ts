@@ -14,7 +14,6 @@ import {
 } from "../solutionExplorer/launchProfileCommands.js";
 import {
   getActiveProfileName,
-  getLaunchBrowserOverride,
   getStartupProjectFsPath,
   NO_PROFILE,
 } from "../solutionExplorer/launchProfileState.js";
@@ -172,11 +171,9 @@ export class NetcoredbgConfigurationProvider implements vscode.DebugConfiguratio
         internalConsoleOptions: partial.internalConsoleOptions ?? "openOnSessionStart",
       };
 
-      // Visual-Studio-style "launch browser": the per-project override, else the profile's own flag.
-      // netcoredbg has no browser support, so we open it via VS Code's serverReadyAction — unless the
-      // launch.json already sets one.
-      const launchBrowser = getLaunchBrowserOverride(project.uri.fsPath) ?? profile?.launchBrowser ?? false;
-      if (launchBrowser && resolved.serverReadyAction === undefined) {
+      // "launch browser" comes from the profile alone (Visual Studio's model). netcoredbg has no
+      // browser support, so we open it via VS Code's serverReadyAction — unless launch.json sets one.
+      if ((profile?.launchBrowser ?? false) && resolved.serverReadyAction === undefined) {
         resolved.serverReadyAction = browserServerReadyAction(profile?.launchUrl);
       }
       return resolved;

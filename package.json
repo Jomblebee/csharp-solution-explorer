@@ -1293,18 +1293,6 @@
         "category": "C# Solution Explorer"
       },
       {
-        "command": "csharpSolutionExplorer.manageLaunch",
-        "title": "Change Startup Project or Launch Profile...",
-        "icon": "$(play)",
-        "category": "C# Solution Explorer"
-      },
-      {
-        "command": "csharpSolutionExplorer.toggleLaunchBrowser",
-        "title": "Toggle Launch Browser",
-        "icon": "$(globe)",
-        "category": "C# Solution Explorer"
-      },
-      {
         "command": "csharpSolutionExplorer.debug.setAsDefault",
         "title": "Set as Default Debugger",
         "category": "C# Solution Explorer"
@@ -1552,11 +1540,6 @@
           "group": "2_build@2"
         },
         {
-          "command": "csharpSolutionExplorer.toggleLaunchBrowser",
-          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
-          "group": "2_build@3"
-        },
-        {
           "command": "csharpSolutionExplorer.buildProject",
           "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
           "group": "2_build@3"
@@ -1673,10 +1656,6 @@
         },
         {
           "command": "csharpSolutionExplorer.setStartupProject",
-          "when": "false"
-        },
-        {
-          "command": "csharpSolutionExplorer.manageLaunch",
           "when": "false"
         },
         {

@@ -29,8 +29,6 @@ import {
   RUN_IN_EXTERNAL_TERMINAL_COMMAND_ID,
   SELECT_LAUNCH_PROFILE_COMMAND_ID,
   SELECT_STARTUP_PROJECT_COMMAND_ID,
-  MANAGE_LAUNCH_COMMAND_ID,
-  TOGGLE_LAUNCH_BROWSER_COMMAND_ID,
   SET_STARTUP_PROJECT_COMMAND_ID,
   CLEAR_STARTUP_PROJECT_COMMAND_ID,
   ADD_EXISTING_PROJECT_COMMAND_ID,
@@ -101,8 +99,6 @@ import {
   clearStartupProjectCommand,
   selectLaunchProfileCommand,
   selectStartupProjectCommand,
-  manageLaunchCommand,
-  toggleLaunchBrowserCommand,
   setStartupProjectCommand,
 } from "./launchProfileCommands.js";
 import { copyToClipboard, paste } from "./clipboardCommands.js";
@@ -197,12 +193,6 @@ export function registerSolutionExplorerCommands(
     ),
     vscode.commands.registerCommand(SELECT_STARTUP_PROJECT_COMMAND_ID, () =>
       withErrorHandling(() => selectStartupProjectCommand()),
-    ),
-    vscode.commands.registerCommand(MANAGE_LAUNCH_COMMAND_ID, () =>
-      withErrorHandling(() => manageLaunchCommand()),
-    ),
-    vscode.commands.registerCommand(TOGGLE_LAUNCH_BROWSER_COMMAND_ID, (item?: unknown) =>
-      withErrorHandling(() => toggleLaunchBrowserCommand(item)),
     ),
     vscode.commands.registerCommand(NEW_PROJECT_COMMAND_ID, (item: unknown) =>
       withErrorHandling(() => newProject(item, provider)),
