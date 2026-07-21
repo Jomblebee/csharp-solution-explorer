@@ -8,6 +8,7 @@ import { detectRid } from "../languageServer/rid.js";
 import { DebuggerStateStore } from "./debugState.js";
 import { ensureDebuggerDownloaded, pruneDebuggerCache } from "./netcoredbgDownloader.js";
 import { binaryRelPath, buildAdapterExecutable, DebugRid, NETCOREDBG_VERSION, toDebugRid } from "./netcoredbgPackage.js";
+import { NetcoredbgProxyAdapter } from "./netcoredbgProxy.js";
 
 const CONFIG_SECTION = "csharpSolutionExplorer.debug";
 
@@ -26,7 +27,8 @@ export class NetcoredbgDescriptorFactory implements vscode.DebugAdapterDescripto
     const { command, args } = buildAdapterExecutable(binaryPath, logging);
     this.output.appendLine(`Starting debug adapter: ${command} ${args.join(" ")}`);
     this.state.update({ phase: "debugging", activity: undefined, detail: undefined });
-    return new vscode.DebugAdapterExecutable(command, args);
+    // Spawned by us rather than by VS Code, so `threads` responses can be given readable names.
+    return new vscode.DebugAdapterInlineImplementation(new NetcoredbgProxyAdapter(command, args, this.output));
   }
 
   private async resolveBinary(config: vscode.WorkspaceConfiguration): Promise<string> {
