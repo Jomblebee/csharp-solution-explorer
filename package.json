@@ -2,7 +2,7 @@
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
   "description": "A C# Solution Explorer for VS Code and Open VSX editors, with an optional bundled Roslyn language server for IntelliSense — no proprietary extensions required.",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "publisher": "jomblebee",
   "license": "MIT",
   "repository": {
@@ -33,6 +33,9 @@
   ],
   "icon": "resources/icon.png",
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/*.{sln,slnx,csproj,fsproj,vbproj}"
+  ],
   "contributes": {
     "configuration": [
       {
@@ -138,6 +141,227 @@
             "description": "Provide Razor (.razor / .cshtml) language features by cohosting — the Razor service (bundled inside the C# language server package) is loaded into the same process, with no second server. Roslyn handles the C# parts and VS Code's built-in HTML service the HTML parts. The bundled 5.10 server has built-in Razor support, so this works out of the box; an older server set via a version/serverPath override falls back to syntax highlighting only. Has no effect when the C# language server itself is off."
           }
         }
+      },
+      {
+        "id": "csharpSolutionExplorer.debug",
+        "title": "C# Debugger",
+        "order": 3,
+        "properties": {
+          "csharpSolutionExplorer.debug.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Provide C# debugging using netcoredbg (open source, MIT). The debug adapter is downloaded on the first debug session. Turn this off to remove the debugger entirely, for example when you use another C# debug extension."
+          },
+          "csharpSolutionExplorer.debug.offerConfigurations": {
+            "type": "string",
+            "enum": [
+              "always",
+              "auto",
+              "never"
+            ],
+            "enumDescriptions": [
+              "Always offer C# debug configurations when you press F5.",
+              "Offer them unless the Microsoft C# extension is installed, which then owns the zero-configuration path.",
+              "Never offer them; a launch.json entry of type 'csharp-netcoredbg' still works."
+            ],
+            "default": "always",
+            "description": "Whether debug configurations from this extension appear in the F5 picker and the Run and Debug dropdown. This covers the picker only: 'csharpSolutionExplorer.debug.handleF5' decides whether F5 skips the picker altogether, and 'Set as Default Debugger' pins this debugger in a launch.json."
+          },
+          "csharpSolutionExplorer.debug.handleF5": {
+            "type": "boolean",
+            "default": true,
+            "description": "Start the Solution Explorer's startup project when you press F5, with no launch.json and no debugger picker (Ctrl+F5 runs it in an external terminal, without debugging). Applies only while the Microsoft C# extension is not installed and 'offerConfigurations' is not 'never' — otherwise F5 keeps its normal VS Code behaviour. See 'csharpSolutionExplorer.debug.ignoreLaunchJson' for what happens when the workspace also defines its own launch.json. Changes to 'csharpSolutionExplorer.debug.enabled' need a window reload before they apply here."
+          },
+          "csharpSolutionExplorer.debug.ignoreLaunchJson": {
+            "type": "boolean",
+            "default": true,
+            "description": "Keep F5 on the Solution Explorer's startup project even when the workspace defines its own launch.json. Turn this off to make a launch.json the escape hatch again — F5 then reverts to VS Code's normal launch.json-driven behaviour whenever the workspace has configurations of its own."
+          },
+          "csharpSolutionExplorer.debug.f5Console": {
+            "type": "string",
+            "enum": [
+              "internalConsole",
+              "externalTerminal"
+            ],
+            "enumDescriptions": [
+              "F5 launches and owns the program directly; its console output goes to the Debug Console.",
+              "F5 spawns the program in a real external terminal first, then attaches the debugger to it — same mechanism as 'Debug Startup Project in External Terminal'. Breakpoints hit very early in Main() may be missed; see 'externalTerminalAttachDelayMs'."
+            ],
+            "default": "internalConsole",
+            "description": "Where F5's program output appears. netcoredbg cannot show real console output for a program it launches directly, so 'externalTerminal' works around that by spawning the program externally first and attaching instead."
+          },
+          "csharpSolutionExplorer.debug.buildBeforeLaunch": {
+            "type": "boolean",
+            "default": true,
+            "description": "Build the project before starting a debug session, so breakpoints match the running code."
+          },
+          "csharpSolutionExplorer.debug.version": {
+            "type": "string",
+            "default": "",
+            "description": "netcoredbg release tag to download (e.g. '3.2.0-1092'). Leave empty to use the version bundled with this extension."
+          },
+          "csharpSolutionExplorer.debug.debuggerPath": {
+            "type": "string",
+            "default": "",
+            "description": "Path to a locally built netcoredbg executable (or the folder containing it), used instead of downloading one. Required on platforms with no published build: Intel macOS, Windows on ARM, and musl-based Linux such as Alpine."
+          },
+          "csharpSolutionExplorer.debug.logging": {
+            "type": "boolean",
+            "default": false,
+            "description": "Write a netcoredbg trace log next to the debug adapter. Only useful when diagnosing debugger problems."
+          },
+          "csharpSolutionExplorer.debug.externalTerminalAttachDelayMs": {
+            "type": "number",
+            "default": 0,
+            "minimum": 0,
+            "description": "Milliseconds to delay the program's start after 'Debug Startup Project in External Terminal' opens the terminal, before netcoredbg attaches. netcoredbg cannot launch a program directly into a real console (see that command's tooltip), so this only biases — it does not guarantee — catching breakpoints hit very early in Main(). 0 disables the delay."
+          }
+        }
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "csharp"
+      },
+      {
+        "language": "aspnetcorerazor"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "csharp-netcoredbg",
+        "label": "C# (netcoredbg)",
+        "languages": [
+          "csharp",
+          "aspnetcorerazor"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [],
+            "properties": {
+              "project": {
+                "type": "string",
+                "description": "Path to the .csproj to debug. Defaults to the Solution Explorer's startup project.",
+                "default": ""
+              },
+              "launchProfile": {
+                "type": "string",
+                "description": "Name of the launchSettings.json profile to apply. Defaults to the profile selected in the Solution Explorer."
+              },
+              "noLaunchProfile": {
+                "type": "boolean",
+                "default": false,
+                "description": "Ignore launchSettings.json entirely."
+              },
+              "targetFramework": {
+                "type": "string",
+                "description": "Which framework to debug. Only needed for multi-targeted projects."
+              },
+              "configuration": {
+                "type": "string",
+                "default": "Debug",
+                "description": "Build configuration to build and launch."
+              },
+              "program": {
+                "type": "string",
+                "description": "Explicit assembly (.dll) to launch, bypassing project resolution."
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Command line arguments passed to the program."
+              },
+              "cwd": {
+                "type": "string",
+                "description": "Working directory of the debugged program."
+              },
+              "env": {
+                "type": "object",
+                "default": {},
+                "description": "Environment variables added to the debugged program."
+              },
+              "stopAtEntry": {
+                "type": "boolean",
+                "default": false,
+                "description": "Break as soon as the program starts."
+              },
+              "console": {
+                "type": "string",
+                "enum": [
+                  "internalConsole",
+                  "integratedTerminal"
+                ],
+                "default": "internalConsole",
+                "description": "Where the debugged program's output appears. Note: netcoredbg currently always reports program output to the Debug Console regardless of this setting; the Debug Console is revealed automatically when a debug session starts."
+              },
+              "build": {
+                "type": "boolean",
+                "default": true,
+                "description": "Build the project before launching."
+              }
+            }
+          },
+          "attach": {
+            "required": [
+              "processId"
+            ],
+            "properties": {
+              "processId": {
+                "type": "string",
+                "description": "Process ID of an already-running .NET process to attach to. Prefer the 'Debug Startup Project in External Terminal' command, which spawns the process and fills this in automatically."
+              },
+              "program": {
+                "type": "string",
+                "description": "Path to the process's .dll, used for symbol (PDB) resolution."
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "name": "C#: Debug startup project",
+            "type": "csharp-netcoredbg",
+            "request": "launch"
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "C# (netcoredbg): Debug the startup project",
+            "description": "Debug the Solution Explorer's startup project with its selected launch profile.",
+            "body": {
+              "name": "C#: Debug startup project",
+              "type": "csharp-netcoredbg",
+              "request": "launch"
+            }
+          },
+          {
+            "label": "C# (netcoredbg): Debug a specific project",
+            "description": "Debug a named project.",
+            "body": {
+              "name": "C#: Debug ${1:Project}",
+              "type": "csharp-netcoredbg",
+              "request": "launch",
+              "project": "^\"\\${workspaceFolder}/${1:Project}/${1:Project}.csproj\""
+            }
+          },
+          {
+            "label": "C# (netcoredbg): Debug a web app (open browser when ready)",
+            "description": "Debug an ASP.NET Core project and open the browser once Kestrel reports its URL. Application URLs and environment come from the project's launchSettings.json profile.",
+            "body": {
+              "name": "C#: Debug ${1:Web} (browser)",
+              "type": "csharp-netcoredbg",
+              "request": "launch",
+              "project": "^\"\\${workspaceFolder}/${1:Web}/${1:Web}.csproj\"",
+              "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+              }
+            }
+          }
+        ]
       }
     ],
     "languages": [
@@ -1088,6 +1312,67 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.runInExternalTerminal",
+        "title": "Run in External Terminal",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.setStartupProject",
+        "title": "Set as Startup Project",
+        "icon": "$(play-circle)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.clearStartupProject",
+        "title": "Clear Startup Project",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.selectLaunchProfile",
+        "title": "Select Launch Profile...",
+        "icon": "$(play)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.selectStartupProject",
+        "title": "Select Startup Project...",
+        "icon": "$(play-circle)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.debug.start",
+        "title": "Debug Startup Project",
+        "icon": "$(debug-alt)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.debug.startWithoutDebugging",
+        "title": "Start Startup Project Without Debugging",
+        "icon": "$(play)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.debug.startInExternalTerminal",
+        "title": "Debug Startup Project in External Terminal",
+        "icon": "$(terminal)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.debug.setAsDefault",
+        "title": "Set as Default Debugger",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.debug.showLogs",
+        "title": "Show Debugger Logs",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.debug.clearCache",
+        "title": "Clear Downloaded Debugger",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.newProject",
         "title": "New Project...",
         "category": "C# Solution Explorer"
@@ -1310,34 +1595,49 @@
           "group": "7_modification@3"
         },
         {
+          "command": "csharpSolutionExplorer.setStartupProject",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
+          "group": "2_build@1"
+        },
+        {
+          "command": "csharpSolutionExplorer.selectLaunchProfile",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
+          "group": "2_build@2"
+        },
+        {
           "command": "csharpSolutionExplorer.buildProject",
           "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
-          "group": "2_build@1"
+          "group": "2_build@3"
         },
         {
           "command": "csharpSolutionExplorer.rebuild",
           "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
-          "group": "2_build@2"
+          "group": "2_build@4"
         },
         {
           "command": "csharpSolutionExplorer.runProject",
           "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
-          "group": "2_build@3"
+          "group": "2_build@5"
+        },
+        {
+          "command": "csharpSolutionExplorer.runInExternalTerminal",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
+          "group": "2_build@6"
         },
         {
           "command": "csharpSolutionExplorer.test",
           "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
-          "group": "2_build@4"
+          "group": "2_build@6"
         },
         {
           "command": "csharpSolutionExplorer.restore",
           "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
-          "group": "2_build@5"
+          "group": "2_build@7"
         },
         {
           "command": "csharpSolutionExplorer.clean",
           "when": "view == csharpSolutionExplorer.view && (viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/ || viewItem == csharpSolutionExplorer.solution)",
-          "group": "2_build@6"
+          "group": "2_build@8"
         },
         {
           "command": "csharpSolutionExplorer.rename",
@@ -1400,6 +1700,23 @@
           "group": "5_clipboard@3"
         }
       ],
+      "editor/title": [
+        {
+          "command": "csharpSolutionExplorer.debug.start",
+          "when": "csharpSolutionExplorer.debug.available",
+          "group": "navigation@1"
+        },
+        {
+          "command": "csharpSolutionExplorer.debug.startWithoutDebugging",
+          "when": "csharpSolutionExplorer.debug.available",
+          "group": "navigation@2"
+        },
+        {
+          "command": "csharpSolutionExplorer.debug.startInExternalTerminal",
+          "when": "csharpSolutionExplorer.debug.available",
+          "group": "navigation@3"
+        }
+      ],
       "editor/title/context": [
         {
           "command": "csharpSolutionExplorer.revealInTree",
@@ -1418,6 +1735,26 @@
         {
           "command": "csharpSolutionExplorer.revealInFileManager",
           "when": "false"
+        },
+        {
+          "command": "csharpSolutionExplorer.setStartupProject",
+          "when": "false"
+        },
+        {
+          "command": "csharpSolutionExplorer.clearStartupProject",
+          "when": "csharpSolutionExplorer.hasStartupProject"
+        },
+        {
+          "command": "csharpSolutionExplorer.debug.start",
+          "when": "config.csharpSolutionExplorer.debug.enabled"
+        },
+        {
+          "command": "csharpSolutionExplorer.debug.startWithoutDebugging",
+          "when": "config.csharpSolutionExplorer.debug.enabled"
+        },
+        {
+          "command": "csharpSolutionExplorer.debug.startInExternalTerminal",
+          "when": "config.csharpSolutionExplorer.debug.enabled"
         }
       ]
     },
@@ -1439,6 +1776,17 @@
         "key": "ctrl+v",
         "mac": "cmd+v",
         "when": "focusedView == csharpSolutionExplorer.view && csharpSolutionExplorer.clipboardHasItems"
+      },
+      {
+        "command": "csharpSolutionExplorer.debug.start",
+        "key": "f5",
+        "when": "debugState == 'inactive' && csharpSolutionExplorer.debug.ownsF5"
+      },
+      {
+        "command": "csharpSolutionExplorer.debug.startWithoutDebugging",
+        "key": "ctrl+f5",
+        "mac": "cmd+f5",
+        "when": "debugState == 'inactive' && csharpSolutionExplorer.debug.ownsF5"
       }
     ]
   },

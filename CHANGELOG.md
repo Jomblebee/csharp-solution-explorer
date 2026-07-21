@@ -4,6 +4,99 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.13.0] – 2026-07-21
+
+### Added
+
+- **C# debugging (F5)**: the extension now brings its own debugger, so breakpoints, stepping, the
+  call stack and locals work without any Microsoft-proprietary extension. It uses
+  **[netcoredbg](https://github.com/Samsung/netcoredbg)** (Samsung, MIT), which speaks the Debug
+  Adapter Protocol directly; the ~3.4 MB adapter is downloaded on the **first debug session** (not
+  at startup) and cached. Microsoft's `vsdbg` is deliberately not used — its licence restricts it
+  to Microsoft products.
+- **F5 works with no `launch.json`**: pressing F5 builds the startup project, applies its selected
+  `launchSettings.json` profile (environment variables, `applicationUrl`, arguments) and starts
+  debugging. Which assembly to launch comes from MSBuild, so the debugger and **Run Project** always
+  agree — including projects that relocate their output via `Directory.Build.props` or
+  `UseArtifactsOutput`. Multi-targeted projects ask which framework to debug.
+- **F5 starts the startup project directly** — no `launch.json`, no debugger picker. **Ctrl+F5**
+  (**Cmd+F5** on macOS) runs it without debugging, in an external terminal with a real console.
+  Because VS Code has no API for "one extension owns F5", the extension contributes its own `F5`
+  keybinding and only claims it when nothing else has a stake: the Microsoft C# extension is not
+  installed and `offerConfigurations` is not `never`. F5 keeps the extension's own startup project
+  even when the workspace has its own `launch.json` — turn off
+  `csharpSolutionExplorer.debug.ignoreLaunchJson` to make `launch.json` the escape hatch again.
+  `csharpSolutionExplorer.debug.handleF5` disables the takeover entirely, handing F5 straight back
+  to VS Code. If no startup project is set yet and the workspace has more than one project, you are
+  asked once and the choice is remembered.
+- **Live build progress**: the "Building…" notification now tracks real progress — restore, then
+  compiling, then a per-project counter for multi-project graphs — instead of sitting on an
+  indeterminate spinner, by parsing `dotnet build`'s own output as it streams.
+- **Debug and run buttons in the editor title bar**: the same actions sit as icons to the right
+  of the tabs, so they are reachable with the mouse and keep working even once a `launch.json`
+  exists. Hide any of them with a right-click on the title bar, VS Code's own way of managing editor
+  actions.
+- **Debug Startup Project in External Terminal**: netcoredbg has no way to show a *debugged*
+  program's real console output — everything it launches gets funneled into the Debug Console,
+  breaking interactive input (`Console.ReadLine()`) and anything that depends on a real terminal.
+  This command builds the startup project, spawns it in a real OS terminal (the same mechanism as
+  Ctrl+F5), and has netcoredbg attach to that process instead of launching it directly. Available
+  from the editor title bar, the view toolbar, and the Command Palette.
+  `csharpSolutionExplorer.debug.f5Console` (`internalConsole`/`externalTerminal`) routes plain F5
+  through the same flow instead of only offering it as a separate command. Since attaching happens
+  once the process has already started, a breakpoint on the first line of `Main()` can be missed —
+  `csharpSolutionExplorer.debug.externalTerminalAttachDelayMs` biases (does not guarantee) catching
+  it by delaying the program's start.
+- **Readable thread names in the call stack**: netcoredbg only reports a thread's managed
+  `Thread.Name`, and the runtime's own threads have none — so the call stack was a column of
+  `<No name>`. The thread ids it reports are OS thread ids, so on Linux the names are recovered from
+  `/proc/<tid>/comm` and shown as `.NET Finalizer (234574)`, `.NET TP Worker (234591)`,
+  `Kestrel Timer (234596)`. The id is appended because a process has several identically named
+  threadpool workers. Threads you named yourself keep that name. The kernel truncates names at 15
+  characters, hence `.NET Tiered Com`. macOS and Windows have no equivalent to `/proc`, so every
+  thread but the main one is labelled `Thread <id>` there — unique, just not descriptive. Reading
+  the names natively (`GetThreadDescription`, `proc_pidinfo`) would mean a native dependency and
+  per-platform builds, which is not worth it for a label.
+- **Set as Default Debugger** writes a `launch.json` with this debugger first — useful when another
+  C# debug extension is installed and F5 is therefore not taken over.
+  `csharpSolutionExplorer.debug.offerConfigurations` controls whether these configurations appear in
+  the F5 picker at all, and `csharpSolutionExplorer.debug.enabled` turns the debugger off entirely.
+
+  **Known limits of netcoredbg** (it is not on par with the proprietary `vsdbg`): expression
+  evaluation is weak — simple locals and arithmetic work, but property access such as
+  `text.Length`, calling a lambda, and LINQ queries fail in the watch window; hovering a variable
+  while stopped shows no value; there are no logpoints or hit-count breakpoints; collections show
+  their internal fields rather than a friendly element view; and async call stacks show raw
+  state-machine frames. There is no Just My Code, Hot Reload, Source Link or dump debugging.
+  Breakpoints (including conditional ones), stepping, the call stack and the locals view are solid.
+  Verified against .NET 10 on macOS arm64, for console and ASP.NET Core apps. Published netcoredbg
+  builds exist for macOS arm64, Linux x64/arm64 and Windows x64; on other platforms (Intel macOS,
+  Windows on ARM, Alpine) point `csharpSolutionExplorer.debug.debuggerPath` at a locally built one.
+
+- **Launch profiles**: the extension now reads a project's `Properties/launchSettings.json` — the
+  same profiles Visual Studio shows in its run dropdown. **Select Launch Profile…** (project
+  context menu, the status bar, or the Command Palette) picks the profile a project runs with, and
+  **Run Project** passes it through as `dotnet run --launch-profile`, so the profile's environment
+  variables and `applicationUrl` apply. "Run without a launch profile" and "Use the default
+  profile" are offered too. Profiles whose `commandName` is not `Project` (e.g. `IISExpress`) are
+  listed but cannot be selected — they need Windows-only tooling. Requires .NET SDK 6 or newer for
+  the `--launch-profile` option.
+- **Startup project**: **Set as Startup Project** on a project marks it with a green play icon and
+  a `startup` label in the tree. The choice is remembered per workspace. **Clear Startup Project**
+  (Command Palette) removes it.
+- **Two status bar items**, like the Visual Studio toolbar: the left one shows the startup project,
+  the right one its launch profile, and each opens its own picker on a single click — no
+  intermediate menu. Clicking the profile item without a startup project asks for the project
+  first, then goes straight on to the profile. The profile list is exactly what the project's
+  `Properties/launchSettings.json` contains. Whether the browser opens is decided by that profile's
+  own `launchBrowser` field alone; there is no separate toggle to keep in sync.
+
+### Fixed
+
+- **Run Project on multi-targeted projects**: `dotnet run` refuses to choose when a project sets
+  `<TargetFrameworks>`, so the run command now asks which framework to use and passes
+  `--framework`. Single-target projects are unaffected.
+
 ## [0.12.0] – 2026-07-18
 
 ### Added

@@ -75,16 +75,9 @@ export const ROSLYN_FEED_INDEX =
 export const ROSLYN_FEED_INDEX_FALLBACK =
   "https://pkgs.dev.azure.com/azure-public/vside/_packaging/vs-impl/nuget/v3/index.json";
 
-/**
- * Which cached server-version directories (the `roslyn/<version>` folders) may be pruned: every one
- * except the version currently in use. Pure (no IO) so it stays unit-testable; the actual removal
- * lives in `pruneServerCache` in `roslynDownloader.ts`. If `keep` is not among `existing` (e.g. a
- * `serverPath` override), nothing is kept back — but the caller only prunes after a real download of
- * `keep`, so `keep` is always present in practice.
- */
-export function versionsToPrune(existing: readonly string[], keep: string): string[] {
-  return existing.filter((v) => v !== keep);
-}
+// Cache pruning is shared with the debug adapter download, which has the same
+// `<root>/<version>/<rid>` layout. Re-exported here so existing callers and tests are unaffected.
+export { versionsToPrune } from "../shared/versionedCache.js";
 
 /**
  * Tries `feeds` in order with `fetchIndex`, returning the first that resolves. Pure orchestration (no

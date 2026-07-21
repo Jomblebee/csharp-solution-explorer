@@ -29,6 +29,11 @@ export const BUILD_PROJECT_COMMAND_ID = "csharpSolutionExplorer.buildProject";
 export const REBUILD_COMMAND_ID = "csharpSolutionExplorer.rebuild";
 export const TEST_COMMAND_ID = "csharpSolutionExplorer.test";
 export const RUN_PROJECT_COMMAND_ID = "csharpSolutionExplorer.runProject";
+export const RUN_IN_EXTERNAL_TERMINAL_COMMAND_ID = "csharpSolutionExplorer.runInExternalTerminal";
+export const SET_STARTUP_PROJECT_COMMAND_ID = "csharpSolutionExplorer.setStartupProject";
+export const CLEAR_STARTUP_PROJECT_COMMAND_ID = "csharpSolutionExplorer.clearStartupProject";
+export const SELECT_LAUNCH_PROFILE_COMMAND_ID = "csharpSolutionExplorer.selectLaunchProfile";
+export const SELECT_STARTUP_PROJECT_COMMAND_ID = "csharpSolutionExplorer.selectStartupProject";
 export const NEW_PROJECT_COMMAND_ID = "csharpSolutionExplorer.newProject";
 export const OPEN_SOLUTION_FILE_COMMAND_ID = "csharpSolutionExplorer.openSolutionFile";
 export const OPEN_PROJECT_FILE_COMMAND_ID = "csharpSolutionExplorer.openProjectFile";
@@ -70,6 +75,8 @@ export interface ProjectInfo {
   guid?: string;
   /** The GUID of the parent solution folder, if this project is nested. */
   parentFolderGuid?: string;
+  /** True when this is the workspace's startup project (the one Run and the status bar target). */
+  isStartup?: boolean;
 }
 
 export interface SolutionFolderInfo {

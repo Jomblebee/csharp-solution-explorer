@@ -26,6 +26,11 @@ import {
   REFRESH_COMMAND_ID,
   RENAME_COMMAND_ID,
   RUN_PROJECT_COMMAND_ID,
+  RUN_IN_EXTERNAL_TERMINAL_COMMAND_ID,
+  SELECT_LAUNCH_PROFILE_COMMAND_ID,
+  SELECT_STARTUP_PROJECT_COMMAND_ID,
+  SET_STARTUP_PROJECT_COMMAND_ID,
+  CLEAR_STARTUP_PROJECT_COMMAND_ID,
   ADD_EXISTING_PROJECT_COMMAND_ID,
   REMOVE_PROJECT_FROM_SOLUTION_COMMAND_ID,
   ADD_PROJECT_REFERENCE_COMMAND_ID,
@@ -87,8 +92,15 @@ import {
   rebuildTarget,
   restoreTarget,
   runProject,
+  runProjectInExternalTerminal,
   testTarget,
 } from "./buildCommands.js";
+import {
+  clearStartupProjectCommand,
+  selectLaunchProfileCommand,
+  selectStartupProjectCommand,
+  setStartupProjectCommand,
+} from "./launchProfileCommands.js";
 import { copyToClipboard, paste } from "./clipboardCommands.js";
 import { openInTerminal, revealInOS, revealInTree } from "./revealCommands.js";
 
@@ -165,7 +177,23 @@ export function registerSolutionExplorerCommands(
     vscode.commands.registerCommand(BUILD_PROJECT_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => buildTarget(item)),
     vscode.commands.registerCommand(REBUILD_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => rebuildTarget(item)),
     vscode.commands.registerCommand(TEST_COMMAND_ID, (item: ProjectTreeItem | SolutionTreeItem) => testTarget(item)),
-    vscode.commands.registerCommand(RUN_PROJECT_COMMAND_ID, (item: ProjectTreeItem) => runProject(item)),
+    // Now reads the .csproj and launch settings, so failures must surface instead of rejecting.
+    vscode.commands.registerCommand(RUN_PROJECT_COMMAND_ID, (item: ProjectTreeItem) =>
+      withErrorHandling(() => runProject(item)),
+    ),
+    vscode.commands.registerCommand(RUN_IN_EXTERNAL_TERMINAL_COMMAND_ID, (item?: unknown) =>
+      withErrorHandling(() => runProjectInExternalTerminal(item)),
+    ),
+    vscode.commands.registerCommand(SET_STARTUP_PROJECT_COMMAND_ID, (item: unknown) =>
+      withErrorHandling(() => setStartupProjectCommand(item)),
+    ),
+    vscode.commands.registerCommand(CLEAR_STARTUP_PROJECT_COMMAND_ID, () => clearStartupProjectCommand()),
+    vscode.commands.registerCommand(SELECT_LAUNCH_PROFILE_COMMAND_ID, (item?: unknown) =>
+      withErrorHandling(() => selectLaunchProfileCommand(item)),
+    ),
+    vscode.commands.registerCommand(SELECT_STARTUP_PROJECT_COMMAND_ID, () =>
+      withErrorHandling(() => selectStartupProjectCommand()),
+    ),
     vscode.commands.registerCommand(NEW_PROJECT_COMMAND_ID, (item: unknown) =>
       withErrorHandling(() => newProject(item, provider)),
     ),

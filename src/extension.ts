@@ -1,13 +1,24 @@
 import * as vscode from "vscode";
+import { activateDebugger } from "./debug/activate.js";
 import { activateLanguageServer } from "./languageServer/activate.js";
 import { NUGET_MANAGER_VIEW_TYPE, NugetManagerPanel } from "./nuget/nugetManagerPanel.js";
 import { registerSolutionExplorerCommands } from "./solutionExplorer/commands.js";
 import { checkDotnetSdk } from "./solutionExplorer/dotnetSdkNotifier.js";
 import { SolutionTreeDragAndDropController } from "./solutionExplorer/dragAndDropController.js";
+import {
+  disposeLaunchProfileState,
+  initLaunchProfileState,
+  onDidChangeLaunchProfileState,
+} from "./solutionExplorer/launchProfileState.js";
+import { LaunchProfileStatusBar } from "./solutionExplorer/launchProfileStatusBar.js";
 import { SolutionTreeDataProvider } from "./solutionExplorer/solutionTreeDataProvider.js";
 import { SolutionExplorerTreeItem } from "./solutionExplorer/treeItems.js";
 
 export function activate(context: vscode.ExtensionContext): void {
+  // Must precede the provider: it reads the startup project synchronously while building nodes,
+  // so hydrating later would leave the first render undecorated.
+  initLaunchProfileState(context);
+
   const provider = new SolutionTreeDataProvider();
   const treeView = vscode.window.createTreeView("csharpSolutionExplorer.view", {
     treeDataProvider: provider,
@@ -20,6 +31,10 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     provider,
     treeView,
+    new LaunchProfileStatusBar(),
+    // Redraw the startup decoration when the startup project changes.
+    onDidChangeLaunchProfileState(() => provider.refresh()),
+    { dispose: disposeLaunchProfileState },
     // Bring the NuGet manager back with its solution after a window reload, instead of an empty panel.
     vscode.window.registerWebviewPanelSerializer(NUGET_MANAGER_VIEW_TYPE, {
       deserializeWebviewPanel: (panel, state: unknown) =>
@@ -30,6 +45,10 @@ export function activate(context: vscode.ExtensionContext): void {
   // The bundled C# language server (Roslyn): downloads on first use and runs unless the Microsoft
   // C# extension is present. Best-effort — never blocks activation of the Solution Explorer.
   activateLanguageServer(context);
+
+  // The .NET debugger (netcoredbg): the adapter is downloaded on the first debug session, never at
+  // activation.
+  activateDebugger(context);
 
   // Non-blocking, best-effort: warn once at startup if no SDK matching the solution's needs is installed.
   void checkDotnetSdk();

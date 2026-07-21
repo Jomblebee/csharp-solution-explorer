@@ -101,6 +101,33 @@ export function parseTargetFrameworks(csprojText: string): string[] {
 }
 
 /**
+ * Parses the `<OutputType>` element (e.g. `Exe`, `WinExe`, `Library`). Returns undefined when
+ * not set explicitly, which means the SDK's own default applies.
+ */
+export function parseOutputType(csprojText: string): string | undefined {
+  return getPropertyValue(csprojText, "OutputType");
+}
+
+/**
+ * Best-effort "can this project be run/debugged" classification, without invoking MSBuild.
+ * An explicit `OutputType` always wins; otherwise the SDK's implicit default is used —
+ * `Microsoft.NET.Sdk.Web` and `Microsoft.NET.Sdk.BlazorWebAssembly` projects default to an
+ * executable output, every other SDK (plain class libraries, test projects) defaults to a
+ * library.
+ */
+export function isDebuggableProject(sdk: string | undefined, outputType: string | undefined): boolean {
+  const normalizedOutputType = outputType?.trim().toLowerCase();
+  if (normalizedOutputType === "exe" || normalizedOutputType === "winexe") {
+    return true;
+  }
+  if (normalizedOutputType === "library" || normalizedOutputType === "module") {
+    return false;
+  }
+  const normalizedSdk = sdk?.toLowerCase() ?? "";
+  return normalizedSdk.includes("sdk.web") || normalizedSdk.includes("sdk.blazorwebassembly");
+}
+
+/**
  * Parses explicit `<FrameworkReference Include="Microsoft.AspNetCore.App" />` elements.
  */
 export function parseFrameworkReferences(csprojText: string): CsprojFrameworkReference[] {

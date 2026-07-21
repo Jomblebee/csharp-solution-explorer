@@ -66,9 +66,20 @@ export class ProjectTreeItem extends vscode.TreeItem {
       ? "csharpSolutionExplorer.project.nested"
       : "csharpSolutionExplorer.project";
     this.resourceUri = info.uri;
-    this.iconPath = vscode.ThemeIcon.File;
+    // The startup project is marked the way the rest of the tree marks state: a themed icon plus a
+    // description, not a bold label (VS-style bold has no equivalent here).
+    this.iconPath = info.isStartup
+      ? new vscode.ThemeIcon("play-circle", new vscode.ThemeColor("charts.green"))
+      : vscode.ThemeIcon.File;
+    const parts: string[] = [];
+    if (info.isStartup) {
+      parts.push("startup");
+    }
     if (info.isPseudoSolution) {
-      this.description = "(no .sln found)";
+      parts.push("(no .sln found)");
+    }
+    if (parts.length > 0) {
+      this.description = parts.join(" · ");
     }
   }
 }
