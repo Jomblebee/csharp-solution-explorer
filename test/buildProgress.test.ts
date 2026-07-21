@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { computeProgress, createBuildProgressState, parseBuildLine } from "../src/solutionExplorer/dotnetCli.js";
+import { computeProgress, createBuildProgressState, parseBuildLine } from "../src/solutionExplorer/buildProgress.js";
 
 describe("parseBuildLine", () => {
   it("ignores blank lines", () => {
