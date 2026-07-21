@@ -40,11 +40,16 @@ export async function spawnForAttach(opts: AttachSpawnOptions): Promise<number> 
   }
 
   // The wrapper script owns the window's lifetime (pause-and-wait vs. auto-close — see
-  // attachWrapperScript.ts), so nothing should re-open a shell behind it once the script exits.
+  // attachWrapperScript.ts) and, via its own `trap`/`finally`, its temp directory's cleanup too —
+  // this function only learns the PID long before the script actually exits, so it can't safely
+  // delete `dir` itself on the success path.
   await runInExternalTerminal(req.cwd, command, { keepOpenAfterExit: false });
   try {
     return await waitForPidFile(pidFilePath, 10_000, 100);
-  } finally {
-    await fsp.unlink(pidFilePath).catch(() => {});
+  } catch (err) {
+    // The one case the script's own cleanup can't cover: it never got far enough to run at all
+    // (terminal never opened, wrong shell on PATH, ...), so nothing will ever fire its trap/finally.
+    await fsp.rm(dir, { recursive: true, force: true }).catch(() => {});
+    throw err;
   }
 }

@@ -48,7 +48,16 @@ async function runOnMac(cwd: string, command: string): Promise<void> {
   // sidesteps the quote-escaping minefield of an inline osascript `do script`.
   const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "cse-run-"));
   const script = path.join(dir, "run.command");
-  await fsp.writeFile(script, `#!/bin/bash\ncd ${shQuote(cwd)}\n${command}\n`, { mode: 0o755 });
+  // `trap ... EXIT` cleans up this script's own temp dir once it's done — the extension itself has no
+  // handle on the detached Terminal window, so it can never know when to delete this otherwise.
+  // `shQuote` applied twice, deliberately: see attachWrapperScript.ts's matching comment — nesting is
+  // required for a `dir` containing a space to survive being spliced into the outer `trap '...'`.
+  const cleanupCommand = `rm -rf ${shQuote(dir)}`;
+  await fsp.writeFile(
+    script,
+    `#!/bin/bash\ntrap ${shQuote(cleanupCommand)} EXIT\ncd ${shQuote(cwd)}\n${command}\n`,
+    { mode: 0o755 },
+  );
   detached("open", ["-a", "Terminal", script]);
 }
 
