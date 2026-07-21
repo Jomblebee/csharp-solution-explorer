@@ -2,6 +2,7 @@
 .vscode-test/**
 .claude/**
 .github/**
+docs/**
 samples/**
 test/**
 src/**
