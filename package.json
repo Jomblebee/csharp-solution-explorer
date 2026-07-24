@@ -215,6 +215,11 @@
             "default": 0,
             "minimum": 0,
             "description": "Milliseconds to delay the program's start after 'Debug Startup Project in External Terminal' opens the terminal, before netcoredbg attaches. netcoredbg cannot launch a program directly into a real console (see that command's tooltip), so this only biases — it does not guarantee — catching breakpoints hit very early in Main(). 0 disables the delay."
+          },
+          "csharpSolutionExplorer.testExplorer.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show C# test projects in the native Test Explorer, run them with 'dotnet test', and debug individual tests. Changes need a window reload."
           }
         }
       }
@@ -1804,6 +1809,7 @@
   },
   "dependencies": {
     "minimatch": "^10.2.5",
+    "vscode-jsonrpc": "^8.2.0",
     "vscode-languageclient": "^9.0.1",
     "yauzl": "^3.4.0"
   },

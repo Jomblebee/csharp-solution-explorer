@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { activateDebugger } from "./debug/activate.js";
 import { activateLanguageServer } from "./languageServer/activate.js";
 import { NUGET_MANAGER_VIEW_TYPE, NugetManagerPanel } from "./nuget/nugetManagerPanel.js";
+import { activateTestExplorer } from "./testExplorer/activate.js";
 import { registerSolutionExplorerCommands } from "./solutionExplorer/commands.js";
 import { checkDotnetSdk } from "./solutionExplorer/dotnetSdkNotifier.js";
 import { SolutionTreeDragAndDropController } from "./solutionExplorer/dragAndDropController.js";
@@ -49,6 +50,10 @@ export function activate(context: vscode.ExtensionContext): void {
   // The .NET debugger (netcoredbg): the adapter is downloaded on the first debug session, never at
   // activation.
   activateDebugger(context);
+
+  // The native Test Explorer: lists test projects, runs them with `dotnet test`, and debugs
+  // individual tests by attaching netcoredbg. Off when its config flag is disabled.
+  activateTestExplorer(context);
 
   // Non-blocking, best-effort: warn once at startup if no SDK matching the solution's needs is installed.
   void checkDotnetSdk();
