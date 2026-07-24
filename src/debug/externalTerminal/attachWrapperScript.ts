@@ -11,8 +11,6 @@ export interface AttachSpawnRequest {
   args: string[];
   env: Record<string, string>;
   pidFilePath: string;
-  /** Delays the program's start, biasing (not guaranteeing) the attach-before-first-line race. */
-  startupDelayMs?: number;
 }
 
 /** POSIX-shell single-quote escaping (mirrors externalTerminal.ts's shQuote). */
@@ -59,12 +57,15 @@ export function buildPosixWrapperScript(req: AttachSpawnRequest): string {
   for (const [key, value] of validEnvEntries(req.env)) {
     lines.push(`export ${key}=${posixQuote(value)}`);
   }
-  if (req.startupDelayMs !== undefined && req.startupDelayMs > 0) {
-    lines.push(`sleep ${(req.startupDelayMs / 1000).toFixed(3)}`);
-  }
   const argv = ["dotnet", "exec", req.program, ...req.args].map(posixQuote).join(" ");
   lines.push(
-    `${argv} &`,
+    // `< /dev/tty`: a background command (`&`) in a *non-interactive* shell has its stdin redirected
+    // to /dev/null by POSIX rule, so without this the program sees redirected input and any
+    // `Console.ReadKey`/interactive read throws "console input has been redirected" — even though it
+    // runs inside a real terminal window. `/dev/tty` is the wrapper's controlling terminal (the
+    // emulator/Terminal.app pty), reconnecting a real TTY so interactive input works. No SIGTTIN: with
+    // no job control the background process shares the shell's (foreground) process group.
+    `${argv} < /dev/tty &`,
     "pid=$!",
     `echo $pid > ${posixQuote(req.pidFilePath)}`,
     "wait $pid",
@@ -139,9 +140,6 @@ export function buildWindowsWrapperScript(req: AttachSpawnRequest): string {
   const body: string[] = [`Set-Location -LiteralPath ${psQuote(req.cwd)}`];
   for (const [key, value] of validEnvEntries(req.env)) {
     body.push(`$env:${key} = ${psQuote(value)}`);
-  }
-  if (req.startupDelayMs !== undefined && req.startupDelayMs > 0) {
-    body.push(`Start-Sleep -Milliseconds ${Math.round(req.startupDelayMs)}`);
   }
   const argv = ["exec", req.program, ...req.args];
   const argList = argv.map((arg) => psQuote(winArgQuote(arg))).join(", ");

@@ -55,8 +55,9 @@ export class LanguageServerController {
     private readonly state: ServerStateStore,
     private readonly output: vscode.OutputChannel,
   ) {
-    // Global commands the server's CodeLens/completions invoke — registered once for the extension's life.
-    this.context.subscriptions.push(registerServerCommands());
+    // Global commands the server's CodeLens/completions/code-actions invoke — registered once for the
+    // extension's life. They resolve the current client lazily since it is recreated on every restart.
+    this.context.subscriptions.push(registerServerCommands(() => this.client, this.output));
   }
 
   /** Starts (or, if already starting, joins the in-flight start). */
@@ -72,6 +73,17 @@ export class LanguageServerController {
   async restart(): Promise<void> {
     this.state.update({ phase: "restarting", activity: "Restarting…" });
     await this.start();
+  }
+
+  /**
+   * Stops the running server for this session without touching the `enabled` setting. A subsequent
+   * `start()`/`restart()` (or a config change) brings it back; a window reload re-evaluates the
+   * setting. Use for ad-hoc control from the status-bar menu; use the setting for a durable off.
+   */
+  async stop(): Promise<void> {
+    await this.stopClient();
+    this.state.set({ phase: "stopped", detail: "Stopped from the status-bar menu." });
+    await this.setRunningContext(false);
   }
 
   /**

@@ -106,26 +106,27 @@ function buildRows(s: ServerStatus): StatusRow[] {
   return rows;
 }
 
-/** A compact status-bar handle that mirrors the server phase and focuses the view on click. */
+/**
+ * A compact status-bar handle that mirrors the server phase. Always visible (even when the server is
+ * off) so its action menu — start/stop/restart, logs, cache, settings — is always reachable; clicking
+ * opens that QuickPick.
+ */
 export class LanguageServerStatusBar {
   private readonly item: vscode.StatusBarItem;
 
   constructor(state: ServerStateStore) {
     this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
-    this.item.command = "csharpSolutionExplorer.languageServerView.focus";
+    this.item.command = "csharpSolutionExplorer.languageServer.showMenu";
     this.render(state.status);
     state.onDidChange((s) => this.render(s));
   }
 
   private render(s: ServerStatus): void {
-    // Only surface a handle while we are actually managing a server.
-    const visible: ServerPhase[] = ["downloading", "starting", "running", "restarting", "failed"];
-    if (!visible.includes(s.phase)) {
-      this.item.hide();
-      return;
-    }
     this.item.text = `$(${PHASE_ICON[s.phase]}) C#`;
     this.item.tooltip = s.activity ? `C# Language Server — ${s.activity}` : `C# Language Server — ${PHASE_LABEL[s.phase]}`;
+    // Draw attention only when something is wrong; keep the off/idle states quiet and unstyled.
+    this.item.backgroundColor =
+      s.phase === "failed" ? new vscode.ThemeColor("statusBarItem.errorBackground") : undefined;
     this.item.show();
   }
 

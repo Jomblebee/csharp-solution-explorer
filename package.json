@@ -135,6 +135,43 @@
             "default": "Information",
             "description": "Log verbosity passed to the C# language server (--logLevel)."
           },
+          "csharpSolutionExplorer.languageServer.loadMode": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "solution",
+              "projects",
+              "openProjects"
+            ],
+            "enumDescriptions": [
+              "Load a solution if one is found, otherwise all projects in the workspace (default).",
+              "Only ever load a solution; never fall back to loose projects.",
+              "Always load every .csproj in the workspace and ignore any solution file.",
+              "Load only the projects that own the currently-open editors. Referenced projects still load automatically. Evaluated when the server starts."
+            ],
+            "default": "auto",
+            "description": "What the C# language server loads. Referenced projects (ProjectReference) always load automatically regardless of this setting — it only chooses the entry point."
+          },
+          "csharpSolutionExplorer.languageServer.solutionPath": {
+            "type": "string",
+            "default": "",
+            "description": "Path to the specific solution (.sln / .slnx) to load, absolute or relative to the workspace root. Useful when several solutions exist. Leave empty to auto-pick the shallowest one. A non-existent path is ignored. Has no effect in the 'projects' or 'openProjects' load modes."
+          },
+          "csharpSolutionExplorer.languageServer.diagnosticsScope": {
+            "type": "string",
+            "enum": [
+              "openFiles",
+              "fullSolution",
+              "none"
+            ],
+            "enumDescriptions": [
+              "Report errors and warnings only for files you have open (default). Closed files are still understood for navigation and IntelliSense.",
+              "Report errors and warnings for every file in the loaded solution/projects, including files you have not opened. Uses more CPU and memory on large solutions.",
+              "Do not compute background diagnostics; errors appear only while typing in a file."
+            ],
+            "default": "openFiles",
+            "description": "How widely the C# language server reports diagnostics (errors/warnings). 'fullSolution' analyzes closed files too. This only affects proactive diagnostics — go-to-definition, find-references, and rename already work across closed files whenever their project is loaded."
+          },
           "csharpSolutionExplorer.languageServer.razor.enabled": {
             "type": "boolean",
             "default": true,
@@ -181,14 +218,16 @@
             "type": "string",
             "enum": [
               "internalConsole",
+              "integratedTerminal",
               "externalTerminal"
             ],
             "enumDescriptions": [
-              "F5 launches and owns the program directly; its console output goes to the Debug Console.",
-              "F5 spawns the program in a real external terminal first, then attaches the debugger to it — same mechanism as 'Debug Startup Project in External Terminal'. Breakpoints hit very early in Main() may be missed; see 'externalTerminalAttachDelayMs'."
+              "F5 launches and owns the program directly; its output goes to the Debug Console. The Debug Console has no usable stdin, so interactive input (Console.ReadKey / Console.ReadLine) does not work.",
+              "F5 spawns the program in a VS Code integrated terminal first, then attaches the debugger to it. Gives the program a real, interactive console inside the editor. If the runtime isn't ready for the attach yet, the debugger retries automatically and, if it keeps failing, offers a Retry/Abort notification.",
+              "F5 spawns the program in a real external OS terminal first, then attaches the debugger to it — same mechanism as 'Debug Startup Project in External Terminal'. If the runtime isn't ready for the attach yet, the debugger retries automatically and, if it keeps failing, offers a Retry/Abort notification."
             ],
-            "default": "internalConsole",
-            "description": "Where F5's program output appears. netcoredbg cannot show real console output for a program it launches directly, so 'externalTerminal' works around that by spawning the program externally first and attaching instead."
+            "default": "externalTerminal",
+            "description": "Where F5's program output appears. netcoredbg cannot show real console output (or accept input) for a program it launches directly, so 'integratedTerminal' and 'externalTerminal' work around that by spawning the program in a real terminal first and attaching instead — the only way interactive input works."
           },
           "csharpSolutionExplorer.debug.buildBeforeLaunch": {
             "type": "boolean",
@@ -209,12 +248,6 @@
             "type": "boolean",
             "default": false,
             "description": "Write a netcoredbg trace log next to the debug adapter. Only useful when diagnosing debugger problems."
-          },
-          "csharpSolutionExplorer.debug.externalTerminalAttachDelayMs": {
-            "type": "number",
-            "default": 0,
-            "minimum": 0,
-            "description": "Milliseconds to delay the program's start after 'Debug Startup Project in External Terminal' opens the terminal, before netcoredbg attaches. netcoredbg cannot launch a program directly into a real console (see that command's tooltip), so this only biases — it does not guarantee — catching breakpoints hit very early in Main(). 0 disables the delay."
           }
         }
       }
@@ -1435,9 +1468,26 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.languageServer.showMenu",
+        "title": "Server Actions…",
+        "category": "C# Language Server"
+      },
+      {
         "command": "csharpSolutionExplorer.languageServer.restart",
         "title": "Restart Server",
         "icon": "$(refresh)",
+        "category": "C# Language Server"
+      },
+      {
+        "command": "csharpSolutionExplorer.languageServer.stop",
+        "title": "Stop Server",
+        "icon": "$(stop)",
+        "category": "C# Language Server"
+      },
+      {
+        "command": "csharpSolutionExplorer.languageServer.start",
+        "title": "Start Server",
+        "icon": "$(play)",
         "category": "C# Language Server"
       },
       {
@@ -1482,6 +1532,16 @@
           "command": "csharpSolutionExplorer.openSettings",
           "when": "view == csharpSolutionExplorer.view",
           "group": "navigation@99"
+        },
+        {
+          "command": "csharpSolutionExplorer.languageServer.stop",
+          "when": "view == csharpSolutionExplorer.languageServerView && csharpSolutionExplorer.languageServer.running",
+          "group": "navigation@0"
+        },
+        {
+          "command": "csharpSolutionExplorer.languageServer.start",
+          "when": "view == csharpSolutionExplorer.languageServerView && !csharpSolutionExplorer.languageServer.running",
+          "group": "navigation@0"
         },
         {
           "command": "csharpSolutionExplorer.languageServer.restart",

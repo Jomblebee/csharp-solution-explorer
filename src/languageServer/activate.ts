@@ -5,6 +5,7 @@
 
 import * as vscode from "vscode";
 import { LanguageServerController } from "./languageServerController.js";
+import { showLanguageServerMenu } from "./languageServerMenu.js";
 import { LanguageServerStatusBar, LanguageServerStatusView } from "./languageServerStatusView.js";
 import { ServerStateStore } from "./serverState.js";
 
@@ -25,8 +26,23 @@ export function activateLanguageServer(context: vscode.ExtensionContext): void {
     { dispose: () => void controller.dispose() },
     statusBar,
     vscode.window.registerTreeDataProvider("csharpSolutionExplorer.languageServerView", statusView),
+    vscode.commands.registerCommand("csharpSolutionExplorer.languageServer.showMenu", () =>
+      showLanguageServerMenu(state),
+    ),
     vscode.commands.registerCommand("csharpSolutionExplorer.languageServer.restart", () =>
       controller.restart(),
+    ),
+    vscode.commands.registerCommand("csharpSolutionExplorer.languageServer.stop", () =>
+      controller.stop(),
+    ),
+    vscode.commands.registerCommand("csharpSolutionExplorer.languageServer.start", () =>
+      controller.start(),
+    ),
+    vscode.commands.registerCommand("csharpSolutionExplorer.languageServer.openSettings", () =>
+      vscode.commands.executeCommand(
+        "workbench.action.openSettings",
+        "csharpSolutionExplorer.languageServer",
+      ),
     ),
     vscode.commands.registerCommand("csharpSolutionExplorer.languageServer.showLogs", () =>
       controller.showLogs(),

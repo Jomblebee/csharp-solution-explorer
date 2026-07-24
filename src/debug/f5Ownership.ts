@@ -29,7 +29,7 @@ const START_WITHOUT_DEBUGGING_COMMAND = "csharpSolutionExplorer.debug.startWitho
  */
 export function registerF5Ownership(
   context: vscode.ExtensionContext,
-  options: { debuggerEnabled: boolean; startInExternalTerminal: () => Promise<void> },
+  options: { debuggerEnabled: boolean; startInTerminal: (host: "external" | "integrated") => Promise<void> },
 ): void {
   const refresh = (): void => {
     const owns = computeOwnsF5({
@@ -64,7 +64,7 @@ export function registerF5Ownership(
     // Installing or removing the Microsoft C# extension flips ownership without a window reload.
     vscode.extensions.onDidChange(refresh),
     vscode.commands.registerCommand(START_COMMAND, () =>
-      startDebugging(options.debuggerEnabled, options.startInExternalTerminal),
+      startDebugging(options.debuggerEnabled, options.startInTerminal),
     ),
     vscode.commands.registerCommand(START_WITHOUT_DEBUGGING_COMMAND, () => startWithoutDebugging()),
   );
@@ -74,18 +74,27 @@ export function registerF5Ownership(
  * Starts a session from an *inline* configuration — nothing is written to disk. The configuration
  * providers then do the real work: pick the project and framework, build, read launchSettings.json.
  *
- * When `debug.f5Console` is `externalTerminal`, this defers to the same spawn-then-attach flow as the
- * "Debug Startup Project in External Terminal" command instead — see `externalTerminalDebug.ts` for
- * why `launch` alone cannot show a real console.
+ * When `debug.f5Console` is `externalTerminal` or `integratedTerminal`, this defers to the same
+ * spawn-then-attach flow as the "Debug Startup Project in External Terminal" command instead (hosted
+ * in an OS window or a VS Code integrated terminal respectively) — see `externalTerminalDebug.ts` for
+ * why `launch` alone cannot show a real, interactive console.
  */
-async function startDebugging(debuggerEnabled: boolean, startInExternalTerminal: () => Promise<void>): Promise<void> {
+async function startDebugging(
+  debuggerEnabled: boolean,
+  startInTerminal: (host: "external" | "integrated") => Promise<void>,
+): Promise<void> {
   const startup = getStartupProjectFsPath();
   if (!debuggerEnabled || !(await hasSomethingToDebug(startup))) {
     await vscode.commands.executeCommand("workbench.action.debug.start");
     return;
   }
-  if (readF5ConsoleMode() === "externalTerminal") {
-    await startInExternalTerminal();
+  const consoleMode = readF5ConsoleMode();
+  if (consoleMode === "externalTerminal") {
+    await startInTerminal("external");
+    return;
+  }
+  if (consoleMode === "integratedTerminal") {
+    await startInTerminal("integrated");
     return;
   }
   await vscode.debug.startDebugging(folderFor(startup), {

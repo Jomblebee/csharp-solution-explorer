@@ -21,7 +21,7 @@ describe("buildPosixWrapperScript", () => {
     const lines = script.split("\n");
     assert.equal(lines[0], "#!/bin/bash");
     assert.equal(lines[2], "cd '/repo/src/Web'");
-    assert.ok(script.includes("'dotnet' 'exec' '/repo/src/Web/bin/Debug/net10.0/Web.dll' &\n"));
+    assert.ok(script.includes("'dotnet' 'exec' '/repo/src/Web/bin/Debug/net10.0/Web.dll' < /dev/tty &\n"));
     assert.ok(script.includes("\npid=$!\n"));
     assert.ok(script.includes("echo $pid > '/tmp/cse-attach-abc/pid.txt'\n"));
     assert.ok(script.includes("\nwait $pid\n"));
@@ -41,6 +41,14 @@ describe("buildPosixWrapperScript", () => {
     assert.ok(script.includes("export GOOD_NAME='kept'"));
   });
 
+  it("redirects the background process's stdin from /dev/tty so interactive reads work", () => {
+    // Without `< /dev/tty`, a non-interactive shell sends a background job's stdin to /dev/null,
+    // making Console.ReadKey throw "console input has been redirected" inside a real terminal.
+    const script = buildPosixWrapperScript(req());
+    assert.ok(script.includes("< /dev/tty &\n"));
+    assert.ok(!script.includes("< /dev/null"));
+  });
+
   it("never joins the background statement with `;` (bash syntax error after `&`)", () => {
     const script = buildPosixWrapperScript(req());
     assert.ok(!script.includes("&;"));
@@ -53,16 +61,6 @@ describe("buildPosixWrapperScript", () => {
     assert.ok(script.includes("export GREETING='hi there'"));
     assert.ok(script.includes("'hello world'"));
     assert.ok(script.includes("'it'\\''s fine'"));
-  });
-
-  it("omits the sleep line when startupDelayMs is not set", () => {
-    assert.ok(!buildPosixWrapperScript(req()).includes("sleep"));
-    assert.ok(!buildPosixWrapperScript(req({ startupDelayMs: 0 })).includes("sleep"));
-  });
-
-  it("adds a sleep line in seconds when startupDelayMs is set", () => {
-    const script = buildPosixWrapperScript(req({ startupDelayMs: 300 }));
-    assert.ok(script.includes("\nsleep 0.300\n"));
   });
 
   it("skips the keypress pause and exits immediately when killed by a signal (status >= 128)", () => {
@@ -119,14 +117,5 @@ describe("buildWindowsWrapperScript", () => {
   it("sets environment variables via $env: before Start-Process", () => {
     const script = buildWindowsWrapperScript(req({ env: { ASPNETCORE_ENVIRONMENT: "Development" } }));
     assert.ok(script.includes("$env:ASPNETCORE_ENVIRONMENT = 'Development'\r\n"));
-  });
-
-  it("omits the sleep line when startupDelayMs is not set", () => {
-    assert.ok(!buildWindowsWrapperScript(req()).includes("Start-Sleep"));
-  });
-
-  it("adds a Start-Sleep line in milliseconds when startupDelayMs is set", () => {
-    const script = buildWindowsWrapperScript(req({ startupDelayMs: 300 }));
-    assert.ok(script.includes("Start-Sleep -Milliseconds 300\r\n"));
   });
 });
