@@ -1,4 +1,3 @@
-import * as path from "node:path";
 import * as vscode from "vscode";
 import { resolveOwningProjectUri } from "./commandUtils.js";
 import {
@@ -19,6 +18,8 @@ import {
   ResolvedLaunchProfile,
 } from "./launchSettingsReader.js";
 import { promptForStartupProject, resolveTargetProject, TargetProject } from "./workspaceProjects.js";
+import { addProfile, deleteProfile, duplicateProfile, editProfile } from "./launchProfileEditor.js";
+import { isWebSdk, parseSdkAttribute, parseTargetFrameworks } from "./csprojReader.js";
 
 /**
  * Reads a project's launch profiles. A missing or unreadable file is not an error — it just means
@@ -32,6 +33,26 @@ export async function readLaunchSettings(projectRootDir: vscode.Uri): Promise<Pa
   } catch {
     return { profiles: [] };
   }
+}
+
+/**
+ * The raw text of a project's launchSettings.json, needed by the editor so its writes round-trip
+ * against the exact on-disk content (preserving keys we do not model). A missing file returns "",
+ * which the writer scaffolds into a fresh file.
+ */
+export async function readLaunchSettingsRaw(projectRootDir: vscode.Uri): Promise<string> {
+  const uri = vscode.Uri.file(getLaunchSettingsPath(projectRootDir.fsPath));
+  try {
+    return new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
+  } catch {
+    return "";
+  }
+}
+
+/** Persists new launchSettings.json text. `writeFile` creates the `Properties/` directory as needed. */
+export async function writeLaunchSettings(projectRootDir: vscode.Uri, text: string): Promise<void> {
+  const uri = vscode.Uri.file(getLaunchSettingsPath(projectRootDir.fsPath));
+  await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
 }
 
 /**
@@ -106,41 +127,127 @@ export async function selectStartupProjectCommand(): Promise<void> {
 /**
  * Picks the launch profile for a project. Invoked from a project node (that project), or from the
  * status bar / command palette with no argument (the startup project, choosing one first if none
- * is set yet).
+ * is set yet). Each profile carries pencil/copy/trash buttons to edit/duplicate/delete it, and a
+ * "New profile…" entry creates one — all via built-in dialogs, writing launchSettings.json directly.
  */
 export async function selectLaunchProfileCommand(item?: unknown): Promise<void> {
   const project = (await resolveTargetProject(item)) ?? (await promptForStartupProject());
   if (!project) {
     return;
   }
+  await showProfilePicker(project);
+}
 
-  const settings = await readLaunchSettings(project.rootDir);
-  const runnable = settings.profiles.filter(isRunnableProfile);
-  const unsupported = settings.profiles.filter((p) => !isRunnableProfile(p));
+const EDIT_BUTTON: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("pencil"), tooltip: "Edit profile" };
+const DUPLICATE_BUTTON: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("copy"), tooltip: "Duplicate profile" };
+const DELETE_BUTTON: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("trash"), tooltip: "Delete profile" };
+const OPEN_FILE_BUTTON: vscode.QuickInputButton = {
+  iconPath: new vscode.ThemeIcon("go-to-file"),
+  tooltip: "Open launchSettings.json",
+};
 
-  if (settings.profiles.length === 0) {
-    vscode.window.showInformationMessage(
-      `${project.name} has no launch profiles (${path.join("Properties", "launchSettings.json")}).`,
-    );
+const ASPNETCORE_ENVIRONMENT = "ASPNETCORE_ENVIRONMENT";
+
+/** SDK-level facts read once per picker — the project file does not change while it is open. */
+async function readProjectFacts(projectUri: vscode.Uri): Promise<{ webSdk: boolean; tfm: string }> {
+  try {
+    const text = new TextDecoder().decode(await vscode.workspace.fs.readFile(projectUri));
+    return { webSdk: isWebSdk(parseSdkAttribute(text)), tfm: parseTargetFrameworks(text).join(" · ") };
+  } catch {
+    return { webSdk: false, tfm: "" };
+  }
+}
+
+/** Opens the raw launchSettings.json in a text editor, or says so when the project has none yet. */
+async function openLaunchSettingsFile(project: TargetProject): Promise<void> {
+  const uri = vscode.Uri.file(getLaunchSettingsPath(project.rootDir.fsPath));
+  try {
+    await vscode.workspace.fs.stat(uri);
+  } catch {
+    vscode.window.showInformationMessage(`${project.name} has no launchSettings.json yet.`);
     return;
   }
+  await vscode.window.showTextDocument(uri);
+}
 
-  const active = getActiveProfileName(project.uri.fsPath);
-  const picked = await vscode.window.showQuickPick(buildProfileItems(runnable, unsupported, active), {
-    title: `Launch profile — ${project.name}`,
-    placeHolder: "Select the profile to run this project with",
+/**
+ * The live profile picker. A `createQuickPick` (not `showQuickPick`) so real profiles can carry
+ * per-item buttons; picking a profile pins it, the buttons run the editor flows, and the picker is
+ * reloaded and re-shown afterwards so its state stays current.
+ */
+async function showProfilePicker(project: TargetProject): Promise<void> {
+  const { webSdk, tfm } = await readProjectFacts(project.uri);
+  const qp = vscode.window.createQuickPick<ProfileQuickPickItem>();
+  qp.title = `Launch profile — ${project.name}${tfm ? ` (${tfm})` : ""}`;
+  qp.placeholder = "Select a profile to run, or use the buttons to edit / add profiles";
+
+  const reload = async (): Promise<void> => {
+    const settings = await readLaunchSettings(project.rootDir);
+    const runnable = settings.profiles.filter(isRunnableProfile);
+    const unsupported = settings.profiles.filter((p) => !isRunnableProfile(p));
+    const active = getActiveProfileName(project.uri.fsPath);
+    const items = buildProfileItems(runnable, unsupported, active, webSdk);
+    qp.items = items;
+    const preselect = pickActiveItem(items, active);
+    if (preselect) {
+      qp.activeItems = [preselect];
+    }
+  };
+
+  return new Promise<void>((resolve) => {
+    const done = (): void => {
+      qp.dispose();
+      resolve();
+    };
+
+    qp.onDidTriggerItemButton(async (event) => {
+      if (event.button === OPEN_FILE_BUTTON) {
+        qp.hide();
+        await openLaunchSettingsFile(project);
+        done();
+        return;
+      }
+      const name = event.item.profileName;
+      if (!name || name === NO_PROFILE) {
+        return; // synthetic items have no editable profile
+      }
+      qp.hide();
+      if (event.button === EDIT_BUTTON) {
+        await editProfile(project, name);
+      } else if (event.button === DUPLICATE_BUTTON) {
+        await duplicateProfile(project, name);
+      } else if (event.button === DELETE_BUTTON) {
+        await deleteProfile(project, name);
+      }
+      await reload();
+      qp.show();
+    });
+
+    qp.onDidAccept(async () => {
+      const [picked] = qp.selectedItems;
+      if (!picked) {
+        return;
+      }
+      if (picked.newProfile) {
+        qp.hide();
+        await addProfile(project);
+        await reload();
+        qp.show();
+        return;
+      }
+      if (picked.unsupported) {
+        vscode.window.showInformationMessage(
+          `The "${picked.profileName ?? ""}" profile uses commandName "${picked.commandName ?? ""}", which is not supported. Only "Project" profiles can be run.`,
+        );
+        return;
+      }
+      setActiveProfileName(project.uri.fsPath, picked.profileName);
+      done();
+    });
+
+    qp.onDidHide(done);
+    void reload().then(() => qp.show());
   });
-  if (!picked) {
-    return;
-  }
-  if (picked.unsupported) {
-    vscode.window.showInformationMessage(
-      `The "${picked.profileName ?? ""}" profile uses commandName "${picked.commandName ?? ""}", which is not supported. Only "Project" profiles can be run.`,
-    );
-    return;
-  }
-
-  setActiveProfileName(project.uri.fsPath, picked.profileName);
 }
 
 interface ProfileQuickPickItem extends vscode.QuickPickItem {
@@ -148,22 +255,45 @@ interface ProfileQuickPickItem extends vscode.QuickPickItem {
   profileName?: string;
   unsupported?: boolean;
   commandName?: string;
+  newProfile?: boolean;
+  /** Marks the synthetic "Use the default profile" row (its `profileName` is a meaningful undefined). */
+  isDefault?: boolean;
+}
+
+/** The row matching the current pin, so the picker opens with it highlighted (Enter re-confirms). */
+function pickActiveItem(items: ProfileQuickPickItem[], active: string | undefined): ProfileQuickPickItem | undefined {
+  if (active === undefined) {
+    return items.find((item) => item.isDefault);
+  }
+  if (active === NO_PROFILE) {
+    return items.find((item) => item.profileName === NO_PROFILE);
+  }
+  return items.find((item) => item.profileName === active && !item.unsupported);
 }
 
 function buildProfileItems(
   runnable: LaunchProfile[],
   unsupported: LaunchProfile[],
   active: string | undefined,
+  webSdk: boolean,
 ): ProfileQuickPickItem[] {
-  const items: ProfileQuickPickItem[] = runnable.map((profile) => ({
-    label: profile.name === active ? `$(check) ${profile.name}` : profile.name,
-    description: profile.applicationUrl,
-    detail: profile.commandLineArgs,
-    profileName: profile.name,
-  }));
+  const buttons = [EDIT_BUTTON, DUPLICATE_BUTTON, DELETE_BUTTON, OPEN_FILE_BUTTON];
+  const items: ProfileQuickPickItem[] = runnable.map((profile) => {
+    const isWeb = profile.applicationUrl !== undefined || webSdk;
+    const icon = isWeb ? "$(globe)" : "$(terminal)";
+    const env = profile.environmentVariables[ASPNETCORE_ENVIRONMENT];
+    return {
+      label: `${profile.name === active ? "$(check) " : ""}${icon} ${profile.name}`,
+      description: isWeb ? profile.applicationUrl : profile.commandLineArgs,
+      detail: env ? `$(server-environment) ${env}` : undefined,
+      profileName: profile.name,
+      buttons,
+    };
+  });
 
   items.push(
     { label: "", kind: vscode.QuickPickItemKind.Separator },
+    { label: "$(add) New profile...", newProfile: true },
     {
       label: active === NO_PROFILE ? "$(check) Run without a launch profile" : "Run without a launch profile",
       description: "dotnet run --no-launch-profile",
@@ -173,6 +303,7 @@ function buildProfileItems(
       label: active === undefined ? "$(check) Use the default profile" : "Use the default profile",
       description: "Let the .NET SDK choose",
       profileName: undefined,
+      isDefault: true,
     },
   );
 
@@ -186,6 +317,7 @@ function buildProfileItems(
         unsupported: true,
         profileName: profile.name,
         commandName: profile.commandName,
+        buttons,
       })),
     );
   }

@@ -24,7 +24,7 @@ export function activateDebugger(context: vscode.ExtensionContext): void {
   // F5, while its commands stay in the palette and defer to VS Code's own actions.
   registerF5Ownership(context, {
     debuggerEnabled: enabled,
-    startInExternalTerminal: () => startDebuggingInExternalTerminal(state, output),
+    startInTerminal: (host) => startDebuggingInExternalTerminal(state, output, host),
   });
   if (!enabled) {
     return;

@@ -9,23 +9,34 @@
 import * as fsp from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { runInExternalTerminal, shQuote } from "../../solutionExplorer/externalTerminal.js";
+import { runInExternalTerminal, runInIntegratedTerminal, shQuote } from "../../solutionExplorer/externalTerminal.js";
 import { waitForPidFile } from "./attachPidFile.js";
 import { AttachSpawnRequest, buildPosixWrapperScript, buildWindowsWrapperScript } from "./attachWrapperScript.js";
 
-export type AttachSpawnOptions = Omit<AttachSpawnRequest, "pidFilePath">;
+/** Where the program's console lives: a native OS window, or a VS Code integrated terminal (both real ptys). */
+export type TerminalHost = "external" | "integrated";
+
+export type AttachSpawnOptions = Omit<AttachSpawnRequest, "pidFilePath"> & {
+  /** The console host for the spawned program. Defaults to `"external"`. */
+  host?: TerminalHost;
+  /** Terminal name for the `"integrated"` host (ignored for `"external"`). */
+  terminalName?: string;
+};
 
 /**
- * Writes a temp wrapper script, runs it via the existing `runInExternalTerminal` (same per-OS
- * terminal-opening mechanism Ctrl+F5 already uses, just without its keep-open trailer — see below),
- * then polls the pidfile the script writes before backgrounding the process. Never assumes the
- * terminal's own immediate child is the target process — it usually isn't (`cmd.exe`,
- * `x-terminal-emulator`, …), hence the pidfile handoff.
+ * Writes a temp wrapper script, runs it in a real pty — either a native OS terminal
+ * (`runInExternalTerminal`, the same per-OS mechanism Ctrl+F5 uses, minus its keep-open trailer) or a
+ * VS Code integrated terminal (`opts.host === "integrated"`) — then polls the pidfile the script
+ * writes before backgrounding the process. Never assumes the terminal's own immediate child is the
+ * target process — it usually isn't (`cmd.exe`, `x-terminal-emulator`, the user's login shell, …),
+ * hence the pidfile handoff. Both hosts are real ptys, so the wrapper's `< /dev/tty` stdin redirect
+ * gives the program interactive input either way.
  */
 export async function spawnForAttach(opts: AttachSpawnOptions): Promise<number> {
+  const { host = "external", terminalName, ...spawnOpts } = opts;
   const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "cse-attach-"));
   const pidFilePath = path.join(dir, "pid.txt");
-  const req: AttachSpawnRequest = { ...opts, pidFilePath };
+  const req: AttachSpawnRequest = { ...spawnOpts, pidFilePath };
 
   let command: string;
   if (process.platform === "win32") {
@@ -43,7 +54,11 @@ export async function spawnForAttach(opts: AttachSpawnOptions): Promise<number> 
   // attachWrapperScript.ts) and, via its own `trap`/`finally`, its temp directory's cleanup too —
   // this function only learns the PID long before the script actually exits, so it can't safely
   // delete `dir` itself on the success path.
-  await runInExternalTerminal(req.cwd, command, { keepOpenAfterExit: false });
+  if (host === "integrated") {
+    runInIntegratedTerminal(terminalName ?? "C#: Debug", req.cwd, command);
+  } else {
+    await runInExternalTerminal(req.cwd, command, { keepOpenAfterExit: false });
+  }
   try {
     return await waitForPidFile(pidFilePath, 10_000, 100);
   } catch (err) {

@@ -13,12 +13,20 @@
 //    response comes back — otherwise none of that would ever be visible anywhere but the "C# Debugger"
 //    output channel, since `internalConsoleOptions` only controls the Debug Console's *visibility*,
 //    not what ends up in it.
+//  - also for that flow, a failing `configurationDone` is retried transparently (see
+//    `retryConfigurationDone`) instead of being forwarded straight through — attach can complete
+//    before the target's CoreCLR debug pipe is actually ready for it, which netcoredbg surfaces as a
+//    `configurationDone` failure carrying a native HRESULT.
 // Everything else is forwarded byte-for-byte; this is a pipe, not a protocol implementation.
 
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import * as vscode from "vscode";
 import { DapMessageParser, encodeDapMessage } from "./dapFraming.js";
 import { CommReader, DapThread, nameThreads, readCommFromProc } from "./threadNames.js";
+
+/** Silent, automatic attempts before the first Retry/Abort prompt. */
+const CONFIGURATION_DONE_AUTO_RETRIES = 5;
+const CONFIGURATION_DONE_RETRY_DELAY_MS = 400;
 
 export interface ExternalAttach {
   processId: number;
@@ -36,6 +44,11 @@ export class NetcoredbgProxyAdapter implements vscode.DebugAdapter {
   private stopped = false;
   /** `seq` of the disguised `launch` request, while its real `attach` response is still pending. */
   private pendingLaunchSeq: number | undefined;
+  /** `seq` VS Code's original `configurationDone` request used — every retry's response gets rewired back to it. */
+  private configurationDoneOriginalSeq: number | undefined;
+  /** `seq` of the `configurationDone` currently in flight to netcoredbg (the original, or the latest retry). */
+  private configurationDonePendingSeq: number | undefined;
+  private configurationDoneAttempts = 0;
 
   readonly onDidSendMessage = this.emitter.event;
 
@@ -97,7 +110,12 @@ export class NetcoredbgProxyAdapter implements vscode.DebugAdapter {
     }
     for (const message of messages) {
       this.trackSeq(message);
-      this.emitter.fire(this.rewrite(message) as vscode.DebugProtocolMessage);
+      const rewritten = this.rewrite(message);
+      // `undefined` means a failing `configurationDone` response was intercepted for a retry — see
+      // `retryConfigurationDone`; VS Code must not see it until that resolves.
+      if (rewritten !== undefined) {
+        this.emitter.fire(rewritten as vscode.DebugProtocolMessage);
+      }
     }
   }
 
@@ -130,6 +148,13 @@ export class NetcoredbgProxyAdapter implements vscode.DebugAdapter {
       return { ...candidate, arguments: { ...candidate.arguments, terminateDebuggee: true } } as vscode.DebugProtocolMessage;
     }
 
+    if (candidate.type === "request" && candidate.command === "configurationDone") {
+      const seq = typeof candidate.seq === "number" ? candidate.seq : undefined;
+      this.configurationDoneOriginalSeq = seq;
+      this.configurationDonePendingSeq = seq;
+      this.configurationDoneAttempts = 0;
+    }
+
     return message;
   }
 
@@ -146,6 +171,21 @@ export class NetcoredbgProxyAdapter implements vscode.DebugAdapter {
       message?: unknown;
       body?: { threads?: unknown };
     };
+
+    if (
+      this.externalAttach &&
+      this.configurationDonePendingSeq !== undefined &&
+      candidate.type === "response" &&
+      candidate.command === "configurationDone" &&
+      candidate.request_seq === this.configurationDonePendingSeq
+    ) {
+      if (candidate.success !== false) {
+        this.configurationDonePendingSeq = undefined;
+        return { ...candidate, request_seq: this.configurationDoneOriginalSeq };
+      }
+      void this.retryConfigurationDone(candidate.message);
+      return undefined;
+    }
 
     if (
       this.pendingLaunchSeq !== undefined &&
@@ -182,6 +222,51 @@ export class NetcoredbgProxyAdapter implements vscode.DebugAdapter {
       event: "output",
       body: { category: "console", output: text.endsWith("\n") ? text : `${text}\n` },
     } as vscode.DebugProtocolMessage;
+  }
+
+  /**
+   * Retries a failing `configurationDone` a few times automatically — attach can complete before
+   * CoreCLR's debug pipe is actually ready, so an immediate failure here is often transient rather
+   * than fatal. Past `CONFIGURATION_DONE_AUTO_RETRIES`, prompts with Retry/Abort instead of letting
+   * netcoredbg's raw native-HRESULT failure reach VS Code's own (far less actionable) error toast.
+   */
+  private async retryConfigurationDone(rawMessage: unknown): Promise<void> {
+    const detail = typeof rawMessage === "string" ? rawMessage : "unknown error";
+    this.configurationDoneAttempts++;
+    if (this.configurationDoneAttempts <= CONFIGURATION_DONE_AUTO_RETRIES) {
+      await new Promise((resolve) => setTimeout(resolve, CONFIGURATION_DONE_RETRY_DELAY_MS));
+      this.resendConfigurationDone();
+      return;
+    }
+    this.output.appendLine(`configurationDone failed after ${this.configurationDoneAttempts} attempts: ${detail}`);
+    const choice = await vscode.window.showErrorMessage(
+      `Attaching the debugger did not finish — the target process may still be starting up. (${detail})`,
+      "Retry",
+      "Abort",
+    );
+    if (this.stopped) {
+      return; // The session ended (e.g. the process exited) while the prompt was open.
+    }
+    if (choice === "Retry") {
+      this.configurationDoneAttempts = 0;
+      this.resendConfigurationDone();
+      return;
+    }
+    this.output.appendLine("Debugger attach abandoned after configurationDone kept failing.");
+    this.configurationDonePendingSeq = undefined;
+    this.terminate();
+  }
+
+  /** Sends a fresh `configurationDone` to netcoredbg under a new `seq`, tracked as the pending one. */
+  private resendConfigurationDone(): void {
+    if (this.stopped) {
+      return;
+    }
+    const seq = ++this.highestSeq;
+    this.configurationDonePendingSeq = seq;
+    this.child.stdin.write(
+      encodeDapMessage({ seq, type: "request", command: "configurationDone", arguments: {} } as vscode.DebugProtocolMessage),
+    );
   }
 
   private trackSeq(message: unknown): void {
