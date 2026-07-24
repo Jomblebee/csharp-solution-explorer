@@ -1,8 +1,15 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { resolveOwningProjectUri } from "./commandUtils.js";
-import { isDebuggableProject, parseOutputType, parseSdkAttribute } from "./csprojReader.js";
+import {
+  isDebuggableProject,
+  isTestProject,
+  parseOutputType,
+  parseSdkAttribute,
+  parseTargetFrameworks,
+} from "./csprojReader.js";
 import { getStartupProjectFsPath, setStartupProject } from "./launchProfileState.js";
+import { describeActiveProfile } from "./launchProfileCommands.js";
 
 const EXCLUDE_GLOB = "**/{bin,obj,node_modules,.git,.vs}/**";
 
@@ -31,35 +38,79 @@ export async function resolveTargetProject(item: unknown): Promise<TargetProject
   return startup ? toTargetProject(vscode.Uri.file(startup)) : undefined;
 }
 
+type ProjectGroup = "runnable" | "test" | "library";
+
+interface ProjectClassification {
+  group: ProjectGroup;
+  targetFrameworks: string[];
+}
+
 /**
- * Reads a project file and classifies it as runnable/debuggable without invoking MSBuild
- * (see `isDebuggableProject`). A read failure defaults to `true` — fail open, so a project
- * is never hidden just because its file could not be read.
+ * Reads a project file once and classifies it — test project, runnable/debuggable, or plain
+ * library (see `isDebuggableProject`/`isTestProject`) — plus its target framework(s), all
+ * without invoking MSBuild. A read failure fails open to a runnable project with no known
+ * framework, so a project is never hidden just because its file could not be read.
  */
-async function isProjectDebuggable(uri: vscode.Uri): Promise<boolean> {
+async function classifyProject(uri: vscode.Uri): Promise<ProjectClassification> {
   try {
     const bytes = await vscode.workspace.fs.readFile(uri);
     const text = new TextDecoder().decode(bytes);
-    return isDebuggableProject(parseSdkAttribute(text), parseOutputType(text));
+    const targetFrameworks = parseTargetFrameworks(text);
+    if (isTestProject(text)) {
+      return { group: "test", targetFrameworks };
+    }
+    const debuggable = isDebuggableProject(parseSdkAttribute(text), parseOutputType(text));
+    return { group: debuggable ? "runnable" : "library", targetFrameworks };
   } catch {
-    return true;
+    return { group: "runnable", targetFrameworks: [] };
   }
 }
 
 interface StartupProjectQuickPickItem extends vscode.QuickPickItem {
   project?: TargetProject;
-  showOthers?: boolean;
 }
 
-function toStartupProjectItem(project: TargetProject): StartupProjectQuickPickItem {
+const GROUP_ICON: Record<ProjectGroup, string> = {
+  runnable: "$(play)",
+  test: "$(beaker)",
+  library: "$(library)",
+};
+
+const GROUP_LABEL: Record<ProjectGroup, string> = {
+  runnable: "Runnable",
+  test: "Tests",
+  library: "Libraries",
+};
+
+const ASPNETCORE_ENVIRONMENT = "ASPNETCORE_ENVIRONMENT";
+
+function toStartupProjectItem(
+  project: TargetProject,
+  classification: ProjectClassification,
+  opts: { pinned: boolean; detail?: string },
+): StartupProjectQuickPickItem {
+  // Everything on one line (no `detail`), so consecutive entries stay visually separated rather than
+  // blurring into 2-line blocks.
+  const description = [classification.targetFrameworks.join(" · "), opts.detail].filter(Boolean).join("   ");
   return {
-    label: project.name,
-    description: vscode.workspace.asRelativePath(project.uri),
+    label: `${GROUP_ICON[classification.group]} ${opts.pinned ? "$(star-full) " : ""}${project.name}`,
+    description,
     project,
   };
 }
 
-/** Asks which project to start, and remembers it — the picker doubles as "set startup project". */
+/** For a runnable project, a one-line summary of the profile it will run with (for the picker detail). */
+async function profileSummary(project: TargetProject): Promise<string | undefined> {
+  const { label, profile } = await describeActiveProfile(project.uri, project.rootDir);
+  const env = profile?.environmentVariables[ASPNETCORE_ENVIRONMENT];
+  return `$(rocket) ${label}${env ? ` · ${env}` : ""}`;
+}
+
+/**
+ * Asks which project to start, and remembers it — the picker doubles as "set startup project". A
+ * `createQuickPick` so the pinned project can open pre-highlighted; runnable projects show the
+ * launch profile they will run with, and the pinned one carries a star.
+ */
 export async function promptForStartupProject(): Promise<TargetProject | undefined> {
   const projects = await findWorkspaceProjects();
   if (projects.length === 0) {
@@ -67,47 +118,70 @@ export async function promptForStartupProject(): Promise<TargetProject | undefin
     return undefined;
   }
 
-  const debuggableFlags = await Promise.all(projects.map((project) => isProjectDebuggable(project.uri)));
-  const debuggable = projects.filter((_, i) => debuggableFlags[i]);
-  const others = projects.filter((_, i) => !debuggableFlags[i]);
+  const classifications = await Promise.all(projects.map((project) => classifyProject(project.uri)));
+  const classified = projects.map((project, i) => ({ project, classification: classifications[i] }));
+  const pinned = getStartupProjectFsPath();
 
-  // Nothing to collapse (e.g. a solution of libraries only) — fall back to showing everything.
-  const primaryList = debuggable.length > 0 ? debuggable : projects;
-  const collapsedList = debuggable.length > 0 ? others : [];
+  // Profile summaries only for runnable projects (tests/libraries do not run with a profile).
+  const details = new Map<string, string | undefined>();
+  await Promise.all(
+    classified
+      .filter((entry) => entry.classification.group === "runnable")
+      .map(async (entry) => details.set(entry.project.uri.fsPath, await profileSummary(entry.project))),
+  );
 
-  const items: StartupProjectQuickPickItem[] = primaryList.map(toStartupProjectItem);
-  if (collapsedList.length > 0) {
-    items.push(
-      { label: "", kind: vscode.QuickPickItemKind.Separator },
-      {
-        label: `Show ${collapsedList.length} other project${collapsedList.length === 1 ? "" : "s"} (not runnable)`,
-        showOthers: true,
-      },
-    );
+  // One flat list, but split into labeled sections so test projects sit in their own group
+  // (they used to be lumped into a collapsed "not runnable" bucket) instead of hidden.
+  const items: StartupProjectQuickPickItem[] = [];
+  let preselect: StartupProjectQuickPickItem | undefined;
+  let firstRunnable: StartupProjectQuickPickItem | undefined;
+  for (const group of ["runnable", "test", "library"] as const) {
+    const inGroup = classified.filter((entry) => entry.classification.group === group);
+    if (inGroup.length === 0) {
+      continue;
+    }
+    items.push({ label: GROUP_LABEL[group], kind: vscode.QuickPickItemKind.Separator });
+    for (const { project, classification } of inGroup) {
+      const isPinned = project.uri.fsPath === pinned;
+      const item = toStartupProjectItem(project, classification, {
+        pinned: isPinned,
+        detail: details.get(project.uri.fsPath),
+      });
+      items.push(item);
+      if (isPinned) {
+        preselect = item;
+      }
+      if (group === "runnable" && !firstRunnable) {
+        firstRunnable = item;
+      }
+    }
   }
 
-  const picked = await vscode.window.showQuickPick(items, {
-    title: "Startup project",
-    placeHolder: "Select the project to run",
-  });
-  if (!picked) {
-    return undefined;
-  }
+  return new Promise<TargetProject | undefined>((resolve) => {
+    const qp = vscode.window.createQuickPick<StartupProjectQuickPickItem>();
+    qp.title = "Startup project";
+    qp.placeholder = "Select the project to run";
+    qp.items = items;
+    const active = preselect ?? firstRunnable;
+    if (active) {
+      qp.activeItems = [active];
+    }
 
-  let project = picked.project;
-  if (picked.showOthers) {
-    const pickedOther = await vscode.window.showQuickPick(collapsedList.map(toStartupProjectItem), {
-      title: "Startup project — not runnable",
-      placeHolder: "Select the project to run",
+    let result: TargetProject | undefined;
+    qp.onDidAccept(() => {
+      const [picked] = qp.selectedItems;
+      if (picked?.project) {
+        result = picked.project;
+        setStartupProject(picked.project.uri.fsPath);
+      }
+      qp.hide();
     });
-    project = pickedOther?.project;
-  }
-  if (!project) {
-    return undefined;
-  }
-
-  setStartupProject(project.uri.fsPath);
-  return project;
+    qp.onDidHide(() => {
+      qp.dispose();
+      resolve(result);
+    });
+    qp.show();
+  });
 }
 
 function toTargetProject(uri: vscode.Uri): TargetProject {

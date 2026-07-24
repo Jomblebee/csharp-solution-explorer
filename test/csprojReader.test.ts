@@ -4,6 +4,8 @@ import {
   deriveImplicitFrameworks,
   isDebuggableProject,
   isImplicitItemGlobEnabled,
+  isTestProject,
+  isWebSdk,
   parseAnalyzers,
   parseFrameworkReferences,
   parseItemRules,
@@ -335,5 +337,80 @@ describe("isDebuggableProject", () => {
 
   it("defaults to not debuggable when the Sdk is unknown", () => {
     assert.equal(isDebuggableProject(undefined, undefined), false);
+  });
+});
+
+describe("isTestProject", () => {
+  it("detects an xUnit project", () => {
+    const csproj = `<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+  </ItemGroup>
+</Project>`;
+    assert.equal(isTestProject(csproj), true);
+  });
+
+  it("detects a NUnit project", () => {
+    const csproj = `<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="NUnit" Version="4.2.2" />
+  </ItemGroup>
+</Project>`;
+    assert.equal(isTestProject(csproj), true);
+  });
+
+  it("detects an MSTest project", () => {
+    const csproj = `<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="MSTest.TestFramework" Version="3.6.0" />
+  </ItemGroup>
+</Project>`;
+    assert.equal(isTestProject(csproj), true);
+  });
+
+  it("honors an explicit IsTestProject property", () => {
+    const csproj = `<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup>
+</Project>`;
+    assert.equal(isTestProject(csproj), true);
+  });
+
+  it("treats a plain library as not a test project", () => {
+    const csproj = `<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>`;
+    assert.equal(isTestProject(csproj), false);
+  });
+
+  it("treats a console app as not a test project", () => {
+    const csproj = `<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+</Project>`;
+    assert.equal(isTestProject(csproj), false);
+  });
+});
+
+describe("isWebSdk", () => {
+  it("detects the Web SDK", () => {
+    assert.equal(isWebSdk("Microsoft.NET.Sdk.Web"), true);
+  });
+
+  it("detects the Razor SDK", () => {
+    assert.equal(isWebSdk("Microsoft.NET.Sdk.Razor"), true);
+  });
+
+  it("detects the Blazor WebAssembly SDK", () => {
+    assert.equal(isWebSdk("Microsoft.NET.Sdk.BlazorWebAssembly"), true);
+  });
+
+  it("treats the plain SDK as not web", () => {
+    assert.equal(isWebSdk("Microsoft.NET.Sdk"), false);
+  });
+
+  it("treats an undefined SDK as not web", () => {
+    assert.equal(isWebSdk(undefined), false);
   });
 });

@@ -108,6 +108,24 @@ export function parseOutputType(csprojText: string): string | undefined {
   return getPropertyValue(csprojText, "OutputType");
 }
 
+const TEST_PACKAGE_MARKERS = ["microsoft.net.test.sdk", "xunit", "nunit", "mstest"];
+
+/**
+ * Best-effort "is this a unit-test project" classification, without invoking MSBuild. True when
+ * `<IsTestProject>true</IsTestProject>` is set, or a `PackageReference` names a known test SDK or
+ * framework (Microsoft.NET.Test.Sdk, xUnit, NUnit, MSTest). Test projects default to
+ * `OutputType=Library`, so this is the only way to tell them apart from plain class libraries.
+ */
+export function isTestProject(csprojText: string): boolean {
+  if (getPropertyValue(csprojText, "IsTestProject")?.toLowerCase() === "true") {
+    return true;
+  }
+  return parsePackageReferences(csprojText).some((reference) => {
+    const name = reference.name.toLowerCase();
+    return TEST_PACKAGE_MARKERS.some((marker) => name.includes(marker));
+  });
+}
+
 /**
  * Best-effort "can this project be run/debugged" classification, without invoking MSBuild.
  * An explicit `OutputType` always wins; otherwise the SDK's implicit default is used —
@@ -125,6 +143,15 @@ export function isDebuggableProject(sdk: string | undefined, outputType: string 
   }
   const normalizedSdk = sdk?.toLowerCase() ?? "";
   return normalizedSdk.includes("sdk.web") || normalizedSdk.includes("sdk.blazorwebassembly");
+}
+
+/**
+ * Whether an `Sdk` attribute denotes a web-shaped project (ASP.NET Core, Razor, or Blazor) — used to
+ * offer web-specific launch options (URLs, browser) only where they make sense.
+ */
+export function isWebSdk(sdk: string | undefined): boolean {
+  const normalized = sdk?.toLowerCase() ?? "";
+  return normalized.includes("web") || normalized.includes("razor") || normalized.includes("blazor");
 }
 
 /**
