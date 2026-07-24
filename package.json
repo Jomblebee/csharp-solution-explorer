@@ -181,14 +181,16 @@
             "type": "string",
             "enum": [
               "internalConsole",
+              "integratedTerminal",
               "externalTerminal"
             ],
             "enumDescriptions": [
-              "F5 launches and owns the program directly; its console output goes to the Debug Console.",
-              "F5 spawns the program in a real external terminal first, then attaches the debugger to it — same mechanism as 'Debug Startup Project in External Terminal'. Breakpoints hit very early in Main() may be missed; see 'externalTerminalAttachDelayMs'."
+              "F5 launches and owns the program directly; its output goes to the Debug Console. The Debug Console has no usable stdin, so interactive input (Console.ReadKey / Console.ReadLine) does not work.",
+              "F5 spawns the program in a VS Code integrated terminal first, then attaches the debugger to it. Gives the program a real, interactive console inside the editor. If the runtime isn't ready for the attach yet, the debugger retries automatically and, if it keeps failing, offers a Retry/Abort notification.",
+              "F5 spawns the program in a real external OS terminal first, then attaches the debugger to it — same mechanism as 'Debug Startup Project in External Terminal'. If the runtime isn't ready for the attach yet, the debugger retries automatically and, if it keeps failing, offers a Retry/Abort notification."
             ],
-            "default": "internalConsole",
-            "description": "Where F5's program output appears. netcoredbg cannot show real console output for a program it launches directly, so 'externalTerminal' works around that by spawning the program externally first and attaching instead."
+            "default": "externalTerminal",
+            "description": "Where F5's program output appears. netcoredbg cannot show real console output (or accept input) for a program it launches directly, so 'integratedTerminal' and 'externalTerminal' work around that by spawning the program in a real terminal first and attaching instead — the only way interactive input works."
           },
           "csharpSolutionExplorer.debug.buildBeforeLaunch": {
             "type": "boolean",
@@ -209,12 +211,6 @@
             "type": "boolean",
             "default": false,
             "description": "Write a netcoredbg trace log next to the debug adapter. Only useful when diagnosing debugger problems."
-          },
-          "csharpSolutionExplorer.debug.externalTerminalAttachDelayMs": {
-            "type": "number",
-            "default": 0,
-            "minimum": 0,
-            "description": "Milliseconds to delay the program's start after 'Debug Startup Project in External Terminal' opens the terminal, before netcoredbg attaches. netcoredbg cannot launch a program directly into a real console (see that command's tooltip), so this only biases — it does not guarantee — catching breakpoints hit very early in Main(). 0 disables the delay."
           }
         }
       }

@@ -19,20 +19,22 @@ import {
   TargetProject,
 } from "../../solutionExplorer/workspaceProjects.js";
 import { getStartupProjectFsPath } from "../../solutionExplorer/launchProfileState.js";
-import { spawnForAttach } from "./attachTerminal.js";
+import { spawnForAttach, TerminalHost } from "./attachTerminal.js";
 import { buildExternalAttachConfig, buildLaunchConfig } from "../debugConfig.js";
-import { CONFIG_SECTION, readExternalTerminalAttachDelayMs } from "../debugSettings.js";
+import { CONFIG_SECTION } from "../debugSettings.js";
 import { DebuggerStateStore } from "../debugState.js";
 import { AmbiguousFrameworkError, queryProjectOutput } from "../projectOutput.js";
 
 export async function startDebuggingInExternalTerminal(
   state: DebuggerStateStore,
   output: vscode.OutputChannel,
+  host: TerminalHost = "external",
 ): Promise<void> {
   const project = await resolveStartupProject();
   if (!project) {
     return;
   }
+  const terminalLabel = host === "integrated" ? "integrated terminal" : "external terminal";
 
   const framework = await resolveRunFramework(project.uri, project.name);
   if (framework === CANCELLED) {
@@ -104,20 +106,21 @@ export async function startDebuggingInExternalTerminal(
       projectRootDir: project.rootDir.fsPath,
     });
 
-    state.update({ activity: `Starting ${project.name} in an external terminal…` });
-    note(`Starting ${project.name} in an external terminal…`);
+    state.update({ activity: `Starting ${project.name} in an ${terminalLabel}…` });
+    note(`Starting ${project.name} in an ${terminalLabel}…`);
     const pid = await spawnForAttach({
       cwd: launch.cwd,
       program: launch.program,
       args: launch.args,
       env: launch.env,
-      startupDelayMs: readExternalTerminalAttachDelayMs() || undefined,
+      host,
+      terminalName: `C#: ${project.name}`,
     });
 
     note(`Attaching to pid ${pid} (${launch.program}).`);
     state.update({ activity: `Attaching to pid ${pid}…` });
     const started = await vscode.debug.startDebugging(folderFor(project), {
-      ...buildExternalAttachConfig(`C#: ${project.name} (external terminal)`, launch.program, pid),
+      ...buildExternalAttachConfig(`C#: ${project.name} (${terminalLabel})`, launch.program, pid),
       internalConsoleOptions: "openOnSessionStart",
       // Read by netcoredbgAdapter.ts to rewrite the disguised `launch` into a real `attach`, to make
       // Stop terminate the process instead of just detaching, and to replay `log` into the session's

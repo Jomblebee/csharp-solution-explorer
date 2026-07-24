@@ -38,6 +38,22 @@ export async function runInExternalTerminal(cwd: string, command: string, opts: 
   }
 }
 
+/**
+ * Runs `command` in a fresh VS Code *integrated* terminal (a real pty, so a program spawned there can
+ * read interactive input — unlike netcoredbg's Debug Console). Used by the integrated-terminal
+ * spawn-then-attach debug flow, mirroring `runInExternalTerminal` but hosted inside the editor.
+ *
+ * A new terminal each call (not a reused named one) keeps each debug session's console isolated. The
+ * wrapper script itself `cd`s too, but passing `cwd` makes the prompt correct if the script is slow to
+ * start. `command` is a full `bash <script>` / `powershell -File <script>` line, so it runs correctly
+ * regardless of the user's default shell.
+ */
+export function runInIntegratedTerminal(name: string, cwd: string, command: string): void {
+  const terminal = vscode.window.createTerminal({ name, cwd });
+  terminal.show();
+  terminal.sendText(command);
+}
+
 /** POSIX-shell single-quote escaping. */
 export function shQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
