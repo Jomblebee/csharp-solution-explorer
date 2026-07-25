@@ -4,6 +4,16 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Test Explorer errors while the window closes**: saving a `.cs` file or touching a project file
+  in the last moments before the extension shut down could raise an error from the Testing view.
+  The Test Explorer collapses watcher bursts into one delayed refresh, and that delayed call was
+  still armed after its watchers had been disposed, so it ran against a controller that no longer
+  existed. Pending refreshes are now cancelled on shutdown.
+
 ## [0.14.0] – 2026-07-25
 
 ### Added
