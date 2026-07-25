@@ -1886,6 +1886,7 @@
     "test": "node --import tsx --test test/*.test.ts",
     "vscode:prepublish": "npm run package",
     "vsix": "vsce package",
+    "sample:reset-coverage": "node scripts/reset-sample-coverage.mjs",
     "release:tag": "node scripts/tag-release.mjs"
   },
   "dependencies": {
