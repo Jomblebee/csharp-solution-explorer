@@ -16,6 +16,7 @@ tsconfig.json
 node_modules/**
 .gitignore
 .editorconfig
+.markdownlint.json
 artifacts/**
 **/*.vsix
 CONTRIBUTING.md
