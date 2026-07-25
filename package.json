@@ -1916,6 +1916,6 @@
     "esbuild": "^0.28.1",
     "eslint": "^9.0.0",
     "tsx": "^4.23.1",
-    "typescript": "^5.6.0"
+    "typescript": "^7.0.2"
   }
 }
