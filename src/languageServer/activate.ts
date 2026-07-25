@@ -13,7 +13,10 @@ const MS_EXTENSION_ID = "ms-dotnettools.csharp";
 
 export function activateLanguageServer(context: vscode.ExtensionContext): void {
   const state = new ServerStateStore();
-  const output = vscode.window.createOutputChannel("C# Language Server");
+  // `{ log: true }` because vscode-languageclient 10 requires a LogOutputChannel for its
+  // `outputChannel` option. Side effect on this channel: entries get a timestamp and a level, and
+  // VS Code's own log-level picker filters them.
+  const output = vscode.window.createOutputChannel("C# Language Server", { log: true });
   const controller = new LanguageServerController(context, state, output);
 
   const statusView = new LanguageServerStatusView(state);

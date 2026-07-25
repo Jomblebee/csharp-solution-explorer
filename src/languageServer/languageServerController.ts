@@ -53,7 +53,7 @@ export class LanguageServerController {
   constructor(
     private readonly context: vscode.ExtensionContext,
     private readonly state: ServerStateStore,
-    private readonly output: vscode.OutputChannel,
+    private readonly output: vscode.LogOutputChannel,
   ) {
     // Global commands the server's CodeLens/completions/code-actions invoke — registered once for the
     // extension's life. They resolve the current client lazily since it is recreated on every restart.

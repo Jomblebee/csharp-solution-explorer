@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **VS Code 1.91 is now the minimum** (was 1.88). The bundled language client moved to
+  `vscode-languageclient` 10, which requires it. The "C# Language Server" output channel is now a
+  log channel, so its entries carry a timestamp and a level and can be filtered with VS Code's own
+  log-level picker.
+
 ### Fixed
 
 - **Test Explorer errors while the window closes**: saving a `.cs` file or touching a project file

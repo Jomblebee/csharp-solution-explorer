@@ -2,7 +2,7 @@
 
 [![Open VSX](https://img.shields.io/open-vsx/v/jomblebee/jomblebee-csharp-solution-explorer?style=flat-square&label=Open%20VSX&color=a60ee5)](https://open-vsx.org/extension/jomblebee/jomblebee-csharp-solution-explorer)
 [![VS Marketplace](https://badgen.net/vs-marketplace/v/jomblebee.jomblebee-csharp-solution-explorer?label=VS%20Marketplace&color=0066b8)](https://marketplace.visualstudio.com/items?itemName=jomblebee.jomblebee-csharp-solution-explorer)
-[![VS Code ≥ 1.88](https://img.shields.io/badge/VS%20Code-%E2%89%A51.88-007ACC?style=flat-square)](https://code.visualstudio.com/)
+[![VS Code ≥ 1.91](https://img.shields.io/badge/VS%20Code-%E2%89%A51.91-007ACC?style=flat-square)](https://code.visualstudio.com/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 A C# Solution Explorer for VS Code — and Open VSX-compatible editors such as VSCodium — with an **optional bundled Roslyn language server**, so you can get IntelliSense without any Microsoft-proprietary extension.
@@ -60,7 +60,7 @@ All `csharpSolutionExplorer.*` options and the New Item template variables: **[S
 
 ## Requirements
 
-- **VS Code ≥ 1.88** (or a compatible Open VSX editor) — the Test Explorer's coverage API needs it.
+- **VS Code ≥ 1.91** (or a compatible Open VSX editor) — the Test Explorer's coverage API needs 1.88, the bundled language client 1.91.
 - **.NET CLI** (`dotnet`) must be on your `PATH` for the Build, Rebuild, Run, Test, Restore, Clean, New Project, and NuGet package commands (Add/Update/Remove Package, and the NuGet Package Manager panel).
 - A **.NET runtime** is required to run the bundled C# language server (the `dotnet` SDK above provides one). The downloaded server is ReadyToRun but framework-dependent, not self-contained.
 - **Internet access** is needed on first use of the language server (to download it from the Roslyn language server feed) and to nuget.org for package search, package details and README, and the outdated-package check. All are optional — set `csharpSolutionExplorer.languageServer.serverPath` to run the server fully offline.

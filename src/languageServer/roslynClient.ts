@@ -36,7 +36,7 @@ export function createLanguageClient(
   server: ResolvedServer,
   logLevel: string,
   logDir: string,
-  outputChannel: vscode.OutputChannel,
+  outputChannel: vscode.LogOutputChannel,
   razor?: RazorLaunch,
 ): LanguageClient {
   const launch = buildServerLaunch(server, logLevel, logDir, razor);
