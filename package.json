@@ -1907,7 +1907,7 @@
     "yauzl": "^3.4.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^26.1.1",
     "@types/vscode": "^1.88.0",
     "@types/yauzl": "^3.4.0",
     "@typescript-eslint/eslint-plugin": "^8.65.0",
