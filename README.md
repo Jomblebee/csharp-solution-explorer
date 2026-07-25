@@ -87,3 +87,8 @@ npm test
 ## License
 
 [MIT](LICENSE)
+
+Third-party components — the vendored TextMate grammars, the bundled npm dependencies and
+the language server and debugger downloaded at runtime — are listed with their licenses in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). All of them are permissive open source
+(MIT, ISC, Blue Oak); nothing copyleft is bundled or downloaded.

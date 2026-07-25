@@ -36,6 +36,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - **`engines.vscode` raised to `^1.88.0`** (from `^1.85.0`): the Test Explorer's coverage API is
   only available there. Editors older than 1.88 can no longer install this version.
+- `THIRD_PARTY_NOTICES.md` now carries the full licence text and copyright notice of every bundled
+  npm dependency, as MIT, ISC and Blue Oak require of a redistributed copy. Earlier releases named
+  only three of them and listed `minimatch` under the wrong licence. The notices are generated from
+  the dependency tree and verified on CI, so they cannot drift again.
 
 ## [0.13.0] – 2026-07-21
 
