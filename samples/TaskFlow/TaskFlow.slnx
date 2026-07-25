@@ -7,5 +7,8 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TaskFlow.Tests/TaskFlow.Tests.csproj" />
+    <Project Path="tests/TaskFlow.Tests.MSTest/TaskFlow.Tests.MSTest.csproj" />
+    <Project Path="tests/TaskFlow.Tests.XUnitV3/TaskFlow.Tests.XUnitV3.csproj" />
+    <Project Path="tests/TaskFlow.Tests.TUnit/TaskFlow.Tests.TUnit.csproj" />
   </Folder>
 </Solution>

@@ -4,6 +4,43 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.14.0] – 2026-07-25
+
+### Added
+
+- **Test Explorer**: C# test projects now appear in VS Code's native **Testing** view. Run or debug
+  a whole project, a class or a single test method — data-driven cases nest under their method — with
+  per-test results, failure messages, clickable stack frames and play icons in the editor gutter.
+  Two backends are picked per project: **Microsoft.Testing.Platform** projects (MSTest with
+  `EnableMSTestRunner`, xUnit v3, TUnit) speak the platform's server protocol, so their tests are
+  listed as soon as the project is expanded, a filtered run sends exactly the selected tests, and
+  results stream in live — this is also the only path that works on the .NET 10 SDK. **Classic
+  VSTest** projects run through `dotnet test --logger trx`, where methods appear after the first run
+  because there is no server to query. `[TestCategory]`/`[Trait]` names become filterable tags, and
+  a test's own `Console.WriteLine` output is attached to that test — including for passing ones.
+- **Run with Coverage**: line coverage for both runners, highlighted per line in the editor
+  (`Microsoft.Testing.Extensions.CodeCoverage` for MTP, `coverlet.collector` for VSTest). A project
+  missing its coverage package is offered the right one — for MTP the version whose major matches
+  the platform the test framework brought in, since a mismatched extension restores and builds and
+  then throws at host startup. Files covered by several test projects are merged rather than
+  overwritten.
+- **Curated run output**: the Test Results panel shows a header, build diagnostics, failures and a
+  final count instead of the whole `dotnet test` transcript; the full unfiltered host log stays in
+  the **C# Tests** output channel. `csharpSolutionExplorer.testExplorer.outputVerbosity`
+  (`summary` / `normal` / `full`) picks the level; debug runs are always `full`, because the
+  debugger attaches by reading the host's own output.
+- Cancelling a run now kills the whole process tree, not just the launcher — `dotnet test` and the
+  MTP server both spawn a separate test host that a plain `kill` left running.
+
+### Changed
+
+- **`engines.vscode` raised to `^1.88.0`** (from `^1.85.0`): the Test Explorer's coverage API is
+  only available there. Editors older than 1.88 can no longer install this version.
+- `THIRD_PARTY_NOTICES.md` now carries the full licence text and copyright notice of every bundled
+  npm dependency, as MIT, ISC and Blue Oak require of a redistributed copy. Earlier releases named
+  only three of them and listed `minimatch` under the wrong licence. The notices are generated from
+  the dependency tree and verified on CI, so they cannot drift again.
+
 ## [0.13.0] – 2026-07-21
 
 ### Added

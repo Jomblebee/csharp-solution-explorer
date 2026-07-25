@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { listAllFilesRecursive, listDirectChildren, shouldExcludeDir } from "../src/solutionExplorer/diskScanner.js";
+import {
+  isUnderExcludedDir,
+  listAllFilesRecursive,
+  listDirectChildren,
+  shouldExcludeDir,
+} from "../src/solutionExplorer/diskScanner.js";
 
 describe("shouldExcludeDir", () => {
   it("excludes well-known build/dependency directory names", () => {
@@ -21,6 +26,31 @@ describe("shouldExcludeDir", () => {
   it("does not exclude ordinary directory names", () => {
     assert.equal(shouldExcludeDir("src"), false);
     assert.equal(shouldExcludeDir("Controllers"), false);
+  });
+});
+
+describe("isUnderExcludedDir", () => {
+  it("detects build output anywhere in the path", () => {
+    assert.equal(isUnderExcludedDir("/repo/Tests/obj/Debug/net10.0/Tests.AssemblyInfo.cs"), true);
+    assert.equal(isUnderExcludedDir("/repo/Tests/bin/Debug/net10.0/Tests.dll"), true);
+  });
+
+  it("handles Windows separators", () => {
+    assert.equal(isUnderExcludedDir("C:\\repo\\Tests\\obj\\Debug\\GlobalUsings.g.cs"), true);
+  });
+
+  it("detects tooling directories", () => {
+    assert.equal(isUnderExcludedDir("/repo/.git/COMMIT_EDITMSG"), true);
+    assert.equal(isUnderExcludedDir("/repo/node_modules/pkg/index.js"), true);
+  });
+
+  it("keeps ordinary source paths", () => {
+    assert.equal(isUnderExcludedDir("/repo/Tests/TaskTests.cs"), false);
+    assert.equal(isUnderExcludedDir("/repo/src/Objects/Task.cs"), false); // 'Objects' is not 'obj'
+  });
+
+  it("watches a repository that itself lives below a hidden directory", () => {
+    assert.equal(isUnderExcludedDir("/home/dev/.local/repo/Tests/TaskTests.cs"), false);
   });
 });
 
