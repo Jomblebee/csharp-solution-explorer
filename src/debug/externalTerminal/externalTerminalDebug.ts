@@ -11,19 +11,20 @@ import * as vscode from "vscode";
 import { CANCELLED, resolveRunFramework } from "../../solutionExplorer/commandUtils.js";
 import { build } from "../../solutionExplorer/dotnetCli.js";
 import { makeReporter } from "../../shared/httpDownload.js";
-import { resolveActiveProfile } from "../../solutionExplorer/launchProfileCommands.js";
+import { resolveActiveProfile } from "../../solutionExplorer/launchProfiles/launchProfileCommands.js";
 import {
   findWorkspaceProjects,
   projectFromUri,
   promptForStartupProject,
   TargetProject,
 } from "../../solutionExplorer/workspaceProjects.js";
-import { getStartupProjectFsPath } from "../../solutionExplorer/launchProfileState.js";
+import { getStartupProjectFsPath } from "../../solutionExplorer/launchProfiles/launchProfileState.js";
 import { spawnForAttach, TerminalHost } from "./attachTerminal.js";
 import { buildExternalAttachConfig, buildLaunchConfig } from "../debugConfig.js";
 import { CONFIG_SECTION } from "../debugSettings.js";
 import { DebuggerStateStore } from "../debugState.js";
 import { AmbiguousFrameworkError, queryProjectOutput } from "../projectOutput.js";
+import { errorText } from "../../shared/errorText.js";
 
 export async function startDebuggingInExternalTerminal(
   state: DebuggerStateStore,
@@ -157,8 +158,4 @@ async function resolveStartupProject(): Promise<TargetProject | undefined> {
 /** The session's folder — decides `${workspaceFolder}` substitution and multi-root attribution. */
 function folderFor(project: TargetProject): vscode.WorkspaceFolder | undefined {
   return vscode.workspace.getWorkspaceFolder(project.uri) ?? vscode.workspace.workspaceFolders?.[0];
-}
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }

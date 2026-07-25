@@ -1,6 +1,7 @@
 # Node / extension build
 node_modules/
 dist/
+artifacts/
 *.vsix
 .vscode-test/
 

@@ -22,6 +22,16 @@ export function pickOwningProjectPath(rootPaths: string[], target: string): stri
   return best;
 }
 
+/** Renders `toPath` relative to `fromDir` with forward slashes, regardless of platform separator. */
+export function toPosixRelative(fromDir: string, toPath: string): string {
+  return path.relative(fromDir, toPath).split(path.sep).join("/");
+}
+
+export function basenameWithoutExtension(fsPath: string): string {
+  const base = fsPath.split(/[/\\]/).pop() ?? fsPath;
+  return base.replace(/\.[^.]+$/, "");
+}
+
 /** Splits a name into stem + extension. Directories (and dotfiles) have no extension. */
 function splitName(name: string, isDirectory: boolean): { stem: string; ext: string } {
   if (isDirectory) {

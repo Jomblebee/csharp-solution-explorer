@@ -1,0 +1,319 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import {
+  addSlnxFolderEntry,
+  addSlnxProjectEntry,
+  removeSlnxFolderEntry,
+  removeSlnxProjectEntry,
+  renameSlnxFolderEntry,
+  renameSlnxProjectEntry,
+} from "../../../src/solutionExplorer/parsers/slnxWriter.js";
+import { parseSlnxFile } from "../../../src/solutionExplorer/parsers/slnxParser.js";
+
+function fixture(): string {
+  return [
+    "<Solution>",
+    '  <Folder Name="/Apps/">',
+    '    <Project Path="App/App.csproj" />',
+    '    <Project Path="Library/Library.csproj" />',
+    "  </Folder>",
+    '  <Project Path="Standalone/Standalone.csproj" />',
+    "</Solution>",
+  ].join("\n");
+}
+
+function fixtureWithCrlf(): string {
+  return fixture().split("\n").join("\r\n");
+}
+
+describe("removeSlnxProjectEntry", () => {
+  it("removes a nested project by path", () => {
+    const result = removeSlnxProjectEntry(fixture(), "App/App.csproj");
+
+    assert.ok(!result.includes("App/App.csproj"));
+    assert.ok(result.includes("Library/Library.csproj"));
+    assert.ok(result.includes("Standalone/Standalone.csproj"));
+  });
+
+  it("removes a root-level project by path", () => {
+    const result = removeSlnxProjectEntry(fixture(), "Standalone/Standalone.csproj");
+
+    assert.ok(!result.includes("Standalone/Standalone.csproj"));
+    assert.ok(result.includes("App/App.csproj"));
+  });
+
+  it("is a no-op for an unknown path", () => {
+    const original = fixture();
+    const result = removeSlnxProjectEntry(original, "NonExistent/Foo.csproj");
+
+    assert.equal(result, original);
+  });
+
+  it("preserves CRLF line endings", () => {
+    const result = removeSlnxProjectEntry(fixtureWithCrlf(), "App/App.csproj");
+
+    assert.ok(result.includes("\r\n"));
+    assert.ok(!result.includes("App/App.csproj"));
+  });
+
+  it("matches paths case-insensitively", () => {
+    const result = removeSlnxProjectEntry(fixture(), "app/APP.CSPROJ");
+
+    assert.ok(!result.includes("App/App.csproj"));
+  });
+});
+
+describe("renameSlnxProjectEntry", () => {
+  it("updates the Path attribute of the matching project", () => {
+    const result = renameSlnxProjectEntry(fixture(), "App/App.csproj", "RenamedApp/RenamedApp.csproj");
+
+    assert.ok(result.includes('Path="RenamedApp/RenamedApp.csproj"'));
+    assert.ok(!result.includes('Path="App/App.csproj"'));
+  });
+
+  it("leaves other project entries untouched", () => {
+    const result = renameSlnxProjectEntry(fixture(), "App/App.csproj", "RenamedApp/RenamedApp.csproj");
+
+    assert.ok(result.includes("Library/Library.csproj"));
+    assert.ok(result.includes("Standalone/Standalone.csproj"));
+  });
+
+  it("is a no-op for an unknown path", () => {
+    const original = fixture();
+    const result = renameSlnxProjectEntry(original, "NonExistent/Foo.csproj", "New/New.csproj");
+
+    assert.equal(result, original);
+  });
+
+  it("preserves CRLF line endings", () => {
+    const result = renameSlnxProjectEntry(fixtureWithCrlf(), "App/App.csproj", "RenamedApp/RenamedApp.csproj");
+
+    assert.ok(result.includes("\r\n"));
+    assert.ok(result.includes("RenamedApp/RenamedApp.csproj"));
+  });
+
+  it("matches paths case-insensitively", () => {
+    const result = renameSlnxProjectEntry(fixture(), "APP/APP.CSPROJ", "RenamedApp/RenamedApp.csproj");
+
+    assert.ok(result.includes('Path="RenamedApp/RenamedApp.csproj"'));
+  });
+
+  it("preserves indentation of the updated line", () => {
+    const result = renameSlnxProjectEntry(fixture(), "App/App.csproj", "New/New.csproj");
+    const updatedLine = result.split("\n").find((l) => l.includes("New/New.csproj"))!;
+
+    assert.ok(updatedLine.startsWith("    "));
+  });
+});
+
+describe("removeSlnxFolderEntry", () => {
+  it("removes the entire folder block including nested projects", () => {
+    const result = removeSlnxFolderEntry(fixture(), "Apps");
+
+    assert.ok(!result.includes("/Apps/"));
+    assert.ok(!result.includes("App/App.csproj"));
+    assert.ok(!result.includes("Library/Library.csproj"));
+  });
+
+  it("leaves root-level projects and other content untouched", () => {
+    const result = removeSlnxFolderEntry(fixture(), "Apps");
+
+    assert.ok(result.includes("Standalone/Standalone.csproj"));
+  });
+
+  it("is a no-op when the folder does not exist", () => {
+    const original = fixture();
+    const result = removeSlnxFolderEntry(original, "DoesNotExist");
+
+    assert.equal(result, original);
+  });
+
+  it("preserves CRLF line endings", () => {
+    const result = removeSlnxFolderEntry(fixtureWithCrlf(), "Apps");
+
+    assert.ok(result.includes("\r\n"));
+    assert.ok(!result.includes("/Apps/"));
+  });
+
+  it("removes a deeply nested folder block including its children", () => {
+    const nested = [
+      "<Solution>",
+      '  <Folder Name="/Outer/">',
+      '    <Folder Name="/Inner/">',
+      '      <Project Path="Deep/Deep.csproj" />',
+      "    </Folder>",
+      "  </Folder>",
+      '  <Project Path="Root/Root.csproj" />',
+      "</Solution>",
+    ].join("\n");
+    const result = removeSlnxFolderEntry(nested, "Inner");
+
+    assert.ok(!result.includes("/Inner/"));
+    assert.ok(!result.includes("Deep/Deep.csproj"));
+    assert.ok(result.includes("/Outer/"));
+    assert.ok(result.includes("Root/Root.csproj"));
+  });
+});
+
+describe("renameSlnxFolderEntry", () => {
+  it("updates the Name attribute of the matching folder", () => {
+    const result = renameSlnxFolderEntry(fixture(), "Apps", "Applications");
+
+    assert.ok(result.includes('Name="/Applications/"'));
+    assert.ok(!result.includes('Name="/Apps/"'));
+  });
+
+  it("leaves projects and other content untouched", () => {
+    const result = renameSlnxFolderEntry(fixture(), "Apps", "Applications");
+
+    assert.ok(result.includes("App/App.csproj"));
+    assert.ok(result.includes("Standalone/Standalone.csproj"));
+  });
+
+  it("is a no-op when the folder does not exist", () => {
+    const original = fixture();
+    const result = renameSlnxFolderEntry(original, "DoesNotExist", "New");
+
+    assert.equal(result, original);
+  });
+
+  it("preserves CRLF line endings", () => {
+    const result = renameSlnxFolderEntry(fixtureWithCrlf(), "Apps", "Applications");
+
+    assert.ok(result.includes("\r\n"));
+    assert.ok(result.includes('Name="/Applications/"'));
+  });
+
+  it("matches the old folder name case-insensitively", () => {
+    const result = renameSlnxFolderEntry(fixture(), "APPS", "Applications");
+
+    assert.ok(result.includes('Name="/Applications/"'));
+  });
+
+  it("preserves indentation of the renamed line", () => {
+    const result = renameSlnxFolderEntry(fixture(), "Apps", "Applications");
+    const line = result.split("\n").find((l) => l.includes("/Applications/"))!;
+
+    assert.ok(line.startsWith("  <Folder"));
+  });
+});
+
+describe("addSlnxFolderEntry", () => {
+  it("adds a root-level folder before </Solution> that the parser recognizes", () => {
+    const result = addSlnxFolderEntry(fixture(), "NewFolder");
+    const tree = parseSlnxFile(result);
+
+    assert.ok(tree.some((node) => node.kind === "solutionFolder" && node.name === "NewFolder"));
+  });
+
+  it("writes an empty folder as a non-self-closing open/close pair", () => {
+    const result = addSlnxFolderEntry(fixture(), "NewFolder");
+
+    assert.ok(result.includes('<Folder Name="/NewFolder/"></Folder>'));
+  });
+
+  it("nests the folder inside the named parent folder", () => {
+    const result = addSlnxFolderEntry(fixture(), "Sub", "Apps");
+    const apps = parseSlnxFile(result).find((n) => n.kind === "solutionFolder" && n.name === "Apps");
+
+    assert.ok(apps && apps.kind === "solutionFolder");
+    assert.ok(apps.children.some((c) => c.kind === "solutionFolder" && c.name === "Sub"));
+  });
+
+  it("preserves CRLF line endings", () => {
+    const result = addSlnxFolderEntry(fixtureWithCrlf(), "NewFolder");
+
+    assert.ok(result.includes("\r\n"));
+    assert.ok(result.includes('<Folder Name="/NewFolder/">'));
+  });
+
+  it("indents a root-level folder one level deep", () => {
+    const result = addSlnxFolderEntry(fixture(), "NewFolder");
+    const line = result.split("\n").find((l) => l.includes("/NewFolder/"))!;
+
+    assert.ok(line.startsWith("  <Folder"));
+  });
+
+  it("is a no-op when the parent folder is not found", () => {
+    const original = fixture();
+    const result = addSlnxFolderEntry(original, "Sub", "DoesNotExist");
+
+    assert.equal(result, original);
+  });
+
+  it("nests into a freshly created inline-empty folder by expanding it", () => {
+    // Simulates the UI flow: create a root folder, then create a child inside it.
+    const afterFirst = addSlnxFolderEntry(fixture(), "Created");
+    const afterSecond = addSlnxFolderEntry(afterFirst, "Child", "Created");
+    const created = parseSlnxFile(afterSecond).find((n) => n.kind === "solutionFolder" && n.name === "Created");
+
+    assert.ok(created && created.kind === "solutionFolder");
+    assert.ok(created.children.some((c) => c.kind === "solutionFolder" && c.name === "Child"));
+  });
+
+  it("counts inline child folders correctly when locating the parent's close", () => {
+    const withInlineChild = [
+      "<Solution>",
+      '  <Folder Name="/Apps/">',
+      '    <Folder Name="/Inline/"></Folder>',
+      '    <Project Path="App/App.csproj" />',
+      "  </Folder>",
+      "</Solution>",
+    ].join("\n");
+    const result = addSlnxFolderEntry(withInlineChild, "Added", "Apps");
+    const apps = parseSlnxFile(result).find((n) => n.kind === "solutionFolder" && n.name === "Apps");
+
+    assert.ok(apps && apps.kind === "solutionFolder");
+    assert.ok(apps.children.some((c) => c.kind === "solutionFolder" && c.name === "Added"));
+    assert.ok(apps.children.some((c) => c.kind === "solutionFolder" && c.name === "Inline"));
+  });
+});
+
+describe("addSlnxProjectEntry", () => {
+  it("adds a project at the solution root before </Solution>", () => {
+    const result = addSlnxProjectEntry(fixture(), "New/New.csproj");
+
+    const tree = parseSlnxFile(result);
+    assert.ok(tree.some((node) => node.kind === "project" && node.relativePath === "New/New.csproj"));
+    const lines = result.split("\n");
+    assert.ok(lines[lines.length - 1].includes("</Solution>"));
+  });
+
+  it("writes the project as a self-closing element with one level of indentation", () => {
+    const result = addSlnxProjectEntry(fixture(), "New/New.csproj");
+    const line = result.split("\n").find((l) => l.includes("New/New.csproj"))!;
+
+    assert.equal(line, '  <Project Path="New/New.csproj" />');
+  });
+
+  it("nests the project inside the named parent folder", () => {
+    const result = addSlnxProjectEntry(fixture(), "New/New.csproj", "Apps");
+    const apps = parseSlnxFile(result).find((n) => n.kind === "solutionFolder" && n.name === "Apps");
+
+    assert.ok(apps && apps.kind === "solutionFolder");
+    assert.ok(apps.children.some((c) => c.kind === "project" && c.relativePath === "New/New.csproj"));
+  });
+
+  it("nests into a freshly created inline-empty folder by expanding it", () => {
+    const afterFolder = addSlnxFolderEntry(fixture(), "Created");
+    const afterProject = addSlnxProjectEntry(afterFolder, "New/New.csproj", "Created");
+    const created = parseSlnxFile(afterProject).find((n) => n.kind === "solutionFolder" && n.name === "Created");
+
+    assert.ok(created && created.kind === "solutionFolder");
+    assert.ok(created.children.some((c) => c.kind === "project" && c.relativePath === "New/New.csproj"));
+  });
+
+  it("preserves CRLF line endings", () => {
+    const result = addSlnxProjectEntry(fixtureWithCrlf(), "New/New.csproj");
+
+    assert.ok(result.includes("\r\n"));
+    assert.ok(result.includes('<Project Path="New/New.csproj" />'));
+  });
+
+  it("is a no-op when the parent folder is not found", () => {
+    const original = fixture();
+    const result = addSlnxProjectEntry(original, "New/New.csproj", "DoesNotExist");
+
+    assert.equal(result, original);
+  });
+});

@@ -7,7 +7,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { addPackage, removePackage, restore } from "../solutionExplorer/dotnetCli.js";
-import { getAssetsFilePath } from "../solutionExplorer/projectAssetsReader.js";
+import { getAssetsFilePath } from "../solutionExplorer/parsers/projectAssetsReader.js";
 import {
   ApplyProgress,
   applyPackageWith,
@@ -21,8 +21,8 @@ import {
   getPackageMetadata,
   getPackageReadme,
   getPackageVersions,
-  PackageMetadata,
 } from "./nugetApi.js";
+import { PackageMetadata } from "./packageMetadata.js";
 import { computeUpdates, PackageUpdate } from "./updateCalculation.js";
 import {
   ancestorDirectories,

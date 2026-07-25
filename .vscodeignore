@@ -15,3 +15,9 @@ tsconfig.json
 **/.gitignore
 node_modules/**
 .gitignore
+.editorconfig
+.markdownlint.json
+artifacts/**
+**/*.vsix
+CONTRIBUTING.md
+SECURITY.md

@@ -5,7 +5,7 @@
 // Signals (any one is enough): an explicit runner opt-in property, or a package reference to an
 // MTP-native framework/runner. xUnit v3, TUnit and the *.Testing.Platform packages are MTP-only.
 
-import { parsePackageReferences } from "../solutionExplorer/csprojReader.js";
+import { parsePackageReferences } from "../solutionExplorer/parsers/csprojReader.js";
 
 const MTP_PROPERTY_PATTERN =
   /<(?:UseMicrosoftTestingPlatformRunner|EnableMSTestRunner|EnableNUnitRunner|TestingPlatformDotnetTestSupport)\s*>\s*true\s*<\//i;

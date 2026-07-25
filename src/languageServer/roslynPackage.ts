@@ -208,7 +208,8 @@ export function decideRazor(
 /**
  * Extracts the PackageBaseAddress ("flat container") endpoint from a NuGet v3 service index — the
  * resource we download `.nupkg` files from. Discovering it from the index (rather than hardcoding a
- * host) mirrors how `nugetApi.parseServiceIndex` finds the search endpoint and survives host changes.
+ * host) mirrors how `nugetEndpoints.parseServiceIndexByType` finds the search endpoint and survives
+ * host changes.
  */
 export function parsePackageBaseAddress(json: unknown): string | undefined {
   const resources = (json as { resources?: unknown })?.resources;

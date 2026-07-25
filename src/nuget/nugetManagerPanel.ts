@@ -5,7 +5,7 @@
 // tested, sanitizing renderer — so the webview only ever injects vetted markup.
 
 import * as vscode from "vscode";
-import { SolutionTreeDataProvider } from "../solutionExplorer/solutionTreeDataProvider.js";
+import { SolutionTreeDataProvider } from "../solutionExplorer/tree/solutionTreeDataProvider.js";
 import { errorMessage } from "../solutionExplorer/commandUtils.js";
 import { searchPackages } from "./nugetApi.js";
 import { renderMarkdown } from "./markdown.js";

@@ -17,19 +17,20 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
 
       - run: npm run package
 
+      # Same script as locally, so both write the VSIX to artifacts/.
       - name: Package VSIX
-        run: npx vsce package
+        run: npm run vsix
 
       - name: Get VSIX filename
         id: vsix
-        run: echo "file=$(ls *.vsix)" >> $GITHUB_OUTPUT
+        run: echo "file=$(ls artifacts/*.vsix)" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

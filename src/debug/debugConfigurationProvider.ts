@@ -1,23 +1,23 @@
 // Turns "press F5 with nothing configured" into a real launch: pick the startup project, apply its
 // launchSettings.json profile, build, ask MSBuild what was produced, and hand netcoredbg the result.
 
-import * as path from "node:path";
 import * as vscode from "vscode";
 import { CANCELLED, resolveRunFramework } from "../solutionExplorer/commandUtils.js";
 import { build } from "../solutionExplorer/dotnetCli.js";
-import { resolveActiveProfile } from "../solutionExplorer/launchProfileCommands.js";
+import { resolveActiveProfile } from "../solutionExplorer/launchProfiles/launchProfileCommands.js";
 import {
   findWorkspaceProjects,
   projectFromUri,
   promptForStartupProject,
   TargetProject,
 } from "../solutionExplorer/workspaceProjects.js";
-import { getStartupProjectFsPath } from "../solutionExplorer/launchProfileState.js";
+import { getStartupProjectFsPath } from "../solutionExplorer/launchProfiles/launchProfileState.js";
 import { makeReporter } from "../shared/httpDownload.js";
 import { buildLaunchConfig, DEBUG_TYPE, NetcoredbgLaunchConfig } from "./debugConfig.js";
 import { CONFIG_SECTION, shouldOfferConfigurations } from "./debugSettings.js";
 import { DebuggerStateStore } from "./debugState.js";
 import { AmbiguousFrameworkError, queryProjectOutput } from "./projectOutput.js";
+import { errorText } from "../shared/errorText.js";
 
 /** The subset of a `launch.json` entry we read before filling the rest in. */
 interface PartialConfig extends vscode.DebugConfiguration {
@@ -331,13 +331,4 @@ function browserServerReadyAction(launchUrl: string | undefined): Record<string,
     action.uriFormat = `%s/${launchUrl.replace(/^\/+/, "")}`;
   }
   return action;
-}
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
-/** Relative label used in messages, e.g. "src/App/App.csproj". */
-export function projectLabel(project: TargetProject): string {
-  return path.basename(project.uri.fsPath);
 }

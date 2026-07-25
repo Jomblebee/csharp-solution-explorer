@@ -3,9 +3,9 @@
 // consolidation would touch. Free of vscode and of the filesystem — the caller reads the files and
 // hands the text in — so all of it stays unit-testable.
 
-import { parsePackageReferences } from "../solutionExplorer/csprojReader.js";
-import { parseProjectAssets } from "../solutionExplorer/projectAssetsReader.js";
-import { compareVersions } from "./nugetApi.js";
+import { parsePackageReferences } from "../solutionExplorer/parsers/csprojReader.js";
+import { parseProjectAssets } from "../solutionExplorer/parsers/projectAssetsReader.js";
+import { compareVersions } from "./versionCompare.js";
 import { CentralPackageVersion } from "./centralPackageManagement.js";
 
 export interface InstalledPackage {

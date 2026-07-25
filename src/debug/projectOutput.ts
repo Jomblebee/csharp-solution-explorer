@@ -7,7 +7,7 @@
 import { execFile } from "node:child_process";
 import * as path from "node:path";
 import { promisify } from "node:util";
-import { parseCommandLineArgs } from "../solutionExplorer/launchSettingsReader.js";
+import { parseCommandLineArgs } from "../solutionExplorer/parsers/launchSettingsReader.js";
 
 const execFileAsync = promisify(execFile);
 

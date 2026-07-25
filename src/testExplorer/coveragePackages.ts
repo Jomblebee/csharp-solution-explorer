@@ -3,8 +3,8 @@
 // `--coverage*` options don't exist otherwise — the runner aborts); classic VSTest projects need
 // coverlet.collector to back `--collect "XPlat Code Coverage"` (missing it is silent-empty, not fatal).
 
-import { parsePackageReferences } from "../solutionExplorer/csprojReader.js";
-import type { ParsedAssetPackage, ParsedAssets } from "../solutionExplorer/projectAssetsReader.js";
+import { parsePackageReferences } from "../solutionExplorer/parsers/csprojReader.js";
+import type { ParsedAssetPackage, ParsedAssets } from "../solutionExplorer/parsers/projectAssetsReader.js";
 
 /** The MTP code-coverage extension package (adds the `--coverage*` runner options). */
 export const MTP_COVERAGE_PACKAGE = "Microsoft.Testing.Extensions.CodeCoverage";

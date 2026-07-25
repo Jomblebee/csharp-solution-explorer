@@ -2,7 +2,7 @@
 
 [![Open VSX](https://img.shields.io/open-vsx/v/jomblebee/jomblebee-csharp-solution-explorer?style=flat-square&label=Open%20VSX&color=a60ee5)](https://open-vsx.org/extension/jomblebee/jomblebee-csharp-solution-explorer)
 [![VS Marketplace](https://badgen.net/vs-marketplace/v/jomblebee.jomblebee-csharp-solution-explorer?label=VS%20Marketplace&color=0066b8)](https://marketplace.visualstudio.com/items?itemName=jomblebee.jomblebee-csharp-solution-explorer)
-[![VS Code ≥ 1.85](https://img.shields.io/badge/VS%20Code-%E2%89%A51.85-007ACC?style=flat-square)](https://code.visualstudio.com/)
+[![VS Code ≥ 1.88](https://img.shields.io/badge/VS%20Code-%E2%89%A51.88-007ACC?style=flat-square)](https://code.visualstudio.com/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 A C# Solution Explorer for VS Code — and Open VSX-compatible editors such as VSCodium — with an **optional bundled Roslyn language server**, so you can get IntelliSense without any Microsoft-proprietary extension.
@@ -22,7 +22,7 @@ The long-term goal is a VS Code extension that gives C# (and Razor) developers e
 - Per-project **Dependencies** tree grouped into Visual Studio-style categories (Frameworks, Analyzers, Packages, Projects), with full NuGet and project-reference management — see [Dependencies & NuGet](docs/nuget.md).
 - **NuGet Package Manager** panel with Browse / Installed / Updates / Consolidate tabs over a solution-wide project checklist, package READMEs, and deprecation and vulnerability badges — see [NuGet Package Manager](docs/nuget.md#nuget-package-manager).
 - **C# debugging (F5)** via a bundled netcoredbg debugger — no Microsoft-proprietary extension required — with launch profiles from `launchSettings.json`, startup project selection, and a real console via **Debug Startup Project in External Terminal** — see [Debugging](docs/debugging.md).
-- **Test Explorer** in VS Code's native Testing view: tests discovered per project, run or debug down to a single test method, live results, and **Run with Coverage** with per-line highlighting — see [Test Explorer](#test-explorer).
+- **Test Explorer** in VS Code's native Testing view: tests discovered per project, run or debug down to a single test method, live results, and **Run with Coverage** with per-line highlighting — see [Test Explorer](docs/test-explorer.md).
 - **New Item templates**, project scaffolding via `dotnet new`, Build / Rebuild / Run / Test / Restore / Clean, rename, delete, and solution file management — see [Commands](docs/commands.md).
 - **File nesting** groups related files under a parent, like Visual Studio (`appsettings.*.json`, `.xaml.cs`, `.Designer.cs`, `.razor` companions). Toggle with `csharpSolutionExplorer.fileNesting.enabled`.
 - **Auto-sync**: the active editor's file is selected (and its parents expanded) in the tree automatically — plus **Show in Solution Explorer** on demand.
@@ -39,12 +39,7 @@ Press `F5` to build and debug the startup project directly — no `launch.json`,
 
 C# test projects appear in VS Code's native **Testing** view. Run or debug a whole project, a class, or a single test method — including data-driven cases, which nest under their method — with results, failure messages and clickable stack frames reported per test, and play icons in the editor gutter. **Run with Coverage** collects line coverage and highlights it in the editor; the extension offers to add the coverage package a project is missing.
 
-Two backends are used, picked per project:
-
-- **Microsoft.Testing.Platform** projects (MSTest with `EnableMSTestRunner`, xUnit v3, TUnit) speak the platform's server protocol: tests are listed as soon as a project is expanded, a filtered run sends exactly the selected tests, and results stream in live. This is also the only path that works on the .NET 10 SDK.
-- **Classic VSTest** projects run through `dotnet test --logger trx`. There is no server to query, so test methods appear after the first run.
-
-Each run writes a curated log to the Test Results panel — a header, build errors, failures and a final count — while the full, unfiltered host log stays available in the **C# Tests** output channel. `csharpSolutionExplorer.testExplorer.outputVerbosity` controls how much of it the panel shows; see [Settings](docs/settings.md).
+**[Test Explorer in detail →](docs/test-explorer.md)** — Microsoft.Testing.Platform vs. classic VSTest, single-test debugging, coverage packages, known limits.
 
 ## Dependencies & NuGet
 
@@ -76,13 +71,15 @@ All `csharpSolutionExplorer.*` options and the New Item template variables: **[S
 npm install
 ```
 
-Press `F5` in VS Code to launch the Extension Development Host with the sample solution (`samples/CSharpSolutionExplorer.Sample`) already open.
+Press `F5` in VS Code to launch the Extension Development Host with the sample solution (`samples/TaskFlow`) already open.
 
 ```bash
 npm run lint
 npm run check-types
 npm test
 ```
+
+Setup details, the test layout and the commit convention are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

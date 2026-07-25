@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { parseProjectReferences } from "./csprojReader.js";
+import { parseProjectReferences } from "./parsers/csprojReader.js";
 
 /** One meaningful event parsed out of a single line of `dotnet build` stdout. */
 export type BuildLineEvent = { kind: "restoreDone" } | { kind: "projectDone"; name: string } | { kind: "other" };

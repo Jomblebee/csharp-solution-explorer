@@ -7,9 +7,10 @@ import {
   parseOutputType,
   parseSdkAttribute,
   parseTargetFrameworks,
-} from "./csprojReader.js";
-import { getStartupProjectFsPath, setStartupProject } from "./launchProfileState.js";
-import { describeActiveProfile } from "./launchProfileCommands.js";
+} from "./parsers/csprojReader.js";
+import { ASPNETCORE_ENVIRONMENT } from "./parsers/launchSettingsReader.js";
+import { getStartupProjectFsPath, setStartupProject } from "./launchProfiles/launchProfileState.js";
+import { describeActiveProfile } from "./launchProfiles/launchProfileCommands.js";
 
 const EXCLUDE_GLOB = "**/{bin,obj,node_modules,.git,.vs}/**";
 
@@ -81,8 +82,6 @@ const GROUP_LABEL: Record<ProjectGroup, string> = {
   test: "Tests",
   library: "Libraries",
 };
-
-const ASPNETCORE_ENVIRONMENT = "ASPNETCORE_ENVIRONMENT";
 
 function toStartupProjectItem(
   project: TargetProject,

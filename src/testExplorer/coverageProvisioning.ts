@@ -7,7 +7,7 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import type { TargetProject } from "../solutionExplorer/workspaceProjects.js";
 import { addPackage, restore } from "../solutionExplorer/dotnetCli.js";
-import { getAssetsFilePath, parseProjectAssets, type ParsedAssets } from "../solutionExplorer/projectAssetsReader.js";
+import { getAssetsFilePath, parseProjectAssets, type ParsedAssets } from "../solutionExplorer/parsers/projectAssetsReader.js";
 import { getPackageVersions } from "../nuget/nugetApi.js";
 import {
   MTP_COVERAGE_PACKAGE,
