@@ -1910,7 +1910,7 @@
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.88.0",
     "@types/yauzl": "^3.4.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.24.0",
