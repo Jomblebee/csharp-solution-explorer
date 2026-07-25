@@ -84,6 +84,8 @@ npm run check-types
 npm test
 ```
 
+Setup details, the test layout and the commit convention are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 [MIT](LICENSE)

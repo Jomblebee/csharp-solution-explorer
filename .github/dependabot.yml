@@ -1,0 +1,23 @@
+version: 2
+
+updates:
+  # minimatch, vscode-jsonrpc, vscode-languageclient and yauzl ship inside the VSIX,
+  # so security fixes for them reach users only through a release.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # The workflows pin floating major tags (@v4, @v2), which do not pick up new majors.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope

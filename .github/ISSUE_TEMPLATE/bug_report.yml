@@ -1,0 +1,90 @@
+name: Bug report
+description: Something in the extension does not work as expected.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: A short description of the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did, in order. A sample solution or a minimal project layout helps a lot.
+      placeholder: |
+        1. Open a solution with …
+        2. Right-click the project node …
+        3. Choose …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs. actual
+      description: What you expected to happen, and what happened instead.
+    validations:
+      required: true
+
+  - type: input
+    id: extension-version
+    attributes:
+      label: Extension version
+      description: Extensions view → C# Solution Explorer → version number.
+      placeholder: "0.14.0"
+    validations:
+      required: true
+
+  - type: input
+    id: editor-version
+    attributes:
+      label: Editor and version
+      description: Help → About. Name the editor if it is not VS Code (VSCodium, Cursor, Windsurf, …).
+      placeholder: "VS Code 1.95.3"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "Windows 11 / Ubuntu 24.04 / macOS 15.1 (Apple Silicon)"
+    validations:
+      required: true
+
+  - type: input
+    id: dotnet-version
+    attributes:
+      label: .NET SDK version
+      description: Output of `dotnet --version`. Enter "not installed" if the CLI is missing.
+      placeholder: "9.0.101"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: solution-format
+    attributes:
+      label: Solution format
+      options:
+        - .sln
+        - .slnx
+        - both
+        - no solution file (folder only)
+        - not applicable
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: >
+        Output panel → "C# Solution Explorer" (and "C# Language Server" for language server issues).
+        Paste the relevant part. This is automatically formatted as code.
+      render: text
+    validations:
+      required: false

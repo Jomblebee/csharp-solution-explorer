@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a capability or an improvement.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is the problem?
+      description: The situation you run into today, not the solution you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should happen instead?
+      description: The behaviour you would like. Where in the UI would it live?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Solution Explorer (tree, context menus, file operations)
+        - Test Explorer and coverage
+        - Debugging
+        - Dependencies and NuGet
+        - C# Language Server
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you use today, or how other tools solve this.
+    validations:
+      required: false

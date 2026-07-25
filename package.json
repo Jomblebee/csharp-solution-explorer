@@ -1895,7 +1895,8 @@
     "test": "node --import tsx --test \"test/**/*.test.ts\"",
     "test:coverage": "node --import tsx --test --experimental-test-coverage \"test/**/*.test.ts\"",
     "vscode:prepublish": "npm run package",
-    "vsix": "vsce package",
+    "vsix": "node -e \"require('node:fs').mkdirSync('artifacts', { recursive: true })\" && vsce package --out artifacts/",
+    "sample:clean": "node scripts/clean-samples.mjs",
     "sample:reset-coverage": "node scripts/reset-sample-coverage.mjs",
     "release:tag": "node scripts/tag-release.mjs"
   },
