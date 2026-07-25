@@ -46,7 +46,9 @@ export function applyCursorTemplate(
 ): { content: string; cursorOffset: number | undefined } {
   const applied = applyTemplate(template, namespace, name, filename, date);
   const idx = applied.indexOf("${cursor}");
-  if (idx === -1) return { content: applied, cursorOffset: undefined };
+  if (idx === -1) {
+    return { content: applied, cursorOffset: undefined };
+  }
   return {
     content: applied.slice(0, idx) + applied.slice(idx + "${cursor}".length),
     cursorOffset: idx,

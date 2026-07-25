@@ -17,7 +17,9 @@ function getTargetDirUri(item: NewItemTarget): vscode.Uri {
 }
 
 function validateNewCsharpName(value: string, dirPath: string, suffix: string): string | undefined {
-  if (!value.trim()) return "Name must not be empty";
+  if (!value.trim()) {
+    return "Name must not be empty";
+  }
   if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value)) {
     return "Must be a valid C# identifier: start with a letter or underscore, then letters, digits, or underscores only";
   }
@@ -48,7 +50,9 @@ async function createNewCsharpFile(
   provider: SolutionTreeDataProvider,
   opts: NewCsharpFileOptions,
 ): Promise<void> {
-  if (!isNewItemTarget(item)) return;
+  if (!isNewItemTarget(item)) {
+    return;
+  }
 
   const template = resolveTemplate(opts.templateKey);
   if (!template) {
@@ -66,14 +70,18 @@ async function createNewCsharpFile(
     valueSelection: opts.initialValue !== undefined ? [opts.initialValue.length, opts.initialValue.length] : undefined,
     validateInput: (value) => {
       const baseError = validateNewCsharpName(value, targetDirUri.fsPath, opts.extension);
-      if (baseError) return baseError;
+      if (baseError) {
+        return baseError;
+      }
       if (opts.requiresUppercase && value && !/^[A-Z]/.test(value)) {
         return "Razor component names must start with an uppercase letter (Blazor convention)";
       }
       return undefined;
     },
   });
-  if (!name) return;
+  if (!name) {
+    return;
+  }
 
   let projectName: string;
   let projectRootDirPath: string;
@@ -188,7 +196,9 @@ export function newRazor(item: unknown, provider: SolutionTreeDataProvider): Pro
 }
 
 export async function newFile(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
-  if (!isNewItemTarget(item)) return;
+  if (!isNewItemTarget(item)) {
+    return;
+  }
 
   const targetDirUri = getTargetDirUri(item);
   const filename = await vscode.window.showInputBox({
@@ -196,7 +206,9 @@ export async function newFile(item: unknown, provider: SolutionTreeDataProvider)
     placeHolder: "e.g. appsettings.json",
     validateInput: (value) => validateNewName(value, targetDirUri.fsPath),
   });
-  if (!filename) return;
+  if (!filename) {
+    return;
+  }
 
   const fileUri = vscode.Uri.joinPath(targetDirUri, filename);
   await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(""));

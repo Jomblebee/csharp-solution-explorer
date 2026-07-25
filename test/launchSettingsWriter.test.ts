@@ -25,8 +25,12 @@ function editOf(name: string, f: EditableProfileFields, extra: Partial<LaunchSet
 
 const BOM = "\uFEFF";
 
+type ParsedLaunchSettings = {
+  profiles: Record<string, Record<string, unknown>>;
+} & Record<string, unknown>;
+
 /** Parses writer output, tolerating the UTF-8 BOM it prepends to freshly scaffolded files. */
-function parseOut(text: string): any {
+function parseOut(text: string): ParsedLaunchSettings {
   return JSON.parse(text.startsWith(BOM) ? text.slice(BOM.length) : text);
 }
 
