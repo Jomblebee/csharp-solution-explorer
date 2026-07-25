@@ -11,6 +11,19 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    groups:
+      # One PR for the toolchain instead of one per package. Runtime dependencies stay
+      # ungrouped: they ship to users, so each wants its own reviewable diff.
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # @types/node must describe the runtime the extension actually runs in — the VS Code
+      # extension host, which on the oldest editor we support (1.88) is Node 18. Types newer
+      # than the host let code compile against APIs that are missing at runtime, so major
+      # bumps here are a decision to make with an engines change, not a routine update.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   # The workflows pin floating major tags (@v4, @v2), which do not pick up new majors.
   - package-ecosystem: github-actions
@@ -21,3 +34,6 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    groups:
+      github-actions:
+        patterns: ["*"]
