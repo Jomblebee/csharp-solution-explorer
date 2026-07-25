@@ -12,48 +12,13 @@ import {
   getLaunchSettingsPath,
   isRunnableProfile,
   LaunchProfile,
-  ParsedLaunchSettings,
-  parseLaunchSettings,
   resolveLaunchProfile,
   ResolvedLaunchProfile,
 } from "../parsers/launchSettingsReader.js";
+import { readLaunchSettings } from "./launchSettingsIo.js";
 import { promptForStartupProject, resolveTargetProject, TargetProject } from "../workspaceProjects.js";
 import { addProfile, deleteProfile, duplicateProfile, editProfile } from "./launchProfileEditor.js";
 import { isWebSdk, parseSdkAttribute, parseTargetFrameworks } from "../parsers/csprojReader.js";
-
-/**
- * Reads a project's launch profiles. A missing or unreadable file is not an error — it just means
- * the project has no profiles, so callers get an empty result rather than having to null-check.
- */
-export async function readLaunchSettings(projectRootDir: vscode.Uri): Promise<ParsedLaunchSettings> {
-  const uri = vscode.Uri.file(getLaunchSettingsPath(projectRootDir.fsPath));
-  try {
-    const bytes = await vscode.workspace.fs.readFile(uri);
-    return parseLaunchSettings(new TextDecoder().decode(bytes));
-  } catch {
-    return { profiles: [] };
-  }
-}
-
-/**
- * The raw text of a project's launchSettings.json, needed by the editor so its writes round-trip
- * against the exact on-disk content (preserving keys we do not model). A missing file returns "",
- * which the writer scaffolds into a fresh file.
- */
-export async function readLaunchSettingsRaw(projectRootDir: vscode.Uri): Promise<string> {
-  const uri = vscode.Uri.file(getLaunchSettingsPath(projectRootDir.fsPath));
-  try {
-    return new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
-  } catch {
-    return "";
-  }
-}
-
-/** Persists new launchSettings.json text. `writeFile` creates the `Properties/` directory as needed. */
-export async function writeLaunchSettings(projectRootDir: vscode.Uri, text: string): Promise<void> {
-  const uri = vscode.Uri.file(getLaunchSettingsPath(projectRootDir.fsPath));
-  await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
-}
 
 /**
  * The profile name to pass to `dotnet run` for a project:

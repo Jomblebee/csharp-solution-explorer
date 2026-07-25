@@ -1,7 +1,7 @@
 /**
  * Writes a project's `Properties/launchSettings.json` back to disk, VS-compatibly. Like
  * `launchSettingsReader.ts` this is pure (no vscode, no MSBuild) so it stays unit-testable; the
- * fs read/write lives in `launchProfileCommands.ts`.
+ * fs read/write lives in `launchProfiles/launchSettingsIo.ts`.
  *
  * The one rule that matters: this never re-serializes from the `LaunchProfile` model, because that
  * would silently drop everything the reader does not model — the top-level `$schema`/`iisSettings`
