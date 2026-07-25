@@ -2,7 +2,7 @@
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
   "description": "A C# Solution Explorer for VS Code and Open VSX editors, with an optional bundled Roslyn language server for IntelliSense — no proprietary extensions required.",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "publisher": "jomblebee",
   "license": "MIT",
   "repository": {
@@ -22,13 +22,20 @@
     "solution explorer",
     "dotnet",
     "sln",
-    "slnx"
+    "slnx",
+    "test explorer",
+    "code coverage",
+    "xunit",
+    "mstest",
+    "nunit"
   ],
   "engines": {
     "vscode": "^1.88.0"
   },
   "categories": [
     "Programming Languages",
+    "Testing",
+    "Debuggers",
     "Other"
   ],
   "icon": "resources/icon.png",

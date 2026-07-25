@@ -6,6 +6,7 @@ docs/**
 samples/**
 test/**
 src/**
+scripts/**
 eslint.config.mjs
 esbuild.js
 tsconfig.json
