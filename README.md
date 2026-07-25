@@ -2,7 +2,7 @@
 
 [![Open VSX](https://img.shields.io/open-vsx/v/jomblebee/jomblebee-csharp-solution-explorer?style=flat-square&label=Open%20VSX&color=a60ee5)](https://open-vsx.org/extension/jomblebee/jomblebee-csharp-solution-explorer)
 [![VS Marketplace](https://badgen.net/vs-marketplace/v/jomblebee.jomblebee-csharp-solution-explorer?label=VS%20Marketplace&color=0066b8)](https://marketplace.visualstudio.com/items?itemName=jomblebee.jomblebee-csharp-solution-explorer)
-[![VS Code ≥ 1.85](https://img.shields.io/badge/VS%20Code-%E2%89%A51.85-007ACC?style=flat-square)](https://code.visualstudio.com/)
+[![VS Code ≥ 1.88](https://img.shields.io/badge/VS%20Code-%E2%89%A51.88-007ACC?style=flat-square)](https://code.visualstudio.com/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 A C# Solution Explorer for VS Code — and Open VSX-compatible editors such as VSCodium — with an **optional bundled Roslyn language server**, so you can get IntelliSense without any Microsoft-proprietary extension.
