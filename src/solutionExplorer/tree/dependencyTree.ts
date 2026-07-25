@@ -9,7 +9,8 @@ import {
 } from "../parsers/csprojReader.js";
 import { basenameWithoutExtension } from "../fsPathUtils.js";
 import { getAssetsFilePath, ParsedAssetPackage, parseProjectAssets } from "../parsers/projectAssetsReader.js";
-import { compareVersions, getPackageVersions } from "../../nuget/nugetApi.js";
+import { getPackageVersions } from "../../nuget/nugetApi.js";
+import { compareVersions } from "../../nuget/versionCompare.js";
 import {
   DependenciesInfo,
   DependencyCategory,

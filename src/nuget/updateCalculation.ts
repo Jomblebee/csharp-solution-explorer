@@ -2,7 +2,7 @@
 // tested. The caller supplies the lookup; this module only decides what to ask about and what counts
 // as an update. The FS/vscode-facing wrapper lives in nugetManagerService.
 
-import { compareVersions } from "./nugetApi.js";
+import { compareVersions } from "./versionCompare.js";
 import { mapLimit } from "./concurrency.js";
 
 /** Just enough of a project to compute updates from — the manager's `ProjectState` satisfies this. */

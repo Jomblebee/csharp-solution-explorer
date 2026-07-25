@@ -21,8 +21,8 @@ import {
   getPackageMetadata,
   getPackageReadme,
   getPackageVersions,
-  PackageMetadata,
 } from "./nugetApi.js";
+import { PackageMetadata } from "./packageMetadata.js";
 import { computeUpdates, PackageUpdate } from "./updateCalculation.js";
 import {
   ancestorDirectories,

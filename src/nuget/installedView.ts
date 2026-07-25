@@ -5,7 +5,7 @@
 
 import { parsePackageReferences } from "../solutionExplorer/parsers/csprojReader.js";
 import { parseProjectAssets } from "../solutionExplorer/parsers/projectAssetsReader.js";
-import { compareVersions } from "./nugetApi.js";
+import { compareVersions } from "./versionCompare.js";
 import { CentralPackageVersion } from "./centralPackageManagement.js";
 
 export interface InstalledPackage {
