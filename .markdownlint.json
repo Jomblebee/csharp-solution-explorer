@@ -1,7 +1,9 @@
 {
-  "//": "No CI step reads this — it exists to keep editors quiet about two deliberate house-style choices.",
+  "//": "No CI step reads this — it exists to keep editors quiet about deliberate house-style choices.",
   "//MD041": "Every page under docs/ opens with a back-link to the README, not with its H1.",
   "MD041": false,
   "//MD013": "Line length is not uniform on purpose: docs/debugging.md and docs/test-explorer.md hard-wrap at 100, the other pages keep one line per paragraph (up to ~700 characters). No single limit fits, so the rule is off.",
-  "MD013": false
+  "MD013": false,
+  "//MD024": "CHANGELOG.md repeats \"### Added\" / \"### Changed\" / \"### Fixed\" once per version — that is what Keep a Changelog prescribes, so duplicate headings are correct here.",
+  "MD024": false
 }
