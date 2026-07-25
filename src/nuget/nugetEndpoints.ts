@@ -23,11 +23,6 @@ export function parseServiceIndexByType(json: unknown, typePrefix: string): stri
     .filter((id): id is string => typeof id === "string");
 }
 
-/** Finds the SearchQueryService endpoint URLs in a NuGet service-index response. */
-export function parseServiceIndex(json: unknown): string[] {
-  return parseServiceIndexByType(json, "SearchQueryService");
-}
-
 export async function fetchJson(url: string): Promise<unknown> {
   const response = await fetch(url, { headers: { accept: "application/json" } });
   if (!response.ok) {

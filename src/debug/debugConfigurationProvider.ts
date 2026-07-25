@@ -1,7 +1,6 @@
 // Turns "press F5 with nothing configured" into a real launch: pick the startup project, apply its
 // launchSettings.json profile, build, ask MSBuild what was produced, and hand netcoredbg the result.
 
-import * as path from "node:path";
 import * as vscode from "vscode";
 import { CANCELLED, resolveRunFramework } from "../solutionExplorer/commandUtils.js";
 import { build } from "../solutionExplorer/dotnetCli.js";
@@ -332,9 +331,4 @@ function browserServerReadyAction(launchUrl: string | undefined): Record<string,
     action.uriFormat = `%s/${launchUrl.replace(/^\/+/, "")}`;
   }
   return action;
-}
-
-/** Relative label used in messages, e.g. "src/App/App.csproj". */
-export function projectLabel(project: TargetProject): string {
-  return path.basename(project.uri.fsPath);
 }
