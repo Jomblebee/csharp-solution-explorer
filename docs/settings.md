@@ -18,6 +18,8 @@
 | `csharpSolutionExplorer.debug.version`             | *(bundled)*   | Pin a specific netcoredbg release tag instead of the one bundled with this extension.               |
 | `csharpSolutionExplorer.debug.debuggerPath`        | *(empty)*     | Path to a locally built netcoredbg executable — required on platforms with no published build (Intel macOS, Windows on ARM, musl-based Linux). |
 | `csharpSolutionExplorer.debug.logging`             | `false`       | Write a netcoredbg trace log next to the debug adapter, for diagnosing debugger problems.           |
+| `csharpSolutionExplorer.testExplorer.enabled`      | `true`        | Show C# test projects in the native Test Explorer, run and debug individual tests, and collect coverage. Changes need a window reload. |
+| `csharpSolutionExplorer.testExplorer.outputVerbosity` | `summary`  | How much of the test host's log the Test Results panel shows (`summary` / `normal` / `full`). Build errors and host crashes always appear, the full raw log is always in the **C# Tests** output channel, and debug runs are always `full` (the debugger attaches by reading the host's own output). |
 | `csharpSolutionExplorer.languageServer.enabled`    | `true`        | Run the bundled Roslyn C# language server (auto-off when the Microsoft C# extension is installed). |
 | `csharpSolutionExplorer.languageServer.version`    | *(pinned)*    | Pin a specific `roslyn-language-server` version (from the feed); empty uses the bundled default.   |
 | `csharpSolutionExplorer.languageServer.serverPath` | *(empty)*     | Path to a locally installed server (skips the download) — for offline/enterprise use.              |

@@ -12,15 +12,23 @@ import { buildAttachConfig } from "../debug/debugConfig.js";
 import { queryProjectOutput } from "../debug/projectOutput.js";
 import { runTests, type TestRunOutcome } from "./dotnetTestRunner.js";
 import { parseTestHostPid } from "./dotnetTestArgs.js";
+import { killTree } from "../shared/killProcess.js";
 
-export async function debugTestProject(
-  project: TargetProject,
-  framework: string | undefined,
-  resultsDir: string,
-  output: vscode.OutputChannel,
-  token: vscode.CancellationToken,
-  filter?: string,
-): Promise<TestRunOutcome> {
+export interface DebugTestOptions {
+  project: TargetProject;
+  /** Target framework, or undefined for a single-target project (no `--framework` flag). */
+  framework: string | undefined;
+  resultsDir: string;
+  output: vscode.OutputChannel;
+  token: vscode.CancellationToken;
+  /** VSTest `--filter` expression; omit to debug the whole project. */
+  filter?: string;
+  /** Receives every complete stdout line, for the run terminal. */
+  onOutput?: (line: string) => void;
+}
+
+export async function debugTestProject(opts: DebugTestOptions): Promise<TestRunOutcome> {
+  const { project, framework, resultsDir, output, token, filter, onOutput } = opts;
   // The test assembly (.dll) hands netcoredbg the symbols/PDBs so breakpoints in test methods bind.
   const projectOutput = await queryProjectOutput(project.uri.fsPath, framework, "Debug");
 
@@ -36,12 +44,16 @@ export async function debugTestProject(
       resultsDir,
       framework,
       filter,
+      // Deliberately unfiltered: the attach handshake below reads the host's "Process Id: N" line
+      // out of stdout, and a quiet console logger is free to swallow it.
+      level: "full",
       env: { ...process.env, VSTEST_HOST_DEBUG: "1" },
       onSpawn: (spawned) => {
-        killChild = () => spawned.kill();
+        killChild = () => killTree(spawned);
       },
       onLine: (line) => {
         output.appendLine(line);
+        onOutput?.(line);
         if (attached) {
           return;
         }

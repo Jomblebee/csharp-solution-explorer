@@ -6,7 +6,11 @@
 //   - Classic VSTest projects use `dotnet test --logger trx` (dotnetTestRunner) + TRX parsing, with
 //     single-test runs via `--filter`. No up-front discovery/live (no server) — methods appear after
 //     the first run.
-// Both backends produce the same TrxTestResult, reported through one shared path.
+// Both backends produce the same TrxTestResult, reported through one shared path (testItems.ts).
+//
+// A run's log goes to the Test Results panel (curated by outputVerbosity) and, unfiltered, to the
+// "C# Tests" output channel. The extension always owns the test process — that is what keeps
+// cancellation, the debug attach and MTP's live results working.
 
 import * as vscode from "vscode";
 import * as os from "node:os";
@@ -14,39 +18,48 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { CANCELLED, resolveRunFramework } from "../solutionExplorer/commandUtils.js";
 import { buildAttachConfig } from "../debug/debugConfig.js";
+import { isUnderExcludedDir } from "../solutionExplorer/diskScanner.js";
 import type { TargetProject } from "../solutionExplorer/workspaceProjects.js";
-import { runTests } from "./dotnetTestRunner.js";
+import { runTests, type TestRunOutcome } from "./dotnetTestRunner.js";
 import { buildFqnFilter } from "./dotnetTestArgs.js";
 import { debugTestProject } from "./debugTestRun.js";
 import { discoverMtpTests, runMtpTests } from "./mtpRunner.js";
 import { isMtpProject } from "./mtpProjectClassifier.js";
-import { isActionNode, isTerminalState, mtpNodeToResult } from "./mtpResults.js";
-import type { MtpTestNode } from "./mtpProtocol.js";
+import { ensureCoveragePackages } from "./coverageProvisioning.js";
 import { findTestProjects } from "./testProjects.js";
-import { parseTrx, type TrxTestResult } from "./trxParser.js";
-import { classIdFor, groupByClass, methodIdFor } from "./testTree.js";
+import { parseTrx, type TrxOutcome, type TrxTestResult } from "./trxParser.js";
+import { TestItemIndex, ensureMethodItem, reportNode, reportResults, type TestReportContext } from "./testItems.js";
+import { summarizeHostFailure } from "./hostOutput.js";
+import { createLineSplitter, createOutputFilter, toCrlf, type TestOutputLevel } from "./outputFilter.js";
+import { debounce, debounceCollect } from "../shared/debounce.js";
+import { killTree } from "../shared/killProcess.js";
+import { CoverageStore, readCoverageReports } from "./coverageReport.js";
 
 /** Either "run the whole project" or a set of selected method-item ids. */
 type Selection = "ALL" | Set<string>;
+
+/** Collapse file-watcher event bursts (a save can fire several) into a single refresh/invalidate. */
+const REFRESH_DEBOUNCE_MS = 300;
 
 export function createTestController(context: vscode.ExtensionContext, output: vscode.OutputChannel): vscode.TestController {
   const controller = vscode.tests.createTestController("csharpSolutionExplorer.tests", "C# Tests");
   const projectsById = new Map<string, TargetProject>();
   const mtpById = new Map<string, boolean>();
+  // Project id → whether its restored graph provides the coverage package its runner needs (gates the
+  // coverage flags). Filled lazily on the first coverage run, cleared whenever a project file changes.
+  const coveragePkgOkById = new Map<string, boolean>();
   const discovered = new Set<string>();
-  // Method-item id → the raw MTP node it came from (so a filtered run re-sends the exact node).
-  const nodeByItemId = new Map<string, MtpTestNode>();
-  // Method-item id → fully-qualified name (for VSTest `--filter`).
-  const fqnByItemId = new Map<string, string>();
+  // Per method item: the raw MTP node and the fully-qualified name a filtered re-run needs.
+  const index = new TestItemIndex();
 
   const refresh = async (): Promise<void> => {
     const projects = await findTestProjects();
-    const mtpFlags = await Promise.all(projects.map((p) => isProjectMtp(p.uri)));
+    const mtpFlags = await Promise.all(projects.map((p) => readIsMtp(p.uri)));
     projectsById.clear();
     mtpById.clear();
+    coveragePkgOkById.clear();
     discovered.clear();
-    nodeByItemId.clear();
-    fqnByItemId.clear();
+    index.clear();
     const items = projects.map((project, i) => {
       const item = controller.createTestItem(project.uri.fsPath, project.name, project.uri);
       item.canResolveChildren = mtpFlags[i]; // only MTP projects can enumerate tests without a run
@@ -60,20 +73,21 @@ export function createTestController(context: vscode.ExtensionContext, output: v
   controller.refreshHandler = refresh;
   void refresh();
 
-  // Expanding an MTP project discovers its tests (once, cached until the csproj changes).
-  controller.resolveHandler = async (item) => {
-    if (!item) {
-      return;
-    }
-    const project = projectsById.get(item.id);
-    if (!project || !mtpById.get(item.id) || discovered.has(item.id)) {
+  // Discovers an MTP project's tests (once, cached until the csproj changes) and populates the tree.
+  // Shared by resolveHandler (project expand) and the run handler, so a cold first run — before the
+  // project was ever expanded — still has its test items in place instead of running incompletely.
+  const ensureDiscovered = async (
+    item: vscode.TestItem,
+    project: TargetProject,
+    token: vscode.CancellationToken,
+  ): Promise<void> => {
+    if (!mtpById.get(item.id) || discovered.has(item.id)) {
       return;
     }
     try {
-      const source = new vscode.CancellationTokenSource();
-      const nodes = await discoverMtpTests({ project, output, token: source.token });
+      const nodes = await discoverMtpTests({ project, output, token });
       for (const node of nodes) {
-        ensureMethodItem(controller, item, project, node, nodeByItemId, fqnByItemId);
+        ensureMethodItem({ controller, projectItem: item, project, index }, node);
       }
       discovered.add(item.id);
     } catch (err) {
@@ -81,112 +95,321 @@ export function createTestController(context: vscode.ExtensionContext, output: v
     }
   };
 
-  const watcher = vscode.workspace.createFileSystemWatcher("**/*.{csproj,fsproj,vbproj}");
-  watcher.onDidCreate(() => void refresh());
-  watcher.onDidDelete(() => void refresh());
-  watcher.onDidChange(() => void refresh());
+  // Expanding an MTP project discovers its tests (once, cached until the csproj changes).
+  controller.resolveHandler = async (item) => {
+    if (!item) {
+      return;
+    }
+    const project = projectsById.get(item.id);
+    if (!project) {
+      return;
+    }
+    const source = new vscode.CancellationTokenSource();
+    try {
+      await ensureDiscovered(item, project, source.token);
+    } finally {
+      source.dispose();
+    }
+  };
+
+  // A project added/removed/retargeted changes which test projects exist → full re-discovery.
+  const debouncedRefresh = debounce(() => void refresh(), REFRESH_DEBOUNCE_MS);
+  const projectWatcher = vscode.workspace.createFileSystemWatcher("**/*.{csproj,fsproj,vbproj}");
+  const onProjectEvent = (uri: vscode.Uri): void => {
+    if (!isUnderExcludedDir(uri.fsPath)) {
+      debouncedRefresh();
+    }
+  };
+  projectWatcher.onDidCreate(onProjectEvent);
+  projectWatcher.onDidDelete(onProjectEvent);
+  projectWatcher.onDidChange(onProjectEvent);
+
+  // A source edit can add/remove/rename test methods. Rather than reload the whole tree, drop the
+  // cached discovery for the owning MTP project so VS Code re-resolves its children on next expand/run.
+  const invalidateForFiles = (fileFsPaths: string[]): void => {
+    for (const [id, project] of projectsById) {
+      if (!mtpById.get(id) || !discovered.has(id)) {
+        continue;
+      }
+      const projectDir = path.dirname(project.uri.fsPath);
+      const owned = fileFsPaths.some(
+        (fsPath) => fsPath === projectDir || fsPath.startsWith(projectDir + path.sep),
+      );
+      if (!owned) {
+        continue;
+      }
+      discovered.delete(id);
+      index.forgetProject(id);
+      const item = controller.items.get(id);
+      if (item) {
+        item.children.replace([]);
+        item.canResolveChildren = true;
+      }
+    }
+  };
+  // Collecting rather than debouncing: saving two files at once is two events, and a plain debounce
+  // would keep only the last path — leaving the other project on a stale discovery.
+  const debouncedInvalidate = debounceCollect(invalidateForFiles, REFRESH_DEBOUNCE_MS);
+  const sourceWatcher = vscode.workspace.createFileSystemWatcher("**/*.{cs,fs,vb}");
+  // `createFileSystemWatcher` has no exclude argument, so build output has to be dropped here:
+  // every build rewrites `obj/**/*.g.cs`, which would throw away the discovery we just built.
+  const onSourceEvent = (uri: vscode.Uri): void => {
+    if (!isUnderExcludedDir(uri.fsPath)) {
+      debouncedInvalidate(uri.fsPath);
+    }
+  };
+  sourceWatcher.onDidCreate(onSourceEvent);
+  sourceWatcher.onDidDelete(onSourceEvent);
+  sourceWatcher.onDidChange(onSourceEvent);
+
+  const coverageStore = new CoverageStore();
 
   const runHandler =
-    (debug: boolean) =>
+    (debug: boolean, coverage: boolean) =>
     async (request: vscode.TestRunRequest, token: vscode.CancellationToken): Promise<void> => {
       const run = controller.createTestRun(request);
       try {
-        for (const [projectItem, selection] of groupIncludesByProject(controller, request)) {
+        const entries = [...groupIncludesByProject(controller, request)]
+          .map(([projectItem, selection]) => ({ projectItem, selection, project: projectsById.get(projectItem.id) }))
+          .filter((e): e is { projectItem: vscode.TestItem; selection: Selection; project: TargetProject } => !!e.project);
+
+        // Serial pre-pass: resolve each project's target framework first. resolveRunFramework may show a
+        // QuickPick, and running the projects in parallel would otherwise stack several prompts at once.
+        const runnable: { projectItem: vscode.TestItem; selection: Selection; project: TargetProject; framework: string | undefined }[] = [];
+        for (const entry of entries) {
           if (token.isCancellationRequested) {
             break;
           }
-          const project = projectsById.get(projectItem.id);
-          if (!project) {
+          const framework = await resolveRunFramework(entry.project.uri, entry.project.name);
+          if (framework === CANCELLED) {
+            run.skipped(entry.projectItem);
             continue;
           }
-          run.started(projectItem);
-          try {
-            await runProjectSelection(
-              { controller, run, projectItem, project, selection, debug, output, token },
-              mtpById.get(projectItem.id) ?? false,
-              nodeByItemId,
-              fqnByItemId,
-            );
-          } catch (err) {
-            run.errored(projectItem, new vscode.TestMessage(errorText(err)));
-          }
+          runnable.push({ ...entry, framework });
         }
+
+        // Coverage needs a per-runner package; offer to add it before running (may abort the run).
+        if (coverage && !(await ensureCoveragePackages(runnable, coveragePkgOkById, mtpById))) {
+          return; // the `finally` ends the run
+        }
+
+        // Each project's discovery + run is independent, so run them concurrently.
+        await Promise.all(
+          runnable.map(async ({ projectItem, selection, project, framework }) => {
+            if (token.isCancellationRequested) {
+              return;
+            }
+            // Cold start: discover the tree before running so live results have items to attach to.
+            await ensureDiscovered(projectItem, project, token);
+            run.started(projectItem);
+            try {
+              await runProjectSelection(
+                {
+                  controller,
+                  run,
+                  projectItem,
+                  project,
+                  index,
+                  selection,
+                  framework,
+                  debug,
+                  coverage,
+                  coverageSupported: coveragePkgOkById.get(projectItem.id) ?? false,
+                  coverageStore,
+                  output,
+                  level: readOutputLevel(debug),
+                  token,
+                },
+                mtpById.get(projectItem.id) ?? false,
+              );
+            } catch (err) {
+              run.errored(projectItem, new vscode.TestMessage(errorText(err)));
+            }
+          }),
+        );
+        // One FileCoverage per file, after every project has contributed its report.
+        coverageStore.publish(run);
       } finally {
         run.end();
       }
     };
 
-  controller.createRunProfile("Run", vscode.TestRunProfileKind.Run, runHandler(false), true);
-  controller.createRunProfile("Debug", vscode.TestRunProfileKind.Debug, runHandler(true), true);
+  controller.createRunProfile("Run", vscode.TestRunProfileKind.Run, runHandler(false, false), true);
+  controller.createRunProfile("Debug", vscode.TestRunProfileKind.Debug, runHandler(true, false), true);
+  const coverageProfile = controller.createRunProfile(
+    "Run with Coverage",
+    vscode.TestRunProfileKind.Coverage,
+    runHandler(false, true),
+    true,
+  );
+  coverageProfile.loadDetailedCoverage = (run, fileCoverage) => Promise.resolve(coverageStore.detailsFor(run, fileCoverage));
 
-  context.subscriptions.push(controller, watcher);
+  context.subscriptions.push(controller, projectWatcher, sourceWatcher);
   return controller;
 }
 
-interface RunContext {
-  controller: vscode.TestController;
-  run: vscode.TestRun;
-  projectItem: vscode.TestItem;
-  project: TargetProject;
+interface RunContext extends TestReportContext {
   selection: Selection;
+  /** Target framework resolved up front (undefined = single-target, no `--framework` flag needed). */
+  framework: string | undefined;
   debug: boolean;
+  coverage: boolean;
+  /** Whether this (MTP) project references the coverage extension; false means its `--coverage` flags would abort the run. */
+  coverageSupported: boolean;
+  coverageStore: CoverageStore;
   output: vscode.OutputChannel;
+  /** How much of the host log the run terminal shows; the output channel always gets all of it. */
+  level: TestOutputLevel;
   token: vscode.CancellationToken;
 }
 
-async function runProjectSelection(
-  ctx: RunContext,
-  mtp: boolean,
-  nodeByItemId: Map<string, MtpTestNode>,
-  fqnByItemId: Map<string, string>,
-): Promise<void> {
-  const { controller, run, projectItem, project, selection, debug, output, token } = ctx;
-
-  const framework = await resolveRunFramework(project.uri, project.name);
-  if (framework === CANCELLED) {
-    run.skipped(projectItem);
-    return;
+/**
+ * The configured terminal verbosity. A debug run stays unfiltered: the attach handshake reads the
+ * host's "Process Id: N" line, and hiding the surrounding chatter would hide the reason an attach
+ * never happened.
+ */
+function readOutputLevel(debug: boolean): TestOutputLevel {
+  if (debug) {
+    return "full";
   }
+  const configured = vscode.workspace.getConfiguration("csharpSolutionExplorer").get<string>("testExplorer.outputVerbosity");
+  return configured === "normal" || configured === "full" ? configured : "summary";
+}
+
+async function runProjectSelection(ctx: RunContext, mtp: boolean): Promise<void> {
+  const { run, project, selection, framework, debug, coverage, coverageSupported, coverageStore, output, level, index, token } = ctx;
+  const projectDir = path.dirname(project.uri.fsPath);
+  const startedAt = Date.now();
+  // One sink per run: its filter collapses repeated blank lines, so it carries state across lines.
+  const emit = makeLogSink(run, level);
+  // The run's header and summary always show, whatever the verbosity level drops: they delimit one
+  // run in a panel several runs share.
+  const announce = (text: string): void => writeLine(run, text);
+  announce(headerLine(project.name, framework, selection));
 
   if (mtp) {
-    const filter =
-      selection === "ALL"
-        ? undefined
-        : [...selection].map((id) => nodeByItemId.get(id)).filter((n): n is MtpTestNode => n !== undefined);
-    const outcome = await runMtpTests({
-      project,
-      framework,
-      debug,
-      output,
-      token,
-      filter,
-      onNode: (node) => reportNode(controller, run, projectItem, project, node, nodeByItemId, fqnByItemId),
-      onAttachDebugger: debug ? makeAttacher(project) : undefined,
-    });
-    // Results stream live via onNode; only surface a project-level error when nothing came back.
-    if (outcome.results.length === 0) {
-      run.errored(projectItem, new vscode.TestMessage(outcome.ok ? "No tests were found in this project." : outcome.output.trim() || "The test run failed."));
+    const filter = selection === "ALL" ? undefined : index.nodesFor(selection);
+    // The `--coverage*` flags exist only when the CodeCoverage extension is referenced; passing them
+    // otherwise aborts the whole run with "Unknown option --coverage". Skip them (and warn) if absent.
+    if (coverage && !coverageSupported) {
+      const note = `Skipping coverage for ${project.name}: add the 'Microsoft.Testing.Extensions.CodeCoverage' package to collect coverage for this project.`;
+      output.appendLine(note);
+      writeLine(run, note);
+    }
+    const coverageDir = coverage && coverageSupported ? await makeResultsDir() : undefined;
+    try {
+      // The host streams chunks, not lines; buffer them so the filter sees whole lines.
+      const splitter = createLineSplitter(emit);
+      const outcome = await runMtpTests({
+        project,
+        framework,
+        debug,
+        output,
+        token,
+        filter,
+        coverageOutput: coverageDir ? path.join(coverageDir, "coverage.cobertura.xml") : undefined,
+        onNode: (node) => reportNode(ctx, node),
+        onOutput: (text) => splitter.push(text),
+        onAttachDebugger: debug ? makeAttacher(project) : undefined,
+      });
+      splitter.flush();
+      if (coverageDir) {
+        coverageStore.add(run, await readCoverageReports(coverageDir), projectDir);
+      }
+      // Results stream live via onNode; only surface a project-level error when nothing came back.
+      if (outcome.results.length === 0) {
+        run.errored(ctx.projectItem, new vscode.TestMessage(mtpFailureMessage(outcome.ok, outcome.output)));
+      }
+      announce(summaryLine(outcome.results, Date.now() - startedAt));
+    } finally {
+      await removeDir(coverageDir);
     }
     return;
   }
 
-  // Classic VSTest path.
-  const filter = selection === "ALL" ? undefined : buildFqnFilter([...selection].map((id) => fqnByItemId.get(id) ?? ""));
+  // Classic VSTest path. Collect coverage only when coverlet.collector is present (otherwise `--collect`
+  // runs but writes no report), keeping behaviour consistent with the MTP branch's coverage gate.
+  const collectCoverage = coverage && coverageSupported;
+  const filter = selection === "ALL" ? undefined : buildFqnFilter(index.fqnsFor(selection));
   const resultsDir = await makeResultsDir();
-  const outcome = debug
-    ? await debugTestProject(project, framework, resultsDir, output, token, filter)
-    : await runVsTest(project, framework, resultsDir, output, token, filter);
+  try {
+    const outcome = debug
+      ? await debugTestProject({ project, framework, resultsDir, output, token, filter, onOutput: emit })
+      : await runVsTest({ project, framework, resultsDir, output, token, filter, onOutput: emit, coverage: collectCoverage, level });
+    if (collectCoverage) {
+      coverageStore.add(run, await readCoverageReports(resultsDir), projectDir);
+    }
+    await reportFromTrx(ctx, outcome, startedAt, announce);
+  } finally {
+    await removeDir(resultsDir);
+  }
+}
 
+/** Reports a run whose results arrive in one go through a TRX file: the classic VSTest path. */
+async function reportFromTrx(
+  ctx: RunContext,
+  outcome: TestRunOutcome,
+  startedAt: number,
+  announce: (text: string) => void,
+): Promise<void> {
   let results: TrxTestResult[] = [];
   if (outcome.trxPath) {
     try {
       results = parseTrx(await fs.readFile(outcome.trxPath, "utf8")).results;
     } catch {
-      run.errored(projectItem, new vscode.TestMessage("Could not read the test results file."));
+      ctx.run.errored(ctx.projectItem, new vscode.TestMessage("Could not read the test results file."));
       return;
     }
   }
-  reportResults(controller, run, projectItem, project, results, outcome.ok, outcome.output, fqnByItemId);
+  reportResults(ctx, results, outcome.ok, outcome.output);
+  announce(summaryLine(results, Date.now() - startedAt));
+}
+
+/** Writes one line to the Test Results panel, which needs CRLF endings. */
+function writeLine(run: vscode.TestRun, text: string): void {
+  run.appendOutput(toCrlf(text) + "\r\n");
+}
+
+/**
+ * The sink for one line of host output: the Test Results panel gets the curated view, so failures
+ * stay clickable there, and `level` decides how much of the rest survives. The full log is in the
+ * "C# Tests" output channel either way.
+ */
+function makeLogSink(run: vscode.TestRun, level: TestOutputLevel): (line: string) => void {
+  const filter = createOutputFilter(level);
+  return (line: string): void => {
+    const kept = filter(line);
+    if (kept !== undefined) {
+      writeLine(run, kept);
+    }
+  };
+}
+
+function headerLine(name: string, framework: string | undefined, selection: Selection): string {
+  const scope = selection === "ALL" ? "all tests" : `${selection.size} selected test${selection.size === 1 ? "" : "s"}`;
+  return `▶ ${name}${framework ? ` (${framework})` : ""} — ${scope}`;
+}
+
+/** `41 passed, 1 failed, 0 skipped in 3.2s`, counted from the parsed results rather than the log. */
+function summaryLine(results: TrxTestResult[], elapsedMs: number): string {
+  const count = (outcome: TrxOutcome): number => results.filter((r) => r.outcome === outcome).length;
+  const seconds = (elapsedMs / 1000).toFixed(1);
+  return `${count("Passed")} passed, ${count("Failed")} failed, ${count("NotExecuted")} skipped in ${seconds}s`;
+}
+
+/**
+ * What to show on a project node when an MTP run produced no results at all. A crashed host is the
+ * common case, so lead with the line that names the cause (unknown option, TypeLoadException, …) and
+ * point at the full log rather than repeating it — the output channel always has all of it.
+ */
+function mtpFailureMessage(ok: boolean, output: string): string {
+  if (ok) {
+    return "No tests were found in this project.";
+  }
+  const cause = summarizeHostFailure(output);
+  return cause
+    ? `${cause}\n\nThe test run failed. See the 'C# Tests' output channel for the full log.`
+    : "The test run failed. See the 'C# Tests' output channel for the full log.";
 }
 
 /** Attaches netcoredbg to the MTP test-host pid when the server requests `client/attachDebugger`. */
@@ -197,154 +420,42 @@ function makeAttacher(project: TargetProject): (pid: number, program: string) =>
     );
 }
 
-async function runVsTest(
-  project: TargetProject,
-  framework: string | undefined,
-  resultsDir: string,
-  output: vscode.OutputChannel,
-  token: vscode.CancellationToken,
-  filter: string | undefined,
-): ReturnType<typeof runTests> {
+interface RunVsTestOptions {
+  project: TargetProject;
+  framework: string | undefined;
+  resultsDir: string;
+  output: vscode.OutputChannel;
+  token: vscode.CancellationToken;
+  /** VSTest `--filter` expression; omit to run the whole project. */
+  filter?: string;
+  /** Receives every complete stdout line, for the run terminal. */
+  onOutput?: (line: string) => void;
+  coverage?: boolean;
+  level?: TestOutputLevel;
+}
+
+async function runVsTest(opts: RunVsTestOptions): Promise<TestRunOutcome> {
   let killChild: (() => void) | undefined;
-  const cancelSub = token.onCancellationRequested(() => killChild?.());
+  const cancelSub = opts.token.onCancellationRequested(() => killChild?.());
   try {
     return await runTests({
-      targetFsPath: project.uri.fsPath,
-      resultsDir,
-      framework,
-      filter,
+      targetFsPath: opts.project.uri.fsPath,
+      resultsDir: opts.resultsDir,
+      framework: opts.framework,
+      filter: opts.filter,
+      coverage: opts.coverage,
+      level: opts.level,
       onSpawn: (child) => {
-        killChild = () => child.kill();
+        killChild = () => killTree(child);
       },
-      onLine: (line) => output.appendLine(line),
+      onLine: (line) => {
+        opts.output.appendLine(line);
+        opts.onOutput?.(line);
+      },
     });
   } finally {
     cancelSub.dispose();
   }
-}
-
-/** Live per-test reporting for the MTP path: create the item on first sight, then reflect its state. */
-function reportNode(
-  controller: vscode.TestController,
-  run: vscode.TestRun,
-  projectItem: vscode.TestItem,
-  project: TargetProject,
-  node: MtpTestNode,
-  nodeByItemId: Map<string, MtpTestNode>,
-  fqnByItemId: Map<string, string>,
-): void {
-  if (!isActionNode(node)) {
-    return;
-  }
-  const { item, result } = ensureMethodItem(controller, projectItem, project, node, nodeByItemId, fqnByItemId);
-  const state = node["execution-state"];
-  if (state === "in-progress") {
-    run.started(item);
-  } else if (isTerminalState(state)) {
-    applyResult(run, item, result);
-  }
-}
-
-/** Batch reporting for the VSTest path (results all arrive at once via the TRX). */
-function reportResults(
-  controller: vscode.TestController,
-  run: vscode.TestRun,
-  projectItem: vscode.TestItem,
-  project: TargetProject,
-  results: TrxTestResult[],
-  ok: boolean,
-  rawOutput: string,
-  fqnByItemId: Map<string, string>,
-): void {
-  if (results.length === 0) {
-    const message = ok ? "No tests were found in this project." : rawOutput.trim() || "The test run failed.";
-    run.errored(projectItem, new vscode.TestMessage(message));
-    return;
-  }
-
-  for (const classNode of groupByClass(project.uri.fsPath, results)) {
-    const classItem = findOrCreate(controller, projectItem, classNode.id, classNode.className, project.uri);
-    for (const methodNode of classNode.methods) {
-      const item = findOrCreateMethod(controller, classItem, methodNode.id, methodNode.method, methodNode.result);
-      fqnByItemId.set(methodNode.id, `${classNode.className}.${methodNode.method}`);
-      applyResult(run, item, methodNode.result);
-    }
-  }
-}
-
-/** Creates (or finds) the class + method items for a node, records its id mappings, returns the method item. */
-function ensureMethodItem(
-  controller: vscode.TestController,
-  projectItem: vscode.TestItem,
-  project: TargetProject,
-  node: MtpTestNode,
-  nodeByItemId: Map<string, MtpTestNode>,
-  fqnByItemId: Map<string, string>,
-): { item: vscode.TestItem; result: TrxTestResult } {
-  const result = mtpNodeToResult(node);
-  const classId = classIdFor(project.uri.fsPath, result.className);
-  const classItem = findOrCreate(controller, projectItem, classId, result.className, project.uri);
-  const methodId = methodIdFor(project.uri.fsPath, result.className, result.method);
-  const item = findOrCreateMethod(controller, classItem, methodId, result.method, result);
-  nodeByItemId.set(methodId, node);
-  fqnByItemId.set(methodId, `${result.className}.${result.method}`);
-  return { item, result };
-}
-
-function applyResult(run: vscode.TestRun, item: vscode.TestItem, result: TrxTestResult): void {
-  switch (result.outcome) {
-    case "Passed":
-      run.passed(item, result.durationMs);
-      break;
-    case "Failed": {
-      const detail = [result.message, result.stackTrace].filter(Boolean).join("\n\n") || "Test failed.";
-      run.failed(item, new vscode.TestMessage(detail), result.durationMs);
-      break;
-    }
-    case "NotExecuted":
-      run.skipped(item);
-      break;
-    default:
-      run.errored(item, new vscode.TestMessage(result.message ?? "Test did not run."));
-      break;
-  }
-}
-
-function findOrCreate(
-  controller: vscode.TestController,
-  parent: vscode.TestItem,
-  id: string,
-  label: string,
-  uri: vscode.Uri,
-): vscode.TestItem {
-  const existing = parent.children.get(id);
-  if (existing) {
-    return existing;
-  }
-  const item = controller.createTestItem(id, label, uri);
-  parent.children.add(item);
-  return item;
-}
-
-/** Like findOrCreate, but points the method item at its source file/line (gutter icons) when known. */
-function findOrCreateMethod(
-  controller: vscode.TestController,
-  classItem: vscode.TestItem,
-  id: string,
-  label: string,
-  result: TrxTestResult,
-): vscode.TestItem {
-  const existing = classItem.children.get(id);
-  if (existing) {
-    return existing;
-  }
-  const uri = result.file ? vscode.Uri.file(result.file) : undefined;
-  const item = controller.createTestItem(id, label, uri);
-  if (result.file && result.line && result.line > 0) {
-    item.range = new vscode.Range(result.line - 1, 0, result.line - 1, 0);
-  }
-  classItem.children.add(item);
-  return item;
 }
 
 /** Groups a run request's includes by owning project into "run all" or a selected set of method ids. */
@@ -398,7 +509,8 @@ function folderFor(project: TargetProject): vscode.WorkspaceFolder | undefined {
   return vscode.workspace.getWorkspaceFolder(project.uri) ?? vscode.workspace.workspaceFolders?.[0];
 }
 
-async function isProjectMtp(uri: vscode.Uri): Promise<boolean> {
+/** Whether a project runs on Microsoft.Testing.Platform rather than classic VSTest. */
+async function readIsMtp(uri: vscode.Uri): Promise<boolean> {
   try {
     return isMtpProject(new TextDecoder().decode(await vscode.workspace.fs.readFile(uri)));
   } catch {
@@ -406,9 +518,16 @@ async function isProjectMtp(uri: vscode.Uri): Promise<boolean> {
   }
 }
 
-/** A fresh, unique results directory per VSTest run (under the OS temp dir). */
+/** A fresh, unique results directory per run (under the OS temp dir); removed by `removeDir`. */
 async function makeResultsDir(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), "cstests-"));
+}
+
+/** Drops a results directory once its TRX and coverage reports have been read. Best-effort. */
+async function removeDir(dir: string | undefined): Promise<void> {
+  if (dir) {
+    await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
 }
 
 function errorText(err: unknown): string {
