@@ -258,7 +258,22 @@
           "csharpSolutionExplorer.testExplorer.enabled": {
             "type": "boolean",
             "default": true,
-            "description": "Show C# test projects in the native Test Explorer, run them with 'dotnet test', and debug individual tests. Changes need a window reload."
+            "description": "Show C# test projects in the native Test Explorer, run and debug individual tests, and collect code coverage. Changes need a window reload."
+          },
+          "csharpSolutionExplorer.testExplorer.outputVerbosity": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "normal",
+              "full"
+            ],
+            "enumDescriptions": [
+              "A header, build errors and warnings, failing tests, and a final count. Passing tests are not listed.",
+              "Everything 'summary' shows plus one line per test result. Restore and build chatter is still dropped.",
+              "The test host's log verbatim, including restore and build output."
+            ],
+            "default": "summary",
+            "description": "How much of the test host's log goes into the Test Results panel. Build errors and host crashes are always shown, whatever the level, and the full raw log is always available in the 'C# Tests' output channel. Debug runs are always 'full', because the debugger attaches by reading the host's own output."
           }
         }
       }

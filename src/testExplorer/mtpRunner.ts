@@ -36,12 +36,16 @@ import {
 } from "./mtpProtocol.js";
 import { isActionNode, mtpNodesToResults } from "./mtpResults.js";
 import type { TrxTestResult } from "./trxParser.js";
+import { detachedSpawnOptions, killTree } from "../shared/killProcess.js";
+import { createTailBuffer } from "./hostOutput.js";
+import { QUIET_ENV } from "./outputFilter.js";
 
 export interface MtpRunResult {
   ok: boolean;
   results: TrxTestResult[];
   /** The built test assembly (.dll), also used as the debugger `program` for symbols. */
   program: string;
+  /** Build log on a build failure, otherwise the tail of the test host's console output. */
   output: string;
 }
 
@@ -53,8 +57,12 @@ export interface MtpRunOptions {
   token: vscode.CancellationToken;
   /** Restrict the run to these previously-discovered nodes; omit to run the whole project. */
   filter?: MtpTestNode[];
+  /** When set, collect Cobertura coverage to this absolute path (needs the CodeCoverage extension). */
+  coverageOutput?: string;
   /** Called for every test-node update as it streams in — drives live pass/fail reporting. */
   onNode?: (node: MtpTestNode) => void;
+  /** Called for every chunk of host output (stdout/stderr/protocol log) — mirrors it to the test run. */
+  onOutput?: (text: string) => void;
   /** Attach a debugger to the test-host pid; returns whether the attach succeeded. */
   onAttachDebugger?: (pid: number, program: string) => Promise<boolean>;
 }
@@ -72,6 +80,9 @@ export async function runMtpTests(opts: MtpRunOptions): Promise<MtpRunResult> {
     return { ok: false, results: [], program: "", output: built.output };
   }
 
+  // Retain the host's console output even when the caller streams it elsewhere: if the host dies
+  // before reporting a single test, this tail is the only thing that can name the cause.
+  const tail = createTailBuffer();
   const collected: MtpTestNode[] = [];
   const ok = await runMtpSession(
     built.program,
@@ -79,14 +90,19 @@ export async function runMtpTests(opts: MtpRunOptions): Promise<MtpRunResult> {
       method: MTP_METHODS.runTests,
       debug: opts.debug,
       filter: opts.filter,
+      coverageOutput: opts.coverageOutput,
       output: opts.output,
       token: opts.token,
       onNode: opts.onNode,
+      onOutput: (text) => {
+        tail.append(text);
+        opts.onOutput?.(text);
+      },
       onAttachDebugger: opts.onAttachDebugger,
     },
     collected,
   );
-  return { ok, results: mtpNodesToResults(collected), program: built.program, output: "" };
+  return { ok, results: mtpNodesToResults(collected), program: built.program, output: tail.text() };
 }
 
 /** Discovers the tests without running them. Returns the action (test) nodes. */
@@ -126,11 +142,19 @@ interface MtpSessionParams {
   method: string;
   debug: boolean;
   filter?: MtpTestNode[];
+  coverageOutput?: string;
   output: vscode.OutputChannel;
   token: vscode.CancellationToken;
   onNode?: (node: MtpTestNode) => void;
+  onOutput?: (text: string) => void;
   onAttachDebugger?: (pid: number, program: string) => Promise<boolean>;
 }
+
+// Bounds on the handshake only. A host that crashes is already covered by its `exit` event; these
+// cover the host that starts but never talks to us, which would otherwise leave the run spinning
+// forever. Deliberately generous — the build already happened, so this is process start plus JIT.
+const HOST_CONNECT_TIMEOUT_MS = 90_000;
+const HOST_INITIALIZE_TIMEOUT_MS = 30_000;
 
 function runMtpSession(program: string, params: MtpSessionParams, collected: MtpTestNode[]): Promise<boolean> {
   const { output, token } = params;
@@ -140,15 +164,30 @@ function runMtpSession(program: string, params: MtpSessionParams, collected: Mtp
     let child: ChildProcess | undefined;
     let connection: MessageConnection | undefined;
     let settled = false;
+    let cancelSub: vscode.Disposable | undefined;
+    let connectTimer: NodeJS.Timeout | undefined;
 
     const cleanup = (): void => {
+      cancelSub?.dispose();
+      if (connectTimer) {
+        clearTimeout(connectTimer);
+      }
+      // Ask the host to exit gracefully before we tear down (important on cancel, where the normal
+      // `exit` send in onConnected never ran). Best-effort — the connection may already be closing.
+      try {
+        void connection?.sendNotification(MTP_METHODS.exit, {});
+      } catch {
+        /* ignore */
+      }
       try {
         connection?.dispose();
       } catch {
         /* ignore */
       }
       server.close();
-      child?.kill();
+      if (child) {
+        killTree(child);
+      }
     };
     const finish = (value: boolean): void => {
       if (settled) {
@@ -167,25 +206,34 @@ function runMtpSession(program: string, params: MtpSessionParams, collected: Mtp
       reject(err instanceof Error ? err : new Error(String(err)));
     };
 
-    const cancelSub = token.onCancellationRequested(() => finish(false));
-    const done = (value: boolean): void => {
-      cancelSub.dispose();
-      finish(value);
-    };
+    cancelSub = token.onCancellationRequested(() => finish(false));
+    const done = finish;
 
     server.on("error", fail);
     server.listen(0, "127.0.0.1", () => {
       const address = server.address();
       const port = typeof address === "object" && address ? address.port : 0;
+      const args = [program, "--server", "--client-host", "127.0.0.1", "--client-port", String(port)];
+      if (params.coverageOutput) {
+        // Provided by Microsoft.Testing.Extensions.CodeCoverage. The caller must have verified the
+        // extension is present: without it the runner rejects the unknown option and aborts the run.
+        args.push("--coverage", "--coverage-output-format", "cobertura", "--coverage-output", params.coverageOutput);
+      }
       // Force IPv4 to match the 127.0.0.1 listener — "localhost" can resolve to ::1 and never connect.
-      child = spawn("dotnet", [program, "--server", "--client-host", "127.0.0.1", "--client-port", String(port)], {
+      child = spawn("dotnet", args, {
         cwd: path.dirname(program),
         windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"],
-        env: { ...process.env, TESTINGPLATFORM_EXIT_PROCESS_ON_UNHANDLED_EXCEPTION: "0" },
+        env: { ...process.env, ...QUIET_ENV, TESTINGPLATFORM_EXIT_PROCESS_ON_UNHANDLED_EXCEPTION: "0" },
+        ...detachedSpawnOptions,
       });
-      child.stdout?.on("data", (chunk: Buffer) => output.append(chunk.toString("utf8")));
-      child.stderr?.on("data", (chunk: Buffer) => output.append(chunk.toString("utf8")));
+      const emit = (chunk: Buffer): void => {
+        const text = chunk.toString("utf8");
+        output.append(text);
+        params.onOutput?.(text);
+      };
+      child.stdout?.on("data", emit);
+      child.stderr?.on("data", emit);
       child.on("error", (err) => {
         if ((err as NodeJS.ErrnoException).code === "ENOENT") {
           fail(new Error("The 'dotnet' CLI was not found on PATH. Install the .NET SDK to run tests."));
@@ -199,9 +247,17 @@ function runMtpSession(program: string, params: MtpSessionParams, collected: Mtp
           done(false);
         }
       });
+      connectTimer = setTimeout(
+        () => fail(new Error(`The test host did not connect within ${HOST_CONNECT_TIMEOUT_MS / 1000} seconds.`)),
+        HOST_CONNECT_TIMEOUT_MS,
+      );
     });
 
     server.on("connection", (socket) => {
+      if (connectTimer) {
+        clearTimeout(connectTimer);
+        connectTimer = undefined;
+      }
       void onConnected(socket).catch(fail);
     });
 
@@ -227,6 +283,7 @@ function runMtpSession(program: string, params: MtpSessionParams, collected: Mtp
         const text = log.message ?? log.messages?.map((m) => m.message).join("\n");
         if (text) {
           output.appendLine(text);
+          params.onOutput?.(text + "\n");
         }
       });
       connection.onRequest(MTP_METHODS.attachDebugger, async (attach: MtpAttachDebuggerParams) => {
@@ -236,6 +293,16 @@ function runMtpSession(program: string, params: MtpSessionParams, collected: Mtp
       // We do not launch child processes ourselves, so decline launch requests gracefully.
       connection.onRequest(MTP_METHODS.launchDebugger, () => ({ success: false }));
 
+      // A socket that dies mid-handshake would otherwise leave us waiting on a request that can never
+      // be answered. Only guard the handshake: once the run is under way the host may legitimately
+      // close late, and a run whose results already streamed in must not be turned into a failure.
+      let handshakeDone = false;
+      connection.onClose(() => {
+        if (!handshakeDone) {
+          finish(false);
+        }
+      });
+
       connection.listen();
 
       const initParams: MtpInitializeParams = {
@@ -243,12 +310,19 @@ function runMtpSession(program: string, params: MtpSessionParams, collected: Mtp
         clientInfo: { name: MTP_CLIENT_NAME, version: "1.0.0" },
         capabilities: { testing: { debuggerProvider: params.debug } },
       };
-      await connection.sendRequest(MTP_METHODS.initialize, initParams);
+      await withTimeout(
+        connection.sendRequest(MTP_METHODS.initialize, initParams),
+        HOST_INITIALIZE_TIMEOUT_MS,
+        `The test host did not respond to 'initialize' within ${HOST_INITIALIZE_TIMEOUT_MS / 1000} seconds.`,
+      );
 
       const runId = randomUUID();
       // Send `tests` only for a filtered run — MTP types it as an array and rejects an explicit null
       // (vscode-jsonrpc serializes nulls, unlike the StreamJsonRpc reference client which drops them).
       const requestParams = params.filter && params.filter.length > 0 ? { runId, tests: params.filter } : { runId };
+      handshakeDone = true;
+      // No timeout past this point: a run can legitimately take hours, and a debug run sits here for
+      // as long as the user stands on a breakpoint.
       await connection.sendRequest(params.method, requestParams);
       // The request response and the "complete" (changes==null) notification can arrive in either
       // order; wait for the completion signal too, with a short guard so a server that never sends it
@@ -269,4 +343,21 @@ function runMtpSession(program: string, params: MtpSessionParams, collected: Mtp
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Rejects with `message` if `promise` has not settled within `ms`; always clears its timer. */
+async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, rejectRace) => {
+        timer = setTimeout(() => rejectRace(new Error(message)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
 }

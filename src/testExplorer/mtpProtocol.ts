@@ -42,6 +42,10 @@ export interface MtpTestNode {
   "time.duration-ms"?: number;
   "error.message"?: string;
   "error.stacktrace"?: string;
+  // Per-test console output. Optional on the wire and not sent by every framework — MTP hosts mostly
+  // stream their console globally — so the per-test view falls back to nothing rather than breaking.
+  "standard-output"?: string;
+  "standard-error"?: string;
   "location.file"?: string;
   "location.line-start"?: number;
   "location.type"?: string;

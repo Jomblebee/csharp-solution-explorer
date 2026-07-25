@@ -5,7 +5,28 @@ import { buildFqnFilter, buildTestArgs, parseTestHostPid } from "../src/testExpl
 describe("buildTestArgs", () => {
   it("always logs trx into the results directory", () => {
     const args = buildTestArgs("/repo/A.csproj", "/tmp/out");
-    assert.deepEqual(args, ["test", "/repo/A.csproj", "--logger", "trx", "--results-directory", "/tmp/out"]);
+    assert.deepEqual(args, ["test", "/repo/A.csproj", "--logger", "trx", "--results-directory", "/tmp/out", "--nologo"]);
+  });
+
+  it("leaves verbosity alone at the full level", () => {
+    const args = buildTestArgs("/repo/A.csproj", "/tmp/out", undefined, undefined, undefined, "full");
+    assert.ok(!args.includes("-v:q"));
+    assert.ok(!args.some((arg) => arg.startsWith("console;")));
+  });
+
+  it("quiets MSBuild and sets the console logger explicitly below the full level", () => {
+    const summary = buildTestArgs("/repo/A.csproj", "/tmp/out", undefined, undefined, undefined, "summary");
+    assert.ok(summary.includes("-v:q"));
+    assert.ok(summary.includes("console;verbosity=quiet"));
+    const normal = buildTestArgs("/repo/A.csproj", "/tmp/out", undefined, undefined, undefined, "normal");
+    assert.ok(normal.includes("-v:q"));
+    assert.ok(normal.includes("console;verbosity=normal"));
+  });
+
+  it("keeps the trx logger alongside the console logger, since results are parsed from it", () => {
+    const args = buildTestArgs("/repo/A.csproj", "/tmp/out", undefined, undefined, undefined, "summary");
+    assert.equal(args.filter((arg) => arg === "--logger").length, 2);
+    assert.ok(args.includes("trx"));
   });
 
   it("adds -f only when a framework is given", () => {
@@ -18,6 +39,12 @@ describe("buildTestArgs", () => {
     assert.ok(!buildTestArgs("/repo/A.csproj", "/tmp/out").includes("--filter"));
     const filtered = buildTestArgs("/repo/A.csproj", "/tmp/out", undefined, "FullyQualifiedName=Ns.C.A");
     assert.deepEqual(filtered.slice(-2), ["--filter", "FullyQualifiedName=Ns.C.A"]);
+  });
+
+  it("adds the coverage collector only when coverage is requested", () => {
+    assert.ok(!buildTestArgs("/repo/A.csproj", "/tmp/out").includes("--collect"));
+    const covered = buildTestArgs("/repo/A.csproj", "/tmp/out", undefined, undefined, true);
+    assert.deepEqual(covered.slice(-2), ["--collect", "XPlat Code Coverage"]);
   });
 });
 

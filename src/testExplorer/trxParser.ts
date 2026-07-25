@@ -18,6 +18,10 @@ export interface TrxTestResult {
   /** Source location, when known (MTP reports it; classic TRX does not). Enables gutter icons. */
   file?: string;
   line?: number;
+  /** `[TestCategory]`/`[Trait]` names, when the TRX carries them. Surfaced as filterable tags. */
+  categories?: string[];
+  /** The test's own console output (stdout + stderr), attached to its item in the run terminal. */
+  stdout?: string;
 }
 
 export interface TrxSummary {
@@ -48,15 +52,23 @@ export function parseTrx(xml: string): TrxSummary {
       durationMs: parseDuration(getAttr(attrs, "duration")),
       message,
       stackTrace,
+      categories: def?.categories,
+      stdout: inner ? parseConsoleOutput(inner) : undefined,
     });
   }
 
   return { results };
 }
 
-/** Maps each `<UnitTest id>` to the `className`/`name` on its nested `<TestMethod>`. */
-function parseDefinitions(xml: string): Map<string, { className: string; method: string }> {
-  const map = new Map<string, { className: string; method: string }>();
+interface TestDefinition {
+  className: string;
+  method: string;
+  categories?: string[];
+}
+
+/** Maps each `<UnitTest id>` to the `className`/`name` on its nested `<TestMethod>` (plus categories). */
+function parseDefinitions(xml: string): Map<string, TestDefinition> {
+  const map = new Map<string, TestDefinition>();
   const unitTestPattern = /<UnitTest\b([^>]*)>([\s\S]*?)<\/UnitTest>/gi;
   for (const match of xml.matchAll(unitTestPattern)) {
     const id = getAttr(match[1], "id");
@@ -66,10 +78,23 @@ function parseDefinitions(xml: string): Map<string, { className: string; method:
     const methodTag = /<TestMethod\b([^>]*?)\/?>/i.exec(match[2]);
     const className = methodTag ? getAttr(methodTag[1], "className") : undefined;
     if (className) {
-      map.set(id, { className, method: getAttr(methodTag![1], "name") ?? "" });
+      map.set(id, { className, method: getAttr(methodTag![1], "name") ?? "", categories: parseCategories(match[2]) });
     }
   }
   return map;
+}
+
+/** Pulls `<TestCategoryItem TestCategory="…">` names out of a `<UnitTest>` body. */
+function parseCategories(inner: string): string[] | undefined {
+  const categories: string[] = [];
+  const pattern = /<TestCategoryItem\b([^>]*?)\/?>/gi;
+  for (const match of inner.matchAll(pattern)) {
+    const name = getAttr(match[1], "TestCategory");
+    if (name) {
+      categories.push(unescapeXml(name));
+    }
+  }
+  return categories.length > 0 ? categories : undefined;
 }
 
 function parseErrorInfo(inner: string): { message?: string; stackTrace?: string } {
@@ -79,6 +104,23 @@ function parseErrorInfo(inner: string): { message?: string; stackTrace?: string 
     message: message ? unescapeXml(message[1].trim()) : undefined,
     stackTrace: stackTrace ? unescapeXml(stackTrace[1].trim()) : undefined,
   };
+}
+
+/**
+ * The test's own `<Output><StdOut>`/`<StdErr>` blocks, joined. These sit next to `<ErrorInfo>` in the
+ * same `<Output>` element, so a passing test can carry output too — which is the point: it is what
+ * lets a `Console.WriteLine` in a green test still be inspected.
+ */
+function parseConsoleOutput(inner: string): string | undefined {
+  const parts: string[] = [];
+  for (const tag of ["StdOut", "StdErr"]) {
+    const match = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, "i").exec(inner);
+    const text = match ? unescapeXml(match[1]).trim() : "";
+    if (text !== "") {
+      parts.push(text);
+    }
+  }
+  return parts.length > 0 ? parts.join("\n") : undefined;
 }
 
 function normalizeOutcome(raw: string | undefined): TrxOutcome {

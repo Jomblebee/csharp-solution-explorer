@@ -27,7 +27,16 @@ export function mtpNodeToResult(node: MtpTestNode): TrxTestResult {
     stackTrace: node["error.stacktrace"],
     file: node["location.file"],
     line: node["location.line-start"],
+    stdout: consoleOutputOf(node),
   };
+}
+
+/** The node's own console output, stdout and stderr joined; undefined when the host sends neither. */
+function consoleOutputOf(node: MtpTestNode): string | undefined {
+  const parts = [node["standard-output"], node["standard-error"]]
+    .map((text) => text?.trim() ?? "")
+    .filter((text) => text !== "");
+  return parts.length > 0 ? parts.join("\n") : undefined;
 }
 
 export function mtpNodesToResults(nodes: MtpTestNode[]): TrxTestResult[] {

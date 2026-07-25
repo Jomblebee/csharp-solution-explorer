@@ -33,6 +33,23 @@ const FAILING = `<TestRun>
   </TestDefinitions>
 </TestRun>`;
 
+const WITH_CONSOLE_OUTPUT = `<TestRun>
+  <Results>
+    <UnitTestResult testId="c3" testName="MyApp.Tests.CalcTests.Talks" outcome="Passed" duration="00:00:00.0020000">
+      <Output>
+        <StdOut>hello &amp; welcome
+second line</StdOut>
+        <StdErr>a warning</StdErr>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Talks" id="c3">
+      <TestMethod className="MyApp.Tests.CalcTests" name="Talks" />
+    </UnitTest>
+  </TestDefinitions>
+</TestRun>`;
+
 describe("parseTrx", () => {
   it("joins a passed result to its TestMethod definition", () => {
     const { results } = parseTrx(PASSING);
@@ -52,8 +69,41 @@ describe("parseTrx", () => {
     assert.match(results[0].stackTrace ?? "", /CalcTests\.cs:line 10/);
   });
 
+  it("captures a passing test's own console output", () => {
+    const { results } = parseTrx(WITH_CONSOLE_OUTPUT);
+    assert.equal(results[0].stdout, "hello & welcome\nsecond line\na warning");
+  });
+
+  it("leaves stdout undefined when a result carries none", () => {
+    assert.equal(parseTrx(PASSING).results[0].stdout, undefined);
+    assert.equal(parseTrx(FAILING).results[0].stdout, undefined);
+  });
+
   it("returns an empty summary for malformed or empty input", () => {
     assert.deepEqual(parseTrx("").results, []);
     assert.deepEqual(parseTrx("<not-a-trx/>").results, []);
+  });
+
+  it("captures TestCategory items as categories", () => {
+    const xml = `<TestRun>
+      <Results>
+        <UnitTestResult testId="c3" testName="MyApp.Tests.CalcTests.Tagged" outcome="Passed" duration="00:00:00.0010000" />
+      </Results>
+      <TestDefinitions>
+        <UnitTest name="Tagged" id="c3">
+          <TestCategory>
+            <TestCategoryItem TestCategory="Fast" />
+            <TestCategoryItem TestCategory="Smoke" />
+          </TestCategory>
+          <TestMethod className="MyApp.Tests.CalcTests" name="Tagged" />
+        </UnitTest>
+      </TestDefinitions>
+    </TestRun>`;
+    const { results } = parseTrx(xml);
+    assert.deepEqual(results[0].categories, ["Fast", "Smoke"]);
+  });
+
+  it("leaves categories undefined when none are present", () => {
+    assert.equal(parseTrx(PASSING).results[0].categories, undefined);
   });
 });

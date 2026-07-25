@@ -2,18 +2,38 @@
 // of its stdout. Kept vscode-free so both are unit-testable (the PID regex is the linchpin of the
 // debug-attach flow and must not silently drift).
 
+import type { TestOutputLevel } from "./outputFilter.js";
+
 /**
  * Argv for `dotnet test <target> --logger trx --results-directory <dir>`, adding `-f <framework>`
  * only when a framework is given (single-target projects must not receive a `--framework` flag) and
  * `--filter <expr>` only when a non-empty filter expression is given.
+ *
+ * `level` controls how chatty the run is. `-v:q` silences the MSBuild half (restore + build spam);
+ * because that also mutes the console logger, the logger's verbosity is set explicitly rather than
+ * inherited. TRX stays the result source either way — the console logger is purely cosmetic.
  */
-export function buildTestArgs(targetFsPath: string, resultsDir: string, framework?: string, filter?: string): string[] {
-  const args = ["test", targetFsPath, "--logger", "trx", "--results-directory", resultsDir];
+export function buildTestArgs(
+  targetFsPath: string,
+  resultsDir: string,
+  framework?: string,
+  filter?: string,
+  coverage?: boolean,
+  level: TestOutputLevel = "full",
+): string[] {
+  const args = ["test", targetFsPath, "--logger", "trx", "--results-directory", resultsDir, "--nologo"];
+  if (level !== "full") {
+    args.push("-v:q", "--logger", `console;verbosity=${level === "summary" ? "quiet" : "normal"}`);
+  }
   if (framework) {
     args.push("-f", framework);
   }
   if (filter) {
     args.push("--filter", filter);
+  }
+  if (coverage) {
+    // Cross-platform collector; writes coverage.cobertura.xml under resultsDir/<guid>/.
+    args.push("--collect", "XPlat Code Coverage");
   }
   return args;
 }

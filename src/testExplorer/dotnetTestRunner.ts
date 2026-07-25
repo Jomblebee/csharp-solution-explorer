@@ -7,6 +7,9 @@ import { spawn, type ChildProcess } from "node:child_process";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { buildTestArgs } from "./dotnetTestArgs.js";
+import { QUIET_ENV } from "./outputFilter.js";
+import type { TestOutputLevel } from "./outputFilter.js";
+import { detachedSpawnOptions } from "../shared/killProcess.js";
 
 export interface TestRunOutcome {
   /** Whether `dotnet test` exited 0. False also covers a failed build or a failing test. */
@@ -23,8 +26,12 @@ export interface RunTestsOptions {
   framework?: string;
   /** VSTest `--filter` expression; omit to run the whole project. */
   filter?: string;
+  /** Collect code coverage (`--collect "XPlat Code Coverage"`) alongside the run. */
+  coverage?: boolean;
   /** Extra environment (e.g. `VSTEST_HOST_DEBUG=1`); defaults to the current process env. */
   env?: NodeJS.ProcessEnv;
+  /** How chatty the run should be; drives the console logger's verbosity. Defaults to `full`. */
+  level?: TestOutputLevel;
   /** Called for every complete stdout line (CR-trimmed) — drives PID capture and logging. */
   onLine?: (line: string) => void;
   /** Handed the spawned child so the caller can kill it on cancellation. */
@@ -32,13 +39,14 @@ export interface RunTestsOptions {
 }
 
 export async function runTests(opts: RunTestsOptions): Promise<TestRunOutcome> {
-  const args = buildTestArgs(opts.targetFsPath, opts.resultsDir, opts.framework, opts.filter);
+  const args = buildTestArgs(opts.targetFsPath, opts.resultsDir, opts.framework, opts.filter, opts.coverage, opts.level);
 
   return new Promise<TestRunOutcome>((resolve, reject) => {
     const child = spawn("dotnet", args, {
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
-      env: opts.env ?? process.env,
+      env: { ...(opts.env ?? process.env), ...QUIET_ENV },
+      ...detachedSpawnOptions,
     });
     opts.onSpawn?.(child);
 
@@ -75,7 +83,8 @@ export async function runTests(opts: RunTestsOptions): Promise<TestRunOutcome> {
   });
 }
 
-async function findNewestTrx(dir: string): Promise<string | undefined> {
+/** The newest `.trx` in `dir`, or undefined when the run wrote none. Shared with the external path. */
+export async function findNewestTrx(dir: string): Promise<string | undefined> {
   let entries: string[];
   try {
     entries = await fs.readdir(dir);

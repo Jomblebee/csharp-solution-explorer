@@ -29,6 +29,15 @@ describe("mtpNodesToResults", () => {
     );
   });
 
+  it("joins a node's standard output and error, and stays undefined when it sends neither", () => {
+    const [withOutput] = mtpNodesToResults([
+      node({ uid: "o", "execution-state": "passed", "standard-output": " hello \n", "standard-error": "oops" }),
+    ]);
+    assert.equal(withOutput.stdout, "hello\noops");
+    const [without] = mtpNodesToResults([node({ uid: "q", "execution-state": "passed" })]);
+    assert.equal(without.stdout, undefined);
+  });
+
   it("maps failed/timed-out/error to Failed and carries the error text", () => {
     const results = mtpNodesToResults([
       node({ uid: "f", "execution-state": "failed", "error.message": "boom", "error.stacktrace": "at X" }),
