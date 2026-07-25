@@ -12,20 +12,10 @@ import {
   SolutionTreeItem,
 } from "./treeItems.js";
 import { errorMessage, resolveOwningProjectUri } from "./commandUtils.js";
+import { debounce } from "../shared/debounce.js";
 
 interface PackagePickItem extends vscode.QuickPickItem {
   id: string;
-}
-
-/** Debounces a void-returning function so rapid calls (e.g. keystrokes) collapse into the last one. */
-function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: number): (...args: A) => void {
-  let timer: NodeJS.Timeout | undefined;
-  return (...args: A) => {
-    if (timer) {
-      clearTimeout(timer);
-    }
-    timer = setTimeout(() => fn(...args), ms);
-  };
 }
 
 function formatDownloads(count: number): string {

@@ -16,6 +16,21 @@ export function shouldExcludeDir(
   return dirName.startsWith(".") || excluded.includes(dirName);
 }
 
+/** Directory names no watcher should react to, mirroring the `EXCLUDE_GLOB` used with `findFiles`. */
+const UNWATCHED_DIR_NAMES: readonly string[] = [...DEFAULT_EXCLUDED_DIR_NAMES, ".git", ".vs"];
+
+/**
+ * Whether any segment of `fsPath` is a build-output or tooling directory. `createFileSystemWatcher`
+ * takes no exclude pattern, so a watcher has to drop those events itself — otherwise a build's own
+ * generated sources (`obj/**\/*.g.cs`, `*.AssemblyInfo.cs`) look like user edits.
+ *
+ * Name-based rather than reusing `shouldExcludeDir`'s dot-prefix rule: a repository checked out
+ * below a hidden directory must still be watched.
+ */
+export function isUnderExcludedDir(fsPath: string): boolean {
+  return fsPath.split(/[\\/]/).some((segment) => UNWATCHED_DIR_NAMES.includes(segment));
+}
+
 /**
  * Lists the direct children of a single directory level (non-recursive — matches
  * how TreeDataProvider.getChildren is called, once per expanded node), excluding
