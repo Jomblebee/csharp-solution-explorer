@@ -71,47 +71,17 @@ full. Development-only dependencies are not listed because they are never shippe
 
 | Package | Version | Licence |
 | --- | --- | --- |
-| [`balanced-match`](https://github.com/juliangruber/balanced-match) | 1.0.2 | MIT |
 | [`balanced-match`](https://github.com/juliangruber/balanced-match) | 4.0.4 | MIT |
-| [`brace-expansion`](https://github.com/juliangruber/brace-expansion) | 2.1.2 | MIT |
 | [`brace-expansion`](https://github.com/juliangruber/brace-expansion) | 5.0.6 | MIT |
 | [`minimatch`](https://github.com/isaacs/minimatch) | 10.2.5 | BlueOak-1.0.0 |
-| [`minimatch`](https://github.com/isaacs/minimatch) | 5.1.9 | ISC |
 | [`pend`](https://github.com/andrewrk/node-pend) | 1.2.0 | MIT |
 | [`semver`](https://github.com/npm/node-semver) | 7.8.5 | ISC |
-| [`vscode-jsonrpc`](https://github.com/Microsoft/vscode-languageserver-node) | 8.2.0 | MIT |
-| [`vscode-languageclient`](https://github.com/Microsoft/vscode-languageserver-node) | 9.0.1 | MIT |
-| [`vscode-languageserver-protocol`](https://github.com/Microsoft/vscode-languageserver-node) | 3.17.5 | MIT |
-| [`vscode-languageserver-types`](https://github.com/Microsoft/vscode-languageserver-node) | 3.17.5 | MIT |
+| [`vscode-jsonrpc`](https://github.com/Microsoft/vscode-languageserver-node) | 9.0.1 | MIT |
+| [`vscode-languageclient`](https://github.com/Microsoft/vscode-languageserver-node) | 10.1.0 | MIT |
+| [`vscode-languageserver-protocol`](https://github.com/Microsoft/vscode-languageserver-node) | 3.18.2 | MIT |
+| [`vscode-languageserver-textdocument`](https://github.com/Microsoft/vscode-languageserver-node) | 1.0.13 | MIT |
+| [`vscode-languageserver-types`](https://github.com/Microsoft/vscode-languageserver-node) | 3.18.0 | MIT |
 | [`yauzl`](https://github.com/thejoshwolfe/yauzl) | 3.4.0 | MIT |
-
-### `balanced-match` 1.0.2 — MIT
-
-Transitive dependency.
-
-```
-(MIT)
-
-Copyright (c) 2013 Julian Gruber &lt;julian@juliangruber.com&gt;
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
 
 ### `balanced-match` 4.0.4 — MIT
 
@@ -130,34 +100,6 @@ the Software without restriction, including without limitation the rights to
 use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
 of the Software, and to permit persons to whom the Software is furnished to do
 so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-### `brace-expansion` 2.1.2 — MIT
-
-Transitive dependency.
-
-```
-MIT License
-
-Copyright (c) 2013 Julian Gruber <julian@juliangruber.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
@@ -263,28 +205,6 @@ will be liable to anyone for any damages related to this
 software or this license, under any kind of legal claim._**
 ```
 
-### `minimatch` 5.1.9 — ISC
-
-Transitive dependency.
-
-```
-The ISC License
-
-Copyright (c) 2011-2023 Isaac Z. Schlueter and Contributors
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted, provided that the above
-copyright notice and this permission notice appear in all copies.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
-IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-```
-
 ### `pend` 1.2.0 — MIT
 
 Transitive dependency.
@@ -337,7 +257,7 @@ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### `vscode-jsonrpc` 8.2.0 — MIT
+### `vscode-jsonrpc` 9.0.1 — MIT
 
 Used for JSON-RPC transport underneath the LSP client.
 
@@ -355,7 +275,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### `vscode-languageclient` 9.0.1 — MIT
+### `vscode-languageclient` 10.1.0 — MIT
 
 Used for LSP client used to talk to the Roslyn language server.
 
@@ -373,7 +293,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### `vscode-languageserver-protocol` 3.17.5 — MIT
+### `vscode-languageserver-protocol` 3.18.2 — MIT
 
 Transitive dependency.
 
@@ -391,7 +311,25 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### `vscode-languageserver-types` 3.17.5 — MIT
+### `vscode-languageserver-textdocument` 1.0.13 — MIT
+
+Transitive dependency.
+
+```
+Copyright (c) Microsoft Corporation
+
+All rights reserved.
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### `vscode-languageserver-types` 3.18.0 — MIT
 
 Transitive dependency.
 
