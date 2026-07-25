@@ -27,3 +27,35 @@ jobs:
       - run: npm run lint
 
       - run: npm test
+
+  licenses:
+    name: License compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Fails when a shipped dependency carries a non-permissive licence, or when
+      # THIRD_PARTY_NOTICES.md no longer matches the dependency tree.
+      - run: npm run notices:check
+
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/dependency-review-action@v4
+        with:
+          deny-licenses: GPL-2.0, GPL-3.0, LGPL-2.0, LGPL-2.1, LGPL-3.0, AGPL-3.0, MPL-2.0, SSPL-1.0, BUSL-1.1, CC-BY-NC-4.0
+          comment-summary-in-pr: on-failure
