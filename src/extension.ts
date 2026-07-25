@@ -3,17 +3,17 @@ import { activateDebugger } from "./debug/activate.js";
 import { activateLanguageServer } from "./languageServer/activate.js";
 import { NUGET_MANAGER_VIEW_TYPE, NugetManagerPanel } from "./nuget/nugetManagerPanel.js";
 import { activateTestExplorer } from "./testExplorer/activate.js";
-import { registerSolutionExplorerCommands } from "./solutionExplorer/commands.js";
+import { registerSolutionExplorerCommands } from "./solutionExplorer/commands/commands.js";
 import { checkDotnetSdk } from "./solutionExplorer/dotnetSdkNotifier.js";
-import { SolutionTreeDragAndDropController } from "./solutionExplorer/dragAndDropController.js";
+import { SolutionTreeDragAndDropController } from "./solutionExplorer/tree/dragAndDropController.js";
 import {
   disposeLaunchProfileState,
   initLaunchProfileState,
   onDidChangeLaunchProfileState,
-} from "./solutionExplorer/launchProfileState.js";
-import { LaunchProfileStatusBar } from "./solutionExplorer/launchProfileStatusBar.js";
-import { SolutionTreeDataProvider } from "./solutionExplorer/solutionTreeDataProvider.js";
-import { SolutionExplorerTreeItem } from "./solutionExplorer/treeItems.js";
+} from "./solutionExplorer/launchProfiles/launchProfileState.js";
+import { LaunchProfileStatusBar } from "./solutionExplorer/launchProfiles/launchProfileStatusBar.js";
+import { SolutionTreeDataProvider } from "./solutionExplorer/tree/solutionTreeDataProvider.js";
+import { SolutionExplorerTreeItem } from "./solutionExplorer/tree/treeItems.js";
 
 export function activate(context: vscode.ExtensionContext): void {
   // Must precede the provider: it reads the startup project synchronously while building nodes,

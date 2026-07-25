@@ -2,7 +2,7 @@
 // so it is unit-testable. Detection mirrors how the tree already reasons about projects: an explicit
 // <IsTestProject>true</IsTestProject> wins, otherwise a referenced test framework package is the tell.
 
-import { parsePackageReferences } from "../solutionExplorer/csprojReader.js";
+import { parsePackageReferences } from "../solutionExplorer/parsers/csprojReader.js";
 
 /** Substrings matched (case-insensitively) against PackageReference names. */
 const TEST_PACKAGE_MARKERS = ["microsoft.net.test.sdk", "xunit", "nunit", "mstest", "tunit"];

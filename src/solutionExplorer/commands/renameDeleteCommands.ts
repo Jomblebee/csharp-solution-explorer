@@ -1,18 +1,18 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
-import { SolutionTreeNode } from "./slnParser.js";
-import { parseSolutionFile } from "./slnParser.js";
-import { removeProjectEntry, renameProjectEntry } from "./slnWriter.js";
+import { SolutionTreeDataProvider } from "../tree/solutionTreeDataProvider.js";
+import { SolutionTreeNode } from "../parsers/slnParser.js";
+import { parseSolutionFile } from "../parsers/slnParser.js";
+import { removeProjectEntry, renameProjectEntry } from "../parsers/slnWriter.js";
 import {
   removeSlnxFolderEntry,
   removeSlnxProjectEntry,
   renameSlnxFolderEntry,
   renameSlnxProjectEntry,
-} from "./slnxWriter.js";
-import { FileTreeItem, ProjectTreeItem, SolutionFolderTreeItem } from "./treeItems.js";
-import { ProjectInfo, SolutionFolderInfo } from "./types.js";
-import { errorMessage, ExistingItemTarget, isExistingItemTarget, toPosixRelative } from "./commandUtils.js";
+} from "../parsers/slnxWriter.js";
+import { FileTreeItem, ProjectTreeItem, SolutionFolderTreeItem } from "../tree/treeItems.js";
+import { ProjectInfo, SolutionFolderInfo } from "../types.js";
+import { errorMessage, ExistingItemTarget, isExistingItemTarget, toPosixRelative } from "../commandUtils.js";
 
 function getEntryUri(item: ExistingItemTarget): vscode.Uri {
   if (item instanceof ProjectTreeItem) {

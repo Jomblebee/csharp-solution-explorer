@@ -1,11 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
-import { FileTreeItem, FolderTreeItem, ProjectTreeItem, SolutionExplorerTreeItem } from "./treeItems.js";
-import { copyEntriesInto, moveEntriesInto } from "./fsOps.js";
-import { clearClipboard, getClipboard, setClipboard } from "./treeClipboard.js";
-import { FsItem } from "./commandUtils.js";
+import { SolutionTreeDataProvider } from "../tree/solutionTreeDataProvider.js";
+import { FileTreeItem, FolderTreeItem, ProjectTreeItem, SolutionExplorerTreeItem } from "../tree/treeItems.js";
+import { copyEntriesInto, moveEntriesInto } from "../fsOps.js";
+import { clearClipboard, getClipboard, setClipboard } from "../tree/treeClipboard.js";
+import { FsItem } from "../commandUtils.js";
 
 /**
  * Collects the file/folder nodes to act on. Context-menu invocations pass the clicked item (and the

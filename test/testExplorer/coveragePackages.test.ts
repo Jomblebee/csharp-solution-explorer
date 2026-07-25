@@ -10,7 +10,7 @@ import {
   pickVersionForMajor,
   platformMajor,
 } from "../../src/testExplorer/coveragePackages.js";
-import type { ParsedAssetPackage, ParsedAssets } from "../../src/solutionExplorer/projectAssetsReader.js";
+import type { ParsedAssetPackage, ParsedAssets } from "../../src/solutionExplorer/parsers/projectAssetsReader.js";
 
 function pkg(name: string, version?: string, dependencies: ParsedAssetPackage[] = []): ParsedAssetPackage {
   return { name, version, dependencies };

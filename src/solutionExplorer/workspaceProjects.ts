@@ -7,9 +7,9 @@ import {
   parseOutputType,
   parseSdkAttribute,
   parseTargetFrameworks,
-} from "./csprojReader.js";
-import { getStartupProjectFsPath, setStartupProject } from "./launchProfileState.js";
-import { describeActiveProfile } from "./launchProfileCommands.js";
+} from "./parsers/csprojReader.js";
+import { getStartupProjectFsPath, setStartupProject } from "./launchProfiles/launchProfileState.js";
+import { describeActiveProfile } from "./launchProfiles/launchProfileCommands.js";
 
 const EXCLUDE_GLOB = "**/{bin,obj,node_modules,.git,.vs}/**";
 

@@ -4,16 +4,16 @@
 // the pure, round-tripping `launchSettingsWriter`, so unknown keys the reader does not model survive.
 
 import * as vscode from "vscode";
-import { LaunchProfile, ParsedLaunchSettings, findProfile } from "./launchSettingsReader.js";
+import { LaunchProfile, ParsedLaunchSettings, findProfile } from "../parsers/launchSettingsReader.js";
 import { readLaunchSettings, readLaunchSettingsRaw, writeLaunchSettings } from "./launchProfileCommands.js";
 import {
   applyLaunchSettingsEdit,
   EditableProfileFields,
   LaunchSettingsEdit,
-} from "./launchSettingsWriter.js";
+} from "../parsers/launchSettingsWriter.js";
 import { getActiveProfileName, setActiveProfileName } from "./launchProfileState.js";
-import { TargetProject } from "./workspaceProjects.js";
-import { isWebSdk, parseSdkAttribute } from "./csprojReader.js";
+import { TargetProject } from "../workspaceProjects.js";
+import { isWebSdk, parseSdkAttribute } from "../parsers/csprojReader.js";
 import {
   buildApplicationUrl,
   DEFAULT_HTTP_PORT,

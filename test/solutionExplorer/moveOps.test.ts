@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { moveProjectToFolder, moveSolutionFolderInto } from "../../src/solutionExplorer/moveOps.js";
-import { buildSolutionTree, parseNestedProjects, parseSolutionFile, SolutionTreeNode } from "../../src/solutionExplorer/slnParser.js";
+import { buildSolutionTree, parseNestedProjects, parseSolutionFile, SolutionTreeNode } from "../../src/solutionExplorer/parsers/slnParser.js";
 
 const CSHARP_SDK_TYPE_GUID = "{9A19103F-16F7-4668-BE54-9A1E7A4F7556}";
 const SOLUTION_FOLDER_TYPE_GUID = "{2150E333-8FDC-42A3-9474-1A3956D46DE8}";

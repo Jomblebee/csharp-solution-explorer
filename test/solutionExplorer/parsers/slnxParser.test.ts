@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { nestPathBasedFolders, parseSlnxFile } from "../../src/solutionExplorer/slnxParser.js";
-import { ProjectNode, SolutionFolderNode, SolutionTreeNode } from "../../src/solutionExplorer/slnParser.js";
+import { nestPathBasedFolders, parseSlnxFile } from "../../../src/solutionExplorer/parsers/slnxParser.js";
+import { ProjectNode, SolutionFolderNode, SolutionTreeNode } from "../../../src/solutionExplorer/parsers/slnParser.js";
 
 describe("parseSlnxFile", () => {
   it("returns an empty array for an empty solution", () => {

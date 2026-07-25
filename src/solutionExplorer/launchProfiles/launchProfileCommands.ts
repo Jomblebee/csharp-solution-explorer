@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { resolveOwningProjectUri } from "./commandUtils.js";
+import { resolveOwningProjectUri } from "../commandUtils.js";
 import {
   getActiveProfileName,
   NO_PROFILE,
@@ -16,10 +16,10 @@ import {
   parseLaunchSettings,
   resolveLaunchProfile,
   ResolvedLaunchProfile,
-} from "./launchSettingsReader.js";
-import { promptForStartupProject, resolveTargetProject, TargetProject } from "./workspaceProjects.js";
+} from "../parsers/launchSettingsReader.js";
+import { promptForStartupProject, resolveTargetProject, TargetProject } from "../workspaceProjects.js";
 import { addProfile, deleteProfile, duplicateProfile, editProfile } from "./launchProfileEditor.js";
-import { isWebSdk, parseSdkAttribute, parseTargetFrameworks } from "./csprojReader.js";
+import { isWebSdk, parseSdkAttribute, parseTargetFrameworks } from "../parsers/csprojReader.js";
 
 /**
  * Reads a project's launch profiles. A missing or unreadable file is not an error — it just means

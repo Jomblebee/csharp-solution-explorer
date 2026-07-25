@@ -12,15 +12,15 @@ import {
   parseProjectReferences,
   parseSdkAttribute,
   resolveExcludedPaths,
-} from "./csprojReader.js";
-import { listAllFilesRecursive, listDirectChildren, ScannedEntry } from "./diskScanner.js";
+} from "../parsers/csprojReader.js";
+import { listAllFilesRecursive, listDirectChildren, ScannedEntry } from "../diskScanner.js";
 import { computeFileNesting } from "./fileNesting.js";
-import { isInsideOrEqual, pickOwningProjectPath } from "./fsPathUtils.js";
-import { getStartupProjectFsPath } from "./launchProfileState.js";
-import { getAssetsFilePath, ParsedAssetPackage, parseProjectAssets } from "./projectAssetsReader.js";
-import { compareVersions, getPackageVersions } from "../nuget/nugetApi.js";
-import { buildSolutionTree, parseNestedProjects, parseSolutionFile, SolutionTreeNode } from "./slnParser.js";
-import { parseSlnxFile } from "./slnxParser.js";
+import { isInsideOrEqual, pickOwningProjectPath } from "../fsPathUtils.js";
+import { getStartupProjectFsPath } from "../launchProfiles/launchProfileState.js";
+import { getAssetsFilePath, ParsedAssetPackage, parseProjectAssets } from "../parsers/projectAssetsReader.js";
+import { compareVersions, getPackageVersions } from "../../nuget/nugetApi.js";
+import { buildSolutionTree, parseNestedProjects, parseSolutionFile, SolutionTreeNode } from "../parsers/slnParser.js";
+import { parseSlnxFile } from "../parsers/slnxParser.js";
 import {
   DependenciesInfo,
   DependencyCategory,
@@ -29,7 +29,7 @@ import {
   ProjectInfo,
   ProjectReferenceInfo,
   SolutionInfo,
-} from "./types.js";
+} from "../types.js";
 import {
   AnalyzerTreeItem,
   DependenciesTreeItem,

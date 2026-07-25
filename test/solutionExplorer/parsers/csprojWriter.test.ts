@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { addProjectReference, removeProjectReference } from "../../src/solutionExplorer/csprojWriter.js";
-import { parseProjectReferences } from "../../src/solutionExplorer/csprojReader.js";
+import { addProjectReference, removeProjectReference } from "../../../src/solutionExplorer/parsers/csprojWriter.js";
+import { parseProjectReferences } from "../../../src/solutionExplorer/parsers/csprojReader.js";
 
 describe("addProjectReference", () => {
   it("appends next to an existing ProjectReference in the same ItemGroup", () => {

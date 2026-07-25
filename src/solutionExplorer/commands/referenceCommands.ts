@@ -1,13 +1,13 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { basenameWithoutExtension, SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
-import { parseProjectReferences } from "./csprojReader.js";
+import { basenameWithoutExtension, SolutionTreeDataProvider } from "../tree/solutionTreeDataProvider.js";
+import { parseProjectReferences } from "../parsers/csprojReader.js";
 import {
   addProjectReference as addProjectReferenceToCsproj,
   removeProjectReference as removeProjectReferenceFromCsproj,
-} from "./csprojWriter.js";
-import { ProjectReferenceTreeItem } from "./treeItems.js";
-import { resolveOwningProjectUri, toPosixRelative } from "./commandUtils.js";
+} from "../parsers/csprojWriter.js";
+import { ProjectReferenceTreeItem } from "../tree/treeItems.js";
+import { resolveOwningProjectUri, toPosixRelative } from "../commandUtils.js";
 
 export async function addProjectReference(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
   const ownerUri = resolveOwningProjectUri(item);

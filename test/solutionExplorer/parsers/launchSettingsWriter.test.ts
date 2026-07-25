@@ -4,8 +4,8 @@ import {
   applyLaunchSettingsEdit,
   EditableProfileFields,
   LaunchSettingsEdit,
-} from "../../src/solutionExplorer/launchSettingsWriter.js";
-import { parseLaunchSettings } from "../../src/solutionExplorer/launchSettingsReader.js";
+} from "../../../src/solutionExplorer/parsers/launchSettingsWriter.js";
+import { parseLaunchSettings } from "../../../src/solutionExplorer/parsers/launchSettingsReader.js";
 
 /** A minimal, valid editable-fields object with the given overrides. */
 function fields(overrides: Partial<EditableProfileFields> = {}): EditableProfileFields {

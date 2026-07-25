@@ -1,4 +1,4 @@
-import { ScannedEntry } from "./diskScanner.js";
+import { ScannedEntry } from "../diskScanner.js";
 
 /**
  * A single file-nesting rule: recognizes a parent file and decides which sibling files

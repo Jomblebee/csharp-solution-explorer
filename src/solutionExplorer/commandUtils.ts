@@ -2,7 +2,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { parseTargetFrameworks } from "./csprojReader.js";
+import { parseTargetFrameworks } from "./parsers/csprojReader.js";
 import {
   DependenciesTreeItem,
   DependencyCategoryTreeItem,
@@ -11,7 +11,7 @@ import {
   ProjectTreeItem,
   SolutionFolderTreeItem,
   SolutionTreeItem,
-} from "./treeItems.js";
+} from "./tree/treeItems.js";
 
 /** Nodes a "New …" command can target (a container that owns a directory). */
 export type NewItemTarget = FolderTreeItem | ProjectTreeItem | SolutionFolderTreeItem;

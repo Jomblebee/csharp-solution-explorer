@@ -1,5 +1,5 @@
-import { SolutionTreeNode } from "./slnParser.js";
-import { addNestedProjectRelation, removeNestedProjectRelation } from "./slnWriter.js";
+import { SolutionTreeNode } from "./parsers/slnParser.js";
+import { addNestedProjectRelation, removeNestedProjectRelation } from "./parsers/slnWriter.js";
 
 /**
  * Moves a project (by GUID) into the given target solution folder, or to the solution

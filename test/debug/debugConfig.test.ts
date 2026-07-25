@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildAttachConfig, buildExternalAttachConfig, buildLaunchConfig, DEBUG_TYPE } from "../../src/debug/debugConfig.js";
 import type { ProjectOutput } from "../../src/debug/projectOutput.js";
-import type { ResolvedLaunchProfile } from "../../src/solutionExplorer/launchSettingsReader.js";
+import type { ResolvedLaunchProfile } from "../../src/solutionExplorer/parsers/launchSettingsReader.js";
 
 const ROOT = "/repo/src/Web";
 

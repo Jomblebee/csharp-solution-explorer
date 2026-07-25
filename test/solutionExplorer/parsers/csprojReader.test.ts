@@ -15,7 +15,7 @@ import {
   parseSdkAttribute,
   parseTargetFrameworks,
   resolveExcludedPaths,
-} from "../../src/solutionExplorer/csprojReader.js";
+} from "../../../src/solutionExplorer/parsers/csprojReader.js";
 
 describe("parsePackageReferences", () => {
   it("extracts name and version", () => {

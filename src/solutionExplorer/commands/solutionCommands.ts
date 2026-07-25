@@ -1,28 +1,28 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { basenameWithoutExtension, SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
+import { basenameWithoutExtension, SolutionTreeDataProvider } from "../tree/solutionTreeDataProvider.js";
 import {
   CSHARP_PROJECT_TYPE_GUID,
   parseSolutionConfigurations,
   parseSolutionFile,
   SOLUTION_FOLDER_TYPE_GUID,
   SolutionTreeNode,
-} from "./slnParser.js";
+} from "../parsers/slnParser.js";
 import {
   addNestedProjectRelation,
   addProjectConfigurationPlatforms,
   addProjectEntry,
   removeProjectEntry,
-} from "./slnWriter.js";
+} from "../parsers/slnWriter.js";
 import {
   addSlnxFolderEntry,
   addSlnxProjectEntry,
   removeSlnxProjectEntry,
-} from "./slnxWriter.js";
-import { parseSlnxFile } from "./slnxParser.js";
-import { newProject as scaffoldProject } from "./dotnetCli.js";
-import { ProjectTreeItem, SolutionFolderTreeItem, SolutionTreeItem } from "./treeItems.js";
-import { generateSlnGuid, toPosixRelative, validateNewName } from "./commandUtils.js";
+} from "../parsers/slnxWriter.js";
+import { parseSlnxFile } from "../parsers/slnxParser.js";
+import { newProject as scaffoldProject } from "../dotnetCli.js";
+import { ProjectTreeItem, SolutionFolderTreeItem, SolutionTreeItem } from "../tree/treeItems.js";
+import { generateSlnGuid, toPosixRelative, validateNewName } from "../commandUtils.js";
 
 async function newSolutionFolder(item: unknown, provider: SolutionTreeDataProvider): Promise<void> {
   let solutionUri: vscode.Uri | undefined;

@@ -2,7 +2,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { describeActiveProfile } from "./launchProfileCommands.js";
 import { getStartupProjectFsPath, onDidChangeLaunchProfileState } from "./launchProfileState.js";
-import { SELECT_LAUNCH_PROFILE_COMMAND_ID, SELECT_STARTUP_PROJECT_COMMAND_ID } from "./types.js";
+import { SELECT_LAUNCH_PROFILE_COMMAND_ID, SELECT_STARTUP_PROJECT_COMMAND_ID } from "../types.js";
 
 /**
  * The Visual-Studio-toolbar equivalent, split in two: one item for the startup project, one for its

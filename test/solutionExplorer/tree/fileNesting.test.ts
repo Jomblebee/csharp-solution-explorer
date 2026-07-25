@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { computeFileNesting } from "../../src/solutionExplorer/fileNesting.js";
-import { ScannedEntry } from "../../src/solutionExplorer/diskScanner.js";
+import { computeFileNesting } from "../../../src/solutionExplorer/tree/fileNesting.js";
+import { ScannedEntry } from "../../../src/solutionExplorer/diskScanner.js";
 
 function file(name: string): ScannedEntry {
   return { kind: "file", name, path: `/proj/${name}` };

@@ -1,8 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { moveSlnxFolder, moveSlnxProject } from "../../src/solutionExplorer/slnxWriter.js";
-import { parseSlnxFile } from "../../src/solutionExplorer/slnxParser.js";
-import { SolutionTreeNode } from "../../src/solutionExplorer/slnParser.js";
+import { moveSlnxFolder, moveSlnxProject } from "../../../src/solutionExplorer/parsers/slnxWriter.js";
+import { parseSlnxFile } from "../../../src/solutionExplorer/parsers/slnxParser.js";
+import { SolutionTreeNode } from "../../../src/solutionExplorer/parsers/slnParser.js";
 
 /**
  * App at root; FolderA holds Library and a nested FolderB; FolderB holds Nested.

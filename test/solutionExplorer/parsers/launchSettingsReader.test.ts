@@ -9,7 +9,7 @@ import {
   parseLaunchSettings,
   resolveLaunchProfile,
   resolveWorkingDirectory,
-} from "../../src/solutionExplorer/launchSettingsReader.js";
+} from "../../../src/solutionExplorer/parsers/launchSettingsReader.js";
 
 const settings = (profiles: Record<string, unknown>) => JSON.stringify({ profiles });
 

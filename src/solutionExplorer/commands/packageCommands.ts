@@ -1,18 +1,18 @@
 import * as vscode from "vscode";
-import { SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
-import { addPackage, removePackage, restore } from "./dotnetCli.js";
-import { getPackageVersions, NugetPackage, searchPackages } from "../nuget/nugetApi.js";
-import { findWorkspaceSolutions } from "../nuget/nugetManagerService.js";
-import { NugetManagerPanel } from "../nuget/nugetManagerPanel.js";
+import { SolutionTreeDataProvider } from "../tree/solutionTreeDataProvider.js";
+import { addPackage, removePackage, restore } from "../dotnetCli.js";
+import { getPackageVersions, NugetPackage, searchPackages } from "../../nuget/nugetApi.js";
+import { findWorkspaceSolutions } from "../../nuget/nugetManagerService.js";
+import { NugetManagerPanel } from "../../nuget/nugetManagerPanel.js";
 import {
   DependenciesTreeItem,
   DependencyCategoryTreeItem,
   PackageReferenceTreeItem,
   ProjectTreeItem,
   SolutionTreeItem,
-} from "./treeItems.js";
-import { errorMessage, resolveOwningProjectUri } from "./commandUtils.js";
-import { debounce } from "../shared/debounce.js";
+} from "../tree/treeItems.js";
+import { errorMessage, resolveOwningProjectUri } from "../commandUtils.js";
+import { debounce } from "../../shared/debounce.js";
 
 interface PackagePickItem extends vscode.QuickPickItem {
   id: string;

@@ -5,7 +5,7 @@ import {
   DEFAULT_HTTP_PORT,
   DEFAULT_HTTPS_PORT,
   parseApplicationUrl,
-} from "../../src/solutionExplorer/launchProfileUrls.js";
+} from "../../../src/solutionExplorer/launchProfiles/launchProfileUrls.js";
 
 describe("parseApplicationUrl", () => {
   it("reads both schemes with ports", () => {

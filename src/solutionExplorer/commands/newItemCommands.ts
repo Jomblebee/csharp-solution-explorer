@@ -1,10 +1,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { applyCursorTemplate, buildNamespace } from "./csharpTemplates.js";
-import { basenameWithoutExtension, SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
-import { FolderTreeItem, ProjectTreeItem, SolutionFolderTreeItem } from "./treeItems.js";
-import { isNewItemTarget, NewItemTarget, validateNewName } from "./commandUtils.js";
+import { applyCursorTemplate, buildNamespace } from "../csharpTemplates.js";
+import { basenameWithoutExtension, SolutionTreeDataProvider } from "../tree/solutionTreeDataProvider.js";
+import { FolderTreeItem, ProjectTreeItem, SolutionFolderTreeItem } from "../tree/treeItems.js";
+import { isNewItemTarget, NewItemTarget, validateNewName } from "../commandUtils.js";
 
 function getTargetDirUri(item: NewItemTarget): vscode.Uri {
   if (item instanceof FolderTreeItem) {

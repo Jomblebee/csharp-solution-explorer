@@ -1,8 +1,8 @@
 // Merges what MSBuild says a project produces with the selected launchSettings.json profile into
 // the body netcoredbg expects. Pure, so the precedence rules stay unit-testable.
 
-import { ResolvedLaunchProfile } from "../solutionExplorer/launchSettingsReader.js";
-import { resolveWorkingDirectory } from "../solutionExplorer/launchSettingsReader.js";
+import { ResolvedLaunchProfile } from "../solutionExplorer/parsers/launchSettingsReader.js";
+import { resolveWorkingDirectory } from "../solutionExplorer/parsers/launchSettingsReader.js";
 import { ProjectOutput } from "./projectOutput.js";
 
 /** The debug type we contribute. Not `coreclr`/`clr`/`dotnet` — those belong to the MS C# extension. */

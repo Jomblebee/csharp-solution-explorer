@@ -1,8 +1,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { moveEntriesInto } from "./fsOps.js";
-import { collectDescendantFolderGuids, moveProjectToFolder, moveSolutionFolderInto } from "./moveOps.js";
-import { moveSlnxFolder, moveSlnxProject } from "./slnxWriter.js";
+import { moveEntriesInto } from "../fsOps.js";
+import { collectDescendantFolderGuids, moveProjectToFolder, moveSolutionFolderInto } from "../moveOps.js";
+import { moveSlnxFolder, moveSlnxProject } from "../parsers/slnxWriter.js";
 import { SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
 import {
   FileTreeItem,

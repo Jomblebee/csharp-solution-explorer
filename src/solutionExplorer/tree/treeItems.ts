@@ -12,7 +12,7 @@ import {
   ProjectReferenceInfo,
   SolutionFolderInfo,
   SolutionInfo,
-} from "./types.js";
+} from "../types.js";
 
 const CATEGORY_LABEL: Record<DependencyCategory, string> = {
   frameworks: "Frameworks",

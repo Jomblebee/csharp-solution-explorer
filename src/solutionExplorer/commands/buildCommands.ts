@@ -1,10 +1,10 @@
 import * as vscode from "vscode";
-import { CANCELLED, resolveOwningProjectUri, resolveRunFramework } from "./commandUtils.js";
-import { runInExternalTerminal } from "./externalTerminal.js";
-import { resolveActiveProfileName } from "./launchProfileCommands.js";
-import { projectFromUri, promptForStartupProject, TargetProject } from "./workspaceProjects.js";
-import { getStartupProjectFsPath, NO_PROFILE } from "./launchProfileState.js";
-import { ProjectTreeItem, SolutionTreeItem } from "./treeItems.js";
+import { CANCELLED, resolveOwningProjectUri, resolveRunFramework } from "../commandUtils.js";
+import { runInExternalTerminal } from "../externalTerminal.js";
+import { resolveActiveProfileName } from "../launchProfiles/launchProfileCommands.js";
+import { projectFromUri, promptForStartupProject, TargetProject } from "../workspaceProjects.js";
+import { getStartupProjectFsPath, NO_PROFILE } from "../launchProfiles/launchProfileState.js";
+import { ProjectTreeItem, SolutionTreeItem } from "../tree/treeItems.js";
 
 // Build/Rebuild/Test/Restore/Clean accept both a project (.csproj) and a solution (.sln/.slnx) path;
 // both tree items carry `info.uri`.

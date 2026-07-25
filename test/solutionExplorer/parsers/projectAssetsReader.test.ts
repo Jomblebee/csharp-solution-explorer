@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { getAssetsFilePath, parseProjectAssets } from "../../src/solutionExplorer/projectAssetsReader.js";
+import { getAssetsFilePath, parseProjectAssets } from "../../../src/solutionExplorer/parsers/projectAssetsReader.js";
 
 const assets = (overrides: Record<string, unknown>) =>
   JSON.stringify({

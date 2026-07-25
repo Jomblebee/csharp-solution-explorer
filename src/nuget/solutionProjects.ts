@@ -2,15 +2,15 @@
 // unit-testable). The NuGet manager needs the flat project list for its solution-wide checklist; the
 // FS-touching wrapper that resolves these to on-disk .csproj URIs lives in the manager service.
 
-import { isLikelyCsproj } from "../solutionExplorer/csprojReader.js";
-import { parseSlnxFile } from "../solutionExplorer/slnxParser.js";
+import { isLikelyCsproj } from "../solutionExplorer/parsers/csprojReader.js";
+import { parseSlnxFile } from "../solutionExplorer/parsers/slnxParser.js";
 import {
   buildSolutionTree,
   parseNestedProjects,
   parseSolutionFile,
   ProjectNode,
   SolutionTreeNode,
-} from "../solutionExplorer/slnParser.js";
+} from "../solutionExplorer/parsers/slnParser.js";
 
 export interface SolutionProject {
   name: string;

@@ -5,7 +5,7 @@ import {
   parseNestedProjects,
   parseSolutionConfigurations,
   parseSolutionFile,
-} from "../../src/solutionExplorer/slnParser.js";
+} from "../../../src/solutionExplorer/parsers/slnParser.js";
 
 const SOLUTION_FOLDER_TYPE_GUID = "{2150E333-8FDC-42A3-9474-1A3956D46DE8}";
 const CSHARP_SDK_TYPE_GUID = "{9A19103F-16F7-4668-BE54-9A1E7A4F7556}";

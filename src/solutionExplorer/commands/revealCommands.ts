@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
+import { SolutionTreeDataProvider } from "../tree/solutionTreeDataProvider.js";
 import {
   FileTreeItem,
   FolderTreeItem,
@@ -8,8 +8,8 @@ import {
   ProjectTreeItem,
   SolutionExplorerTreeItem,
   SolutionTreeItem,
-} from "./treeItems.js";
-import { TerminalTarget } from "./commandUtils.js";
+} from "../tree/treeItems.js";
+import { TerminalTarget } from "../commandUtils.js";
 
 /** Resolves the on-disk URI a tree node points at (file/folder path, or the .csproj/.sln file). */
 function resolveNodeUri(item: unknown): vscode.Uri | undefined {

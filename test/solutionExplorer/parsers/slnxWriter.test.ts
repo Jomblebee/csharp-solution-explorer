@@ -7,8 +7,8 @@ import {
   removeSlnxProjectEntry,
   renameSlnxFolderEntry,
   renameSlnxProjectEntry,
-} from "../../src/solutionExplorer/slnxWriter.js";
-import { parseSlnxFile } from "../../src/solutionExplorer/slnxParser.js";
+} from "../../../src/solutionExplorer/parsers/slnxWriter.js";
+import { parseSlnxFile } from "../../../src/solutionExplorer/parsers/slnxParser.js";
 
 function fixture(): string {
   return [

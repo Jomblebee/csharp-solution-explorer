@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { SolutionTreeNode } from "./slnParser.js";
+import { SolutionTreeNode } from "./parsers/slnParser.js";
 
 export const REFRESH_COMMAND_ID = "csharpSolutionExplorer.refresh";
 export const OPEN_FILE_COMMAND_ID = "csharpSolutionExplorer.openFile";

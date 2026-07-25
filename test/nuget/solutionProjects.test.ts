@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { flattenProjectNodes, parseSolutionProjects } from "../../src/nuget/solutionProjects.js";
-import { SolutionTreeNode } from "../../src/solutionExplorer/slnParser.js";
+import { SolutionTreeNode } from "../../src/solutionExplorer/parsers/slnParser.js";
 
 describe("flattenProjectNodes", () => {
   it("collects projects across nested solution folders", () => {

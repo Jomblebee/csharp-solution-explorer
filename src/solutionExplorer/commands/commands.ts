@@ -1,12 +1,12 @@
 import * as vscode from "vscode";
-import { SolutionTreeDataProvider } from "./solutionTreeDataProvider.js";
+import { SolutionTreeDataProvider } from "../tree/solutionTreeDataProvider.js";
 import {
   PackageReferenceTreeItem,
   ProjectReferenceTreeItem,
   ProjectTreeItem,
   SolutionExplorerTreeItem,
   SolutionTreeItem,
-} from "./treeItems.js";
+} from "../tree/treeItems.js";
 import {
   BUILD_PROJECT_COMMAND_ID,
   DELETE_COMMAND_ID,
@@ -53,14 +53,14 @@ import {
   REVEAL_IN_FINDER_COMMAND_ID,
   REVEAL_IN_EXPLORER_COMMAND_ID,
   REVEAL_IN_FILE_MANAGER_COMMAND_ID,
-} from "./types.js";
+} from "../types.js";
 import {
   ExistingItemTarget,
   FsItem,
   NewItemTarget,
   TerminalTarget,
   withErrorHandling,
-} from "./commandUtils.js";
+} from "../commandUtils.js";
 import {
   newClass,
   newEnum,
@@ -100,7 +100,7 @@ import {
   selectLaunchProfileCommand,
   selectStartupProjectCommand,
   setStartupProjectCommand,
-} from "./launchProfileCommands.js";
+} from "../launchProfiles/launchProfileCommands.js";
 import { copyToClipboard, paste } from "./clipboardCommands.js";
 import { openInTerminal, revealInOS, revealInTree } from "./revealCommands.js";
 

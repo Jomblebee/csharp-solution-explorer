@@ -11,14 +11,14 @@ import * as vscode from "vscode";
 import { CANCELLED, resolveRunFramework } from "../../solutionExplorer/commandUtils.js";
 import { build } from "../../solutionExplorer/dotnetCli.js";
 import { makeReporter } from "../../shared/httpDownload.js";
-import { resolveActiveProfile } from "../../solutionExplorer/launchProfileCommands.js";
+import { resolveActiveProfile } from "../../solutionExplorer/launchProfiles/launchProfileCommands.js";
 import {
   findWorkspaceProjects,
   projectFromUri,
   promptForStartupProject,
   TargetProject,
 } from "../../solutionExplorer/workspaceProjects.js";
-import { getStartupProjectFsPath } from "../../solutionExplorer/launchProfileState.js";
+import { getStartupProjectFsPath } from "../../solutionExplorer/launchProfiles/launchProfileState.js";
 import { spawnForAttach, TerminalHost } from "./attachTerminal.js";
 import { buildExternalAttachConfig, buildLaunchConfig } from "../debugConfig.js";
 import { CONFIG_SECTION } from "../debugSettings.js";

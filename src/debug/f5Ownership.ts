@@ -10,9 +10,9 @@
 // `editor/title`), for the mouse route.
 
 import * as vscode from "vscode";
-import { runProjectInExternalTerminal } from "../solutionExplorer/buildCommands.js";
+import { runProjectInExternalTerminal } from "../solutionExplorer/commands/buildCommands.js";
 import { findWorkspaceProjects } from "../solutionExplorer/workspaceProjects.js";
-import { getStartupProjectFsPath } from "../solutionExplorer/launchProfileState.js";
+import { getStartupProjectFsPath } from "../solutionExplorer/launchProfiles/launchProfileState.js";
 import { DEBUG_TYPE } from "./debugConfig.js";
 import { CONFIG_SECTION, isMsCsharpInstalled, readF5ConsoleMode, readOfferConfigurationsMode } from "./debugSettings.js";
 import { computeOwnsF5 } from "./f5Policy.js";

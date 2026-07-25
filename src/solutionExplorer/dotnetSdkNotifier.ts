@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { parseTargetFrameworks } from "./csprojReader.js";
+import { parseTargetFrameworks } from "./parsers/csprojReader.js";
 import {
   evaluateSdk,
   formatWarning,
