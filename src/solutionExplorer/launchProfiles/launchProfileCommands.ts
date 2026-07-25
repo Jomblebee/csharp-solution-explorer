@@ -7,6 +7,7 @@ import {
   setStartupProject,
 } from "./launchProfileState.js";
 import {
+  ASPNETCORE_ENVIRONMENT,
   findProfile,
   getDefaultProfile,
   getLaunchSettingsPath,
@@ -110,8 +111,6 @@ const OPEN_FILE_BUTTON: vscode.QuickInputButton = {
   iconPath: new vscode.ThemeIcon("go-to-file"),
   tooltip: "Open launchSettings.json",
 };
-
-const ASPNETCORE_ENVIRONMENT = "ASPNETCORE_ENVIRONMENT";
 
 /** SDK-level facts read once per picker — the project file does not change while it is open. */
 async function readProjectFacts(projectUri: vscode.Uri): Promise<{ webSdk: boolean; tfm: string }> {

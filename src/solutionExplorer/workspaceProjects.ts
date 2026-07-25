@@ -8,6 +8,7 @@ import {
   parseSdkAttribute,
   parseTargetFrameworks,
 } from "./parsers/csprojReader.js";
+import { ASPNETCORE_ENVIRONMENT } from "./parsers/launchSettingsReader.js";
 import { getStartupProjectFsPath, setStartupProject } from "./launchProfiles/launchProfileState.js";
 import { describeActiveProfile } from "./launchProfiles/launchProfileCommands.js";
 
@@ -81,8 +82,6 @@ const GROUP_LABEL: Record<ProjectGroup, string> = {
   test: "Tests",
   library: "Libraries",
 };
-
-const ASPNETCORE_ENVIRONMENT = "ASPNETCORE_ENVIRONMENT";
 
 function toStartupProjectItem(
   project: TargetProject,

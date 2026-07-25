@@ -10,6 +10,14 @@ import * as path from "node:path";
  * launches the built assembly directly and has to apply the profile on its own.
  */
 
+/**
+ * The environment variable that decides which appsettings.{Environment}.json an ASP.NET Core app
+ * loads. Lives here rather than with either consumer: the startup-project picker, the profile picker
+ * and the environment editor all read it out of `environmentVariables`, and this module owns that
+ * shape.
+ */
+export const ASPNETCORE_ENVIRONMENT = "ASPNETCORE_ENVIRONMENT";
+
 /** Path of the launch settings file for a project, relative to its root directory. */
 export function getLaunchSettingsPath(projectRootDir: string): string {
   return path.join(projectRootDir, "Properties", "launchSettings.json");

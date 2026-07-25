@@ -4,11 +4,10 @@
 // live `createQuickPick` (rows need per-item buttons) instead of a one-shot dialog.
 
 import * as vscode from "vscode";
-import { findProfile, LaunchProfile } from "../parsers/launchSettingsReader.js";
+import { ASPNETCORE_ENVIRONMENT, findProfile, LaunchProfile } from "../parsers/launchSettingsReader.js";
 import { readLaunchSettings, writeFieldChange } from "./launchSettingsIo.js";
 import { TargetProject } from "../workspaceProjects.js";
 
-export const ASPNETCORE_ENVIRONMENT = "ASPNETCORE_ENVIRONMENT";
 const COMMON_ENVIRONMENTS = ["Development", "Staging", "Production"];
 
 /** Guided environment picker for the common ASPNETCORE_ENVIRONMENT values. */

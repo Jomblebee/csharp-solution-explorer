@@ -8,7 +8,12 @@
 // edit arithmetic in `launchProfileEdits.ts`, and the fs access in `launchSettingsIo.ts`.
 
 import * as vscode from "vscode";
-import { LaunchProfile, ParsedLaunchSettings, findProfile } from "../parsers/launchSettingsReader.js";
+import {
+  ASPNETCORE_ENVIRONMENT,
+  LaunchProfile,
+  ParsedLaunchSettings,
+  findProfile,
+} from "../parsers/launchSettingsReader.js";
 import { persist, readLaunchSettings, writeFieldChange } from "./launchSettingsIo.js";
 import { buildAddEdit, buildDeleteEdit, buildDuplicateEdit, nameExists } from "./launchProfileEdits.js";
 import { getActiveProfileName, setActiveProfileName } from "./launchProfileState.js";
@@ -22,7 +27,7 @@ import {
   editStringField,
   schemeLabel,
 } from "./launchProfileFieldEditors.js";
-import { ASPNETCORE_ENVIRONMENT, editEnvironment, editEnvironmentVariables } from "./launchProfileEnvEditor.js";
+import { editEnvironment, editEnvironmentVariables } from "./launchProfileEnvEditor.js";
 
 async function promptProfileName(
   settings: ParsedLaunchSettings,
