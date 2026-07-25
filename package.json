@@ -1893,6 +1893,7 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src test --max-warnings 0",
     "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "test:coverage": "node --import tsx --test --experimental-test-coverage \"test/**/*.test.ts\"",
     "vscode:prepublish": "npm run package",
     "vsix": "vsce package",
     "sample:reset-coverage": "node scripts/reset-sample-coverage.mjs",
