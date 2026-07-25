@@ -18,6 +18,7 @@ import { buildLaunchConfig, DEBUG_TYPE, NetcoredbgLaunchConfig } from "./debugCo
 import { CONFIG_SECTION, shouldOfferConfigurations } from "./debugSettings.js";
 import { DebuggerStateStore } from "./debugState.js";
 import { AmbiguousFrameworkError, queryProjectOutput } from "./projectOutput.js";
+import { errorText } from "../shared/errorText.js";
 
 /** The subset of a `launch.json` entry we read before filling the rest in. */
 interface PartialConfig extends vscode.DebugConfiguration {
@@ -331,10 +332,6 @@ function browserServerReadyAction(launchUrl: string | undefined): Record<string,
     action.uriFormat = `%s/${launchUrl.replace(/^\/+/, "")}`;
   }
   return action;
-}
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }
 
 /** Relative label used in messages, e.g. "src/App/App.csproj". */

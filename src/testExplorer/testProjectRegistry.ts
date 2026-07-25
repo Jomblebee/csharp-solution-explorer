@@ -17,6 +17,7 @@ import { discoverMtpTests } from "./mtpRunner.js";
 import { isMtpProject } from "./mtpProjectClassifier.js";
 import { findTestProjects } from "./testProjects.js";
 import { TestItemIndex, ensureMethodItem } from "./testItems.js";
+import { errorText } from "../shared/errorText.js";
 
 /** Collapse file-watcher event bursts (a save can fire several) into a single refresh/invalidate. */
 const REFRESH_DEBOUNCE_MS = 300;
@@ -176,8 +177,4 @@ async function readIsMtp(uri: vscode.Uri): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }

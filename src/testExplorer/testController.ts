@@ -24,6 +24,7 @@ import { type TestOutputLevel } from "./outputFilter.js";
 import { runProjectSelection } from "./projectTestRun.js";
 import { TestProjectRegistry } from "./testProjectRegistry.js";
 import { groupIncludesByProject, type Selection } from "./testSelection.js";
+import { errorText } from "../shared/errorText.js";
 
 export function createTestController(context: vscode.ExtensionContext, output: vscode.OutputChannel): vscode.TestController {
   const controller = vscode.tests.createTestController("csharpSolutionExplorer.tests", "C# Tests");
@@ -146,8 +147,4 @@ function readOutputLevel(debug: boolean): TestOutputLevel {
   }
   const configured = vscode.workspace.getConfiguration("csharpSolutionExplorer").get<string>("testExplorer.outputVerbosity");
   return configured === "normal" || configured === "full" ? configured : "summary";
-}
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }
