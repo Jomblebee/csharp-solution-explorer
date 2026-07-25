@@ -1892,7 +1892,7 @@
     "notices:check": "node scripts/generate-third-party-notices.mjs --check",
     "check-types": "tsc --noEmit",
     "lint": "eslint src test --max-warnings 0",
-    "test": "node --import tsx --test test/*.test.ts",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
     "vscode:prepublish": "npm run package",
     "vsix": "vsce package",
     "sample:reset-coverage": "node scripts/reset-sample-coverage.mjs",
