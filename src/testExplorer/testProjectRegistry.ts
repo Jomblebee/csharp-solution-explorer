@@ -11,7 +11,7 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import { isUnderExcludedDir } from "../solutionExplorer/diskScanner.js";
 import type { TargetProject } from "../solutionExplorer/workspaceProjects.js";
-import { debounce, debounceCollect } from "../shared/debounce.js";
+import { debounce, debounceCollect, type Debounced, type DebouncedCollector } from "../shared/debounce.js";
 import { ensureCoveragePackages, type CoverageCandidate } from "./coverageProvisioning.js";
 import { discoverMtpTests } from "./mtpRunner.js";
 import { isMtpProject } from "./mtpProjectClassifier.js";
@@ -33,17 +33,21 @@ export class TestProjectRegistry implements vscode.Disposable {
 
   private readonly projectWatcher: vscode.FileSystemWatcher;
   private readonly sourceWatcher: vscode.FileSystemWatcher;
+  // Held as fields, not locals: disposing the watchers does not stop a trailing call already in
+  // flight, which would then touch the disposed controller. `dispose` cancels both.
+  private readonly debouncedRefresh: Debounced<[]>;
+  private readonly debouncedInvalidate: DebouncedCollector<string>;
 
   constructor(
     private readonly controller: vscode.TestController,
     private readonly output: vscode.OutputChannel,
   ) {
     // A project added/removed/retargeted changes which test projects exist → full re-discovery.
-    const debouncedRefresh = debounce(() => void this.refresh(), REFRESH_DEBOUNCE_MS);
+    this.debouncedRefresh = debounce(() => void this.refresh(), REFRESH_DEBOUNCE_MS);
     this.projectWatcher = vscode.workspace.createFileSystemWatcher("**/*.{csproj,fsproj,vbproj}");
     const onProjectEvent = (uri: vscode.Uri): void => {
       if (!isUnderExcludedDir(uri.fsPath)) {
-        debouncedRefresh();
+        this.debouncedRefresh();
       }
     };
     this.projectWatcher.onDidCreate(onProjectEvent);
@@ -52,13 +56,16 @@ export class TestProjectRegistry implements vscode.Disposable {
 
     // Collecting rather than debouncing: saving two files at once is two events, and a plain debounce
     // would keep only the last path — leaving the other project on a stale discovery.
-    const debouncedInvalidate = debounceCollect((paths: string[]) => this.invalidateForFiles(paths), REFRESH_DEBOUNCE_MS);
+    this.debouncedInvalidate = debounceCollect(
+      (paths: string[]) => this.invalidateForFiles(paths),
+      REFRESH_DEBOUNCE_MS,
+    );
     this.sourceWatcher = vscode.workspace.createFileSystemWatcher("**/*.{cs,fs,vb}");
     // `createFileSystemWatcher` has no exclude argument, so build output has to be dropped here:
     // every build rewrites `obj/**/*.g.cs`, which would throw away the discovery we just built.
     const onSourceEvent = (uri: vscode.Uri): void => {
       if (!isUnderExcludedDir(uri.fsPath)) {
-        debouncedInvalidate(uri.fsPath);
+        this.debouncedInvalidate(uri.fsPath);
       }
     };
     this.sourceWatcher.onDidCreate(onSourceEvent);
@@ -153,6 +160,10 @@ export class TestProjectRegistry implements vscode.Disposable {
   }
 
   dispose(): void {
+    // Cancel before disposing: an event from the last 300 ms still has its trailing call armed, and
+    // it would run against a controller that is already gone.
+    this.debouncedRefresh.cancel();
+    this.debouncedInvalidate.cancel();
     this.projectWatcher.dispose();
     this.sourceWatcher.dispose();
   }

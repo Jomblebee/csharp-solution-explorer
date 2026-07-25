@@ -34,6 +34,29 @@ describe("debounce", () => {
 
     assert.deepEqual(calls, [1, 2]);
   });
+
+  it("drops the trailing call when cancelled inside the window", async () => {
+    const calls: number[] = [];
+    const fn = debounce((n: number) => calls.push(n), WINDOW_MS);
+
+    fn(1);
+    fn.cancel();
+    await settle();
+
+    assert.deepEqual(calls, []);
+  });
+
+  it("re-arms after a cancel", async () => {
+    const calls: number[] = [];
+    const fn = debounce((n: number) => calls.push(n), WINDOW_MS);
+
+    fn(1);
+    fn.cancel();
+    fn(2);
+    await settle();
+
+    assert.deepEqual(calls, [2]);
+  });
 });
 
 describe("debounceCollect", () => {
@@ -70,6 +93,29 @@ describe("debounceCollect", () => {
     await settle();
 
     assert.deepEqual(batches, [["a"], ["b"]]);
+  });
+
+  it("drops the pending batch when cancelled inside the window", async () => {
+    const batches: string[][] = [];
+    const fn = debounceCollect((items: string[]) => batches.push(items), WINDOW_MS);
+
+    fn("/repo/A/TaskTests.cs");
+    fn.cancel();
+    await settle();
+
+    assert.deepEqual(batches, []);
+  });
+
+  it("does not carry cancelled items into the next batch", async () => {
+    const batches: string[][] = [];
+    const fn = debounceCollect((items: string[]) => batches.push(items), WINDOW_MS);
+
+    fn("/repo/A/TaskTests.cs");
+    fn.cancel();
+    fn("/repo/B/ProjectTests.cs");
+    await settle();
+
+    assert.deepEqual(batches, [["/repo/B/ProjectTests.cs"]]);
   });
 
   it("does not call back when nothing happened", async () => {
