@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { basenameWithoutExtension, SolutionTreeDataProvider } from "../tree/solutionTreeDataProvider.js";
+import { basenameWithoutExtension } from "../fsPathUtils.js";
+import { SolutionTreeDataProvider } from "../tree/solutionTreeDataProvider.js";
 import {
   CSHARP_PROJECT_TYPE_GUID,
   parseSolutionConfigurations,
