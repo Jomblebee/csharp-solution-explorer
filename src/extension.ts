@@ -2,6 +2,11 @@ import * as vscode from "vscode";
 import { activateDebugger } from "./debug/activate.js";
 import { activateLanguageServer } from "./languageServer/activate.js";
 import { NUGET_MANAGER_VIEW_TYPE, NugetManagerPanel } from "./nuget/nugetManagerPanel.js";
+import { OPTIONS_VIEW_TYPE, OptionsPanel } from "./options/optionsPanel.js";
+import {
+  PROJECT_PROPERTIES_VIEW_TYPE,
+  ProjectPropertiesPanel,
+} from "./solutionExplorer/projectProperties/projectPropertiesPanel.js";
 import { activateTestExplorer } from "./testExplorer/activate.js";
 import { registerSolutionExplorerCommands } from "./solutionExplorer/commands/commands.js";
 import { checkDotnetSdk } from "./solutionExplorer/dotnetSdkNotifier.js";
@@ -40,6 +45,18 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.registerWebviewPanelSerializer(NUGET_MANAGER_VIEW_TYPE, {
       deserializeWebviewPanel: (panel, state: unknown) =>
         NugetManagerPanel.revive(panel, context, provider, state as { solutionFsPath?: string } | undefined),
+    }),
+    // Bring a Project Properties panel back to its project, or close it if that project is gone.
+    vscode.window.registerWebviewPanelSerializer(PROJECT_PROPERTIES_VIEW_TYPE, {
+      deserializeWebviewPanel: (panel, state: unknown) =>
+        ProjectPropertiesPanel.revive(panel, context, state as { projectFsPath?: string; framework?: string } | undefined),
+    }),
+    // Restore the Options panel on the scope tab the user left it on.
+    vscode.window.registerWebviewPanelSerializer(OPTIONS_VIEW_TYPE, {
+      deserializeWebviewPanel: (panel, state: unknown) => {
+        OptionsPanel.revive(panel, context, state as { scope?: "user" | "workspace" } | undefined);
+        return Promise.resolve();
+      },
     }),
   );
 

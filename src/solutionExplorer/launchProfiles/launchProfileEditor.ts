@@ -18,6 +18,7 @@ import { persist, readLaunchSettings, writeFieldChange } from "./launchSettingsI
 import { buildAddEdit, buildDeleteEdit, buildDuplicateEdit, nameExists } from "./launchProfileEdits.js";
 import { getActiveProfileName, setActiveProfileName } from "./launchProfileState.js";
 import { TargetProject } from "../workspaceProjects.js";
+import { OPEN_PROJECT_PROPERTIES_COMMAND_ID } from "../types.js";
 import { isWebSdk, parseSdkAttribute } from "../parsers/csprojReader.js";
 import { parseApplicationUrl } from "./launchProfileUrls.js";
 import {
@@ -123,7 +124,8 @@ type FieldAction =
   | "arguments"
   | "command"
   | "advanced"
-  | "rename";
+  | "rename"
+  | "properties";
 
 const SEPARATOR: FieldItem = { label: "", kind: vscode.QuickPickItemKind.Separator };
 
@@ -167,6 +169,8 @@ function fieldItems(profile: LaunchProfile, isWeb: boolean): FieldItem[] {
     SEPARATOR,
     { action: "advanced", label: "$(gear) Advanced..." },
     { action: "rename", label: "$(pencil) Rename profile" },
+    // The panel shows every field of every profile at once; this menu is the quick path, not the only one.
+    { action: "properties", label: "$(settings-gear) Open Project Properties..." },
   );
   return items;
 }
@@ -192,6 +196,11 @@ export async function editProfile(project: TargetProject, initialName: string): 
       return;
     }
 
+    if (pick.action === "properties") {
+      await vscode.commands.executeCommand(OPEN_PROJECT_PROPERTIES_COMMAND_ID, project.uri);
+      return;
+    }
+
     const next = await applyFieldEdit(project, settings, profile, pick.action);
     if (next) {
       name = next;
@@ -203,7 +212,7 @@ async function applyFieldEdit(
   project: TargetProject,
   settings: ParsedLaunchSettings,
   profile: LaunchProfile,
-  action: FieldAction,
+  action: Exclude<FieldAction, "properties">,
 ): Promise<string | undefined> {
   switch (action) {
     case "address":
