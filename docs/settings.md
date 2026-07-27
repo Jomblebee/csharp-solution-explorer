@@ -46,4 +46,11 @@ All template settings support the following variables:
 
 Clearing a template setting causes an error to be shown instead of creating the file, which lets you disable individual item types. The default values can be restored with the reset icon in VS Code Settings.
 
-The gear icon in the view title opens the extension settings directly.
+## Two ways to edit these
+
+The view title bar has two entries:
+
+- **Options...** (`$(settings)`) opens the **Options** panel — an editor tab in the spirit of Visual Studio's Options dialog, with the settings grouped into cards, a **User** / **Workspace** scope switcher, a search box, and a Reset button per setting. Its content is generated from this extension's manifest, so it always lists exactly the settings above.
+- **Settings** (`$(gear)`) opens VS Code's built-in Settings editor, filtered to this extension.
+
+Both write the same `settings.json`, and the Options panel updates live when a setting changes elsewhere. Use the built-in editor for what the panel deliberately does not cover: workspace-folder scope, per-language overrides, and Settings Sync. The Options panel's toolbar links straight to it, and to the underlying `settings.json`.

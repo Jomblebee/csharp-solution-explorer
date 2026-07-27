@@ -1,0 +1,118 @@
+/* Project Properties layout only — shell, cards and controls come from media/shared/panel.css. */
+
+.panel-content {
+  padding-top: 16px;
+}
+
+.framework-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.framework-picker select {
+  min-width: 120px;
+}
+
+.text-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* A locked row still has to be readable — it is showing a real value, just not an editable one. */
+.field.locked .field-control {
+  opacity: 0.85;
+}
+
+.field-note.evaluated {
+  font-family: var(--vscode-editor-font-family);
+  opacity: 0.7;
+}
+
+/* ---- Launch profiles ---- */
+
+.profile {
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.profile:last-child {
+  border-bottom: none;
+}
+
+.profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+/* The default triangle is replaced by one that follows the theme's foreground colour. */
+.profile-summary::-webkit-details-marker {
+  display: none;
+}
+
+.profile-summary::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 5px solid var(--vscode-foreground);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  opacity: 0.7;
+  transition: transform 80ms linear;
+}
+
+.profile[open] > .profile-summary::before {
+  transform: rotate(90deg);
+}
+
+.profile-body {
+  padding: 0 0 12px 15px;
+}
+
+.profile-field {
+  padding: 8px 0;
+  border-bottom: none;
+}
+
+.profile-field .field-head {
+  margin-bottom: 2px;
+}
+
+.profile-field textarea {
+  min-height: 70px;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+button.action.danger {
+  color: var(--vscode-errorForeground, var(--vscode-editorError-foreground));
+}
+
+/* Origin badges. Declared is the only state the panel owns, so it is the only accented one. */
+.badge.origin-declared {
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+.badge.origin-inherited,
+.badge.origin-default {
+  background: transparent;
+  color: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.badge.origin-conditioned,
+.badge.origin-unknown {
+  background: var(--vscode-inputValidation-warningBackground, transparent);
+  color: var(--vscode-editorWarning-foreground, var(--vscode-foreground));
+  border: 1px solid var(--vscode-editorWarning-foreground, var(--vscode-panel-border));
+}

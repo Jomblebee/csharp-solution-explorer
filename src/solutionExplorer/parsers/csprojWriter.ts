@@ -2,19 +2,15 @@
  * Text-based editing of a project file's `<ProjectReference>` items, mirroring the line-oriented,
  * line-ending-preserving approach of slnWriter/slnxWriter (no XML DOM). Paths are written in the
  * Windows-style backslash form Visual Studio and the samples use; removal matches slash-insensitively.
+ *
+ * Line-model helpers are shared with csprojPropertyWriter via xmlTextLines.
  */
+
+import { detectNewline, leadingIndent } from "./xmlTextLines.js";
 
 const PROJECT_REFERENCE_LINE_PATTERN = /^\s*<ProjectReference\b[^>]*\/?>/i;
 const INCLUDE_ATTR_PATTERN = /Include\s*=\s*"([^"]*)"/i;
 const ITEM_GROUP_OPEN_PATTERN = /^\s*<ItemGroup\b[^>]*>\s*$/i;
-
-function detectNewline(text: string): string {
-  return text.includes("\r\n") ? "\r\n" : "\n";
-}
-
-function leadingIndent(line: string): string {
-  return /^(\s*)/.exec(line)?.[1] ?? "";
-}
 
 function normalizePath(p: string): string {
   return p.replace(/\\/g, "/").toLowerCase();

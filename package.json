@@ -2,7 +2,7 @@
   "name": "jomblebee-csharp-solution-explorer",
   "displayName": "C# Solution Explorer",
   "description": "A C# Solution Explorer for VS Code and Open VSX editors, with an optional bundled Roslyn language server for IntelliSense — no proprietary extensions required.",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "publisher": "jomblebee",
   "license": "MIT",
   "repository": {
@@ -138,6 +138,15 @@
               "Error",
               "Critical",
               "None"
+            ],
+            "enumDescriptions": [
+              "Everything the server can emit, including per-request tracing. Very noisy and slow; use only when reproducing a bug for a report.",
+              "Diagnostic detail about what the server is doing, without the per-request trace. Noisy for everyday use.",
+              "Startup, project loading and other lifecycle messages, plus warnings and errors (default).",
+              "Only problems the server recovered from, plus errors.",
+              "Only failures — a request or a project that did not work.",
+              "Only failures that take the server down.",
+              "No server log at all. The output channel stays empty, so nothing is left to attach to a bug report."
             ],
             "default": "Information",
             "description": "Log verbosity passed to the C# language server (--logLevel)."
@@ -1207,7 +1216,9 @@
         {
           "id": "csharpSolutionExplorer.view",
           "name": "Solution Explorer"
-        },
+        }
+      ],
+      "explorer": [
         {
           "id": "csharpSolutionExplorer.languageServerView",
           "name": "C# Language Server",
@@ -1460,6 +1471,18 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.openOptions",
+        "title": "Options...",
+        "icon": "$(settings)",
+        "category": "C# Solution Explorer"
+      },
+      {
+        "command": "csharpSolutionExplorer.openProjectProperties",
+        "title": "Properties",
+        "icon": "$(settings-gear)",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.revealInTree",
         "title": "Show in Solution Explorer",
         "category": "C# Solution Explorer"
@@ -1560,6 +1583,11 @@
           "command": "csharpSolutionExplorer.openPackageManager",
           "when": "view == csharpSolutionExplorer.view",
           "group": "navigation@50"
+        },
+        {
+          "command": "csharpSolutionExplorer.openOptions",
+          "when": "view == csharpSolutionExplorer.view",
+          "group": "navigation@98"
         },
         {
           "command": "csharpSolutionExplorer.openSettings",
@@ -1756,6 +1784,11 @@
           "command": "csharpSolutionExplorer.openProjectFile",
           "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
           "group": "0_open"
+        },
+        {
+          "command": "csharpSolutionExplorer.openProjectProperties",
+          "when": "view == csharpSolutionExplorer.view && viewItem =~ /^csharpSolutionExplorer\\.project(\\.nested)?$/",
+          "group": "9_properties"
         },
         {
           "command": "csharpSolutionExplorer.openInTerminal",

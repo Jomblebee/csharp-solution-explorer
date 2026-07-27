@@ -40,6 +40,8 @@
 | Open in Terminal         | Solution, Project, Folder              |
 | Show in Finder/Explorer  | Solution, Project, Folder, File        |
 | Show in Solution Explorer| Editor tab, Command Palette            |
+| Properties               | Project                                |
+| Options...               | View title bar, Command Palette        |
 
 ## Command details
 
@@ -56,6 +58,8 @@
 - **Reveal in Finder / File Explorer**: opens the selected item in the operating system's file manager (Finder on macOS, File Explorer on Windows, the default file manager on Linux). The menu label matches your platform.
 - **Show in Solution Explorer**: reveals and selects a file in the tree — from the editor tab's context menu or the Command Palette.
 - **Open in Editor**: opens the raw `.sln`/`.slnx` (on a solution) or `.csproj` (on a project) file in the editor. The project's own `.csproj` is not listed as a child file — use this command to open it.
+- **Properties**: opens the project's csproj properties, package metadata and launch profiles as an editor tab — see [Project Properties](project-properties.md).
+- **Options...**: opens this extension's settings as an editor tab, grouped into cards with a User/Workspace switcher, search and per-setting reset. The gear icon next to it opens VS Code's built-in Settings editor instead — see [Settings](settings.md).
 
 ## Drag and drop
 

@@ -20,7 +20,9 @@ import {
   NEW_FILE_COMMAND_ID,
   NEW_SOLUTION_FOLDER_COMMAND_ID,
   OPEN_FILE_COMMAND_ID,
+  OPEN_OPTIONS_COMMAND_ID,
   OPEN_PROJECT_FILE_COMMAND_ID,
+  OPEN_PROJECT_PROPERTIES_COMMAND_ID,
   OPEN_SETTINGS_COMMAND_ID,
   OPEN_SOLUTION_FILE_COMMAND_ID,
   REFRESH_COMMAND_ID,
@@ -103,6 +105,8 @@ import {
 } from "../launchProfiles/launchProfileCommands.js";
 import { copyToClipboard, paste } from "./clipboardCommands.js";
 import { openInTerminal, revealInOS, revealInTree } from "./revealCommands.js";
+import { OptionsPanel } from "../../options/optionsPanel.js";
+import { openProjectProperties } from "./propertiesCommands.js";
 
 export function registerSolutionExplorerCommands(
   context: vscode.ExtensionContext,
@@ -207,6 +211,10 @@ export function registerSolutionExplorerCommands(
     ),
     vscode.commands.registerCommand(OPEN_SETTINGS_COMMAND_ID, () =>
       vscode.commands.executeCommand("workbench.action.openSettings", "@ext:jomblebee.jomblebee-csharp-solution-explorer"),
+    ),
+    vscode.commands.registerCommand(OPEN_OPTIONS_COMMAND_ID, () => OptionsPanel.createOrShow(context)),
+    vscode.commands.registerCommand(OPEN_PROJECT_PROPERTIES_COMMAND_ID, (item: unknown) =>
+      withErrorHandling(() => openProjectProperties(item, context)),
     ),
     vscode.commands.registerCommand(REVEAL_IN_TREE_COMMAND_ID, (uri?: vscode.Uri) =>
       withErrorHandling(() => revealInTree(uri, provider, treeView)),

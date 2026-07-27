@@ -6,8 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-07-27
+
+### Added
+
+- **Project Properties panel**: **Properties** on a project node opens its `.csproj` properties, NuGet
+  package metadata and `launchSettings.json` profiles as an editor tab, in the spirit of Visual Studio's
+  project pages. Every property says where its value comes from — declared in this project, inherited
+  from a `Directory.Build.props`, or the SDK's default — and an inherited value is never silently
+  overwritten: it offers an explicit **Override here** instead. Writes replace only the text that has to
+  change, so indentation, comments and line endings survive and a change is a one-line diff; when the
+  project file is open in an editor the change goes through the editor, so unsaved work is not discarded
+  and `Ctrl+Z` undoes it. Anything text editing cannot do safely — a property under a
+  `Condition`, a multi-line or CDATA value — is refused with a link into the file rather than guessed at.
+  See [Project Properties](docs/project-properties.md).
+- **Options panel**: a new **Options...** entry in the view title bar opens this extension's settings
+  as an editor tab, in the spirit of Visual Studio's Options dialog — grouped into cards with a left
+  navigation, a **User** / **Workspace** scope switcher, a search box, a per-setting Reset, and a
+  marker showing which settings you have changed. It is generated from the extension manifest, so it
+  always lists exactly the contributed settings, and it updates live when a setting changes
+  elsewhere. Settings with a fixed set of values open a dropdown that explains every value in place,
+  the way VS Code's own Settings editor does, so picking one does not mean guessing what it means.
+  Setting a value back to what it would be anyway removes the entry instead of pinning it, so the
+  changed marker and Reset clear themselves without a second click.
+  VS Code's built-in Settings editor stays available behind the gear icon and behind the
+  panel's own toolbar links, for the things the panel does not cover (workspace-folder scope,
+  per-language overrides, Settings Sync).
+
 ### Changed
 
+- **The view's toolbar moved up into the sidebar title.** Refresh, Manage NuGet Packages, Options and
+  Settings now sit in the **C# Solution Explorer** title bar itself rather than in a second row below
+  it, so they are reachable without hunting for the tree's own header. VS Code only does this for a
+  container holding a single view, so the **C# Language Server** status view moved to the bottom of the
+  built-in File Explorer (still collapsed by default, same actions, same view). Nothing else changed
+  about it.
 - **VS Code 1.91 is now the minimum** (was 1.88). The bundled language client moved to
   `vscode-languageclient` 10, which requires it. The "C# Language Server" output channel is now a
   log channel, so its entries carry a timestamp and a level and can be filtered with VS Code's own
