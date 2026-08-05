@@ -72,8 +72,8 @@ full. Development-only dependencies are not listed because they are never shippe
 | Package | Version | Licence |
 | --- | --- | --- |
 | [`balanced-match`](https://github.com/juliangruber/balanced-match) | 4.0.4 | MIT |
-| [`brace-expansion`](https://github.com/juliangruber/brace-expansion) | 5.0.6 | MIT |
-| [`minimatch`](https://github.com/isaacs/minimatch) | 10.2.5 | BlueOak-1.0.0 |
+| [`brace-expansion`](https://github.com/juliangruber/brace-expansion) | 5.0.9 | MIT |
+| [`minimatch`](https://github.com/isaacs/minimatch) | 10.2.6 | BlueOak-1.0.0 |
 | [`pend`](https://github.com/andrewrk/node-pend) | 1.2.0 | MIT |
 | [`semver`](https://github.com/npm/node-semver) | 7.8.5 | ISC |
 | [`vscode-jsonrpc`](https://github.com/Microsoft/vscode-languageserver-node) | 9.0.1 | MIT |
@@ -113,7 +113,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### `brace-expansion` 5.0.6 — MIT
+### `brace-expansion` 5.0.9 — MIT
 
 Transitive dependency.
 
@@ -143,7 +143,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### `minimatch` 10.2.5 — BlueOak-1.0.0
+### `minimatch` 10.2.6 — BlueOak-1.0.0
 
 Used for glob matching for solution/project file filters.
 
