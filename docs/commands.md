@@ -42,6 +42,7 @@
 | Show in Solution Explorer| Editor tab, Command Palette            |
 | Properties               | Project                                |
 | Options...               | View title bar, Command Palette        |
+| Show Test Run Dashboard  | Command Palette                        |
 
 ## Command details
 
@@ -59,6 +60,10 @@
 - **Show in Solution Explorer**: reveals and selects a file in the tree — from the editor tab's context menu or the Command Palette.
 - **Open in Editor**: opens the raw `.sln`/`.slnx` (on a solution) or `.csproj` (on a project) file in the editor. The project's own `.csproj` is not listed as a child file — use this command to open it.
 - **Properties**: opens the project's csproj properties, package metadata and launch profiles as an editor tab — see [Project Properties](project-properties.md).
+- **Show Test Run Dashboard**: opens the live view of the current or last test run — progress, time
+  estimate, failures and the slowest tests. It opens on its own when a run starts unless
+  `csharpSolutionExplorer.testExplorer.dashboard` says otherwise; the command exists for reopening it
+  after the tab was closed. See [Test Explorer](test-explorer.md).
 - **Options...**: opens this extension's settings as an editor tab, grouped into cards with a User/Workspace switcher, search and per-setting reset. The gear icon next to it opens VS Code's built-in Settings editor instead — see [Settings](settings.md).
 
 ## Drag and drop

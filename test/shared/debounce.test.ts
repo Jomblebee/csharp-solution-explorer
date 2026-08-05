@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { debounce, debounceCollect } from "../../src/shared/debounce.js";
+import { debounce, debounceCollect, throttle } from "../../src/shared/debounce.js";
 
 const WINDOW_MS = 10;
 
@@ -124,5 +124,83 @@ describe("debounceCollect", () => {
 
     await settle();
     assert.deepEqual(batches, []);
+  });
+});
+
+describe("throttle", () => {
+  it("runs the first call at once, so a live view starts live", () => {
+    const calls: number[] = [];
+    const fn = throttle((n: number) => calls.push(n), WINDOW_MS);
+
+    fn(1);
+    assert.deepEqual(calls, [1]);
+  });
+
+  it("collapses the rest of a burst into one trailing call", async () => {
+    const calls: number[] = [];
+    const fn = throttle((n: number) => calls.push(n), WINDOW_MS);
+
+    fn(1);
+    fn(2);
+    fn(3);
+    assert.deepEqual(calls, [1]);
+
+    await settle();
+    assert.deepEqual(calls, [1, 3]);
+  });
+
+  it("keeps firing under a stream that never goes quiet, unlike a debounce", async () => {
+    const calls: number[] = [];
+    const fn = throttle((n: number) => calls.push(n), WINDOW_MS);
+    const timer = setInterval(() => fn(calls.length), 1);
+
+    await settle();
+    clearInterval(timer);
+    assert.ok(calls.length >= 2, `expected repeated calls, got ${calls.length}`);
+  });
+
+  it("drops the pending trailing call when cancelled", async () => {
+    const calls: number[] = [];
+    const fn = throttle((n: number) => calls.push(n), WINDOW_MS);
+
+    fn(1);
+    fn(2);
+    fn.cancel();
+    await settle();
+
+    assert.deepEqual(calls, [1]);
+  });
+
+  it("re-arms after a cancel", async () => {
+    const calls: number[] = [];
+    const fn = throttle((n: number) => calls.push(n), WINDOW_MS);
+
+    fn(1);
+    fn.cancel();
+    fn(2);
+    assert.deepEqual(calls, [1, 2]);
+    await settle();
+  });
+
+  it("flushes a pending call, so the end of a stream still lands", () => {
+    const calls: number[] = [];
+    const fn = throttle((n: number) => calls.push(n), WINDOW_MS);
+
+    fn(1);
+    fn(2);
+    fn.flush();
+
+    assert.deepEqual(calls, [1, 2]);
+  });
+
+  it("flushing with nothing pending does nothing", () => {
+    const calls: number[] = [];
+    const fn = throttle((n: number) => calls.push(n), WINDOW_MS);
+
+    fn(1);
+    fn.flush();
+    fn.flush();
+
+    assert.deepEqual(calls, [1]);
   });
 });

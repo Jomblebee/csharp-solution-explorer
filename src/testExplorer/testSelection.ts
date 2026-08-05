@@ -39,6 +39,17 @@ export function groupIncludesByProject(
   return map;
 }
 
+/**
+ * The method-item ids discovered below a project node, or an empty list when nothing has been
+ * discovered yet. Unlike `leafIds` the node itself never counts: a project with no children is a
+ * project whose tests are still unknown, not a project holding one test.
+ */
+export function discoveredLeafIds(project: vscode.TestItem): string[] {
+  const children: vscode.TestItem[] = [];
+  project.children.forEach((child) => children.push(child));
+  return children.flatMap(leafIds);
+}
+
 /** The method-item ids under an item (itself, if it is already a leaf). */
 function leafIds(item: vscode.TestItem): string[] {
   const children: vscode.TestItem[] = [];
