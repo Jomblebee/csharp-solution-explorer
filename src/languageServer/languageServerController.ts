@@ -165,7 +165,7 @@ export class LanguageServerController {
       const razorLaunch = razor.kind === "loaded" ? razor.launch : undefined;
       const { client, razorLoaded } = await this.startClient(server, logLevel, logDir, razorLaunch);
 
-      registerRoslynProtocol(client, this.state);
+      registerRoslynProtocol(client, this.state, this.output);
       this.applyRazorState(razor, razorLoaded, client);
       this.state.update({ phase: "running", activity: "Initializing projects…" });
       await this.setRunningContext(true);
