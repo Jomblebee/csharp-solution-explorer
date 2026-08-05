@@ -25,6 +25,8 @@
 | `csharpSolutionExplorer.languageServer.serverPath` | *(empty)*     | Path to a locally installed server (skips the download) — for offline/enterprise use.              |
 | `csharpSolutionExplorer.languageServer.logLevel`   | `Information` | Log verbosity passed to the language server.                                                       |
 | `csharpSolutionExplorer.languageServer.razor.enabled` | `true`     | Razor (`.razor`/`.cshtml`) language features via cohosting inside the C# server (older pinned server falls back to highlighting).       |
+| `csharpSolutionExplorer.build.reuseMsBuildNodes`   | `false`       | Let MSBuild worker nodes outlive the build that started them (the SDK default). Off here: an unreused pool leaves one process per core behind, each holding 150-250 MB, so an edit/build/test loop can accumulate gigabytes. See [MSBuild worker nodes](#msbuild-worker-nodes). |
+| `csharpSolutionExplorer.build.maxCpuCount`         | `0`           | Cap on projects built in parallel (`-m:N`) for builds started from the Solution Explorer; `0` uses MSBuild's default of one node per CPU core. |
 | `csharpSolutionExplorer.templates.class`           | *(see below)* | Template for new C# class files.                                                                   |
 | `csharpSolutionExplorer.templates.interface`       | *(see below)* | Template for new C# interface files.                                                               |
 | `csharpSolutionExplorer.templates.record`          | *(see below)* | Template for new C# record files.                                                                  |
@@ -45,6 +47,22 @@ All template settings support the following variables:
 | `${cursor}`    | Initial cursor position after the file is opened    |
 
 Clearing a template setting causes an error to be shown instead of creating the file, which lets you disable individual item types. The default values can be restored with the reset icon in VS Code Settings.
+
+## MSBuild worker nodes
+
+Every `dotnet build`, `dotnet test` and MSBuild property evaluation starts up to one MSBuild worker node per CPU core. With node reuse on — the .NET SDK default — those nodes deliberately stay alive after the command finishes, waiting for a later build to pick them up, and they are re-parented away from the process that started them. Each holds whatever its last project needed, commonly 150-250 MB.
+
+That trade pays off in a terminal, where the next `dotnet build` usually lands on the same pool. It pays off much less in an editor, where builds, test runs and background property evaluations interleave: pools that never get reused simply sit there. On a 20-core machine a single solution build can leave around 19 processes behind, and a working session's worth reaches tens of gigabytes of resident memory.
+
+So this extension passes `MSBUILDDISABLENODEREUSE=1` to every `dotnet` process it starts — builds, test runs, `-getProperty` evaluations, the terminals it opens for Build/Rebuild/Test/Run, and the Roslyn language server (whose design-time builds spawn nodes of their own). The cost is roughly a second of node startup per build. Set `csharpSolutionExplorer.build.reuseMsBuildNodes` to `true` to get the SDK default back, and `csharpSolutionExplorer.build.maxCpuCount` to cap how many nodes a build may start in the first place.
+
+Nodes already left behind by earlier builds are not affected by the setting. Clear them with:
+
+```sh
+dotnet build-server shutdown
+```
+
+This also stops the Roslyn compiler server (`VBCSCompiler`) and the Razor server. Do not run it while a build is in progress — it will fail that build.
 
 ## Two ways to edit these
 

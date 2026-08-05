@@ -5,17 +5,28 @@ import { resolveActiveProfileName } from "../launchProfiles/launchProfileCommand
 import { projectFromUri, promptForStartupProject, TargetProject } from "../workspaceProjects.js";
 import { getStartupProjectFsPath, NO_PROFILE } from "../launchProfiles/launchProfileState.js";
 import { ProjectTreeItem, SolutionTreeItem } from "../tree/treeItems.js";
+import { maxCpuArgs, msbuildNodeEnv } from "../../shared/msbuild.js";
 
 // Build/Rebuild/Test/Restore/Clean accept both a project (.csproj) and a solution (.sln/.slnx) path;
 // both tree items carry `info.uri`.
 export function buildTarget(item: ProjectTreeItem | SolutionTreeItem): void {
-  runInTerminal("C# Solution Explorer: Build", `dotnet build "${item.info.uri.fsPath}"`);
+  runInTerminal("C# Solution Explorer: Build", `dotnet build "${item.info.uri.fsPath}"${cpuSwitch()}`);
 }
 
 // `--no-incremental` forces a full recompile in a single command, so it works in every shell
 // (cmd, PowerShell 5/7, bash, zsh) unlike a chained `clean && build`.
 export function rebuildTarget(item: ProjectTreeItem | SolutionTreeItem): void {
-  runInTerminal("C# Solution Explorer: Build", `dotnet build "${item.info.uri.fsPath}" --no-incremental`);
+  runInTerminal(
+    "C# Solution Explorer: Build",
+    `dotnet build "${item.info.uri.fsPath}" --no-incremental${cpuSwitch()}`,
+  );
+}
+
+/** `-m:N` (as a command-line suffix) when the parallelism cap is set, otherwise nothing. */
+function cpuSwitch(): string {
+  return maxCpuArgs()
+    .map((arg) => ` ${arg}`)
+    .join("");
 }
 
 export function testTarget(item: ProjectTreeItem | SolutionTreeItem): void {
@@ -93,7 +104,12 @@ export function cleanTarget(item: ProjectTreeItem | SolutionTreeItem): void {
 }
 
 function runInTerminal(name: string, command: string): void {
-  const terminal = vscode.window.terminals.find((t) => t.name === name) ?? vscode.window.createTerminal(name);
+  // A terminal's environment is fixed at creation, so the node-reuse override has to be passed here
+  // rather than prefixed onto `command` — which would have to be spelled differently per shell. A
+  // terminal created before the setting changed keeps the old value until it is closed.
+  const terminal =
+    vscode.window.terminals.find((t) => t.name === name) ??
+    vscode.window.createTerminal({ name, env: msbuildNodeEnv() });
   terminal.show();
   terminal.sendText(command);
 }

@@ -7,6 +7,7 @@ import {
   PROJECT_PROPERTIES_VIEW_TYPE,
   ProjectPropertiesPanel,
 } from "./solutionExplorer/projectProperties/projectPropertiesPanel.js";
+import { configureMsbuild } from "./shared/msbuild.js";
 import { activateTestExplorer } from "./testExplorer/activate.js";
 import { registerSolutionExplorerCommands } from "./solutionExplorer/commands/commands.js";
 import { checkDotnetSdk } from "./solutionExplorer/dotnetSdkNotifier.js";
@@ -21,6 +22,10 @@ import { SolutionTreeDataProvider } from "./solutionExplorer/tree/solutionTreeDa
 import { SolutionExplorerTreeItem } from "./solutionExplorer/tree/treeItems.js";
 
 export function activate(context: vscode.ExtensionContext): void {
+  // Must precede everything that spawns `dotnet`: the build settings decide the environment those
+  // processes get (see shared/msbuild.ts for why worker-node reuse is off by default).
+  registerBuildSettings(context);
+
   // Must precede the provider: it reads the startup project synchronously while building nodes,
   // so hydrating later would leave the first render undecorated.
   initLaunchProfileState(context);
@@ -74,6 +79,29 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Non-blocking, best-effort: warn once at startup if no SDK matching the solution's needs is installed.
   void checkDotnetSdk();
+}
+
+/**
+ * Pushes the `csharpSolutionExplorer.build.*` settings into the (vscode-free) msbuild module and
+ * keeps them current. Re-read on every change rather than per spawn, so the spawn sites stay
+ * synchronous and testable without a vscode stub.
+ */
+function registerBuildSettings(context: vscode.ExtensionContext): void {
+  const apply = (): void => {
+    const config = vscode.workspace.getConfiguration("csharpSolutionExplorer.build");
+    configureMsbuild({
+      reuseNodes: config.get<boolean>("reuseMsBuildNodes", false),
+      maxCpuCount: config.get<number>("maxCpuCount", 0),
+    });
+  };
+  apply();
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration("csharpSolutionExplorer.build")) {
+        apply();
+      }
+    }),
+  );
 }
 
 /** Selects the active editor's file in the tree when `csharpSolutionExplorer.autoReveal` is on. */

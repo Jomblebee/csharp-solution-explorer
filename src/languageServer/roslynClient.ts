@@ -13,6 +13,7 @@ import {
   ServerOptions,
 } from "vscode-languageclient/node";
 import { restore } from "../solutionExplorer/dotnetCli.js";
+import { msbuildEnv } from "../shared/msbuild.js";
 import { ResolvedServer } from "./roslynDownloader.js";
 import { registerAttachDebuggerHandler, registerRunTestsCommand } from "./runTests.js";
 import { decideHandshake, LoadMode } from "./roslynHandshake.js";
@@ -41,7 +42,9 @@ export function createLanguageClient(
   razor?: RazorLaunch,
 ): LanguageClient {
   const launch = buildServerLaunch(server, logLevel, logDir, razor);
-  const executable = { command: launch.command, args: launch.args };
+  // Roslyn's build host runs design-time builds, which start MSBuild worker nodes of their own —
+  // same lifetime problem as our `dotnet build`, so the server inherits the same policy.
+  const executable = { command: launch.command, args: launch.args, options: { env: msbuildEnv() } };
   const serverOptions: ServerOptions = { run: executable, debug: executable };
   const documentSelector = [{ language: "csharp" }];
   const clientOptions: LanguageClientOptions = {

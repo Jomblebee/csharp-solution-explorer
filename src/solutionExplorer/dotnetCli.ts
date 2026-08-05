@@ -1,6 +1,7 @@
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import type { Reporter } from "../shared/httpDownload.js";
+import { maxCpuArgs, msbuildEnv } from "../shared/msbuild.js";
 import { computeProgress, countProjectGraph, createBuildProgressState, parseBuildLine } from "./buildProgress.js";
 
 const execFileAsync = promisify(execFile);
@@ -13,7 +14,7 @@ const execFileAsync = promisify(execFile);
  */
 async function runDotnet(args: string[]): Promise<void> {
   try {
-    await execFileAsync("dotnet", args, { windowsHide: true });
+    await execFileAsync("dotnet", args, { windowsHide: true, env: msbuildEnv() });
   } catch (err) {
     if ((err as { code?: unknown }).code === "ENOENT") {
       throw new Error("The 'dotnet' CLI was not found on PATH. Install the .NET SDK to manage packages.");
@@ -43,7 +44,7 @@ export async function build(
   targetFsPath: string,
   opts: { framework?: string; configuration?: string; onProgress?: Reporter } = {},
 ): Promise<BuildResult> {
-  const args = ["build", targetFsPath, "-c", opts.configuration ?? "Debug"];
+  const args = ["build", targetFsPath, "-c", opts.configuration ?? "Debug", ...maxCpuArgs()];
   if (opts.framework) {
     args.push("-f", opts.framework);
   }
@@ -53,7 +54,7 @@ export async function build(
   opts.onProgress?.("Building…", 0);
 
   return new Promise<BuildResult>((resolve, reject) => {
-    const child = spawn("dotnet", args, { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn("dotnet", args, { windowsHide: true, stdio: ["ignore", "pipe", "pipe"], env: msbuildEnv() });
     let output = "";
     let stdoutRest = "";
 

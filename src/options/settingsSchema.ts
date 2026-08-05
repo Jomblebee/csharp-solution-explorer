@@ -63,6 +63,8 @@ const LABEL_OVERRIDES: Record<string, string> = {
   "csharpSolutionExplorer.debug.f5Console": "F5 console",
   "csharpSolutionExplorer.debug.ignoreLaunchJson": "Ignore launch.json",
   "csharpSolutionExplorer.debug.externalTerminalAttachDelayMs": "External terminal attach delay (ms)",
+  "csharpSolutionExplorer.build.reuseMsBuildNodes": "Reuse MSBuild worker nodes",
+  "csharpSolutionExplorer.build.maxCpuCount": "Maximum parallel projects",
 };
 
 /** Words the camelCase split would otherwise title-case into something wrong. */
