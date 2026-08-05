@@ -15,7 +15,7 @@ import { ProjectNode, SolutionFolderNode, SolutionTreeNode } from "./slnParser.j
  */
 export function nestPathBasedFolders(nodes: SolutionTreeNode[]): SolutionTreeNode[] {
   const result: SolutionTreeNode[] = [];
-  const segmentGroups = new Map<string, SolutionFolderNode>();
+  const foldersByName = new Map<string, SolutionFolderNode>();
 
   for (const node of nodes) {
     if (node.kind === "solutionFolder" && node.name.includes("/")) {
@@ -23,26 +23,41 @@ export function nestPathBasedFolders(nodes: SolutionTreeNode[]): SolutionTreeNod
       const firstSeg = node.name.substring(0, slashIdx);
       const remainder = node.name.substring(slashIdx + 1);
 
-      let virtualFolder = segmentGroups.get(firstSeg);
-      if (!virtualFolder) {
-        virtualFolder = {
+      let parentFolder = foldersByName.get(firstSeg);
+      if (!parentFolder) {
+        parentFolder = {
           kind: "solutionFolder",
           guid: `__virtual__${firstSeg}`,
           name: firstSeg,
           children: [],
           isVirtual: true,
         };
-        segmentGroups.set(firstSeg, virtualFolder);
-        result.push(virtualFolder);
+        foldersByName.set(firstSeg, parentFolder);
+        result.push(parentFolder);
       }
-      virtualFolder.children.push({ ...node, name: remainder, guid: remainder });
+      parentFolder.children.push({ ...node, name: remainder, guid: remainder });
+    } else if (node.kind === "solutionFolder") {
+      // An explicit folder (e.g. "/tests/") can share a name with the first path
+      // segment of another folder (e.g. "/tests/base/"). Merge them into a single
+      // node instead of letting a real and a virtual folder coexist as siblings.
+      const existingFolder = foldersByName.get(node.name);
+      if (existingFolder) {
+        existingFolder.children.push(...node.children);
+        if (existingFolder.isVirtual && !node.isVirtual) {
+          existingFolder.guid = node.guid;
+          existingFolder.isVirtual = undefined;
+        }
+      } else {
+        foldersByName.set(node.name, node);
+        result.push(node);
+      }
     } else {
       result.push(node);
     }
   }
 
-  for (const virtualFolder of segmentGroups.values()) {
-    virtualFolder.children = nestPathBasedFolders(virtualFolder.children);
+  for (const folder of foldersByName.values()) {
+    folder.children = nestPathBasedFolders(folder.children);
   }
 
   return result;
@@ -95,7 +110,7 @@ export function parseSlnxFile(slnxText: string): SolutionTreeNode[] {
       } else {
         roots.push(node);
       }
-    } else if (tagName === "Folder" && !closing && !isSelfClosing) {
+    } else if (tagName === "Folder" && !closing) {
       const rawName = extractAttr(rawAttrs, "Name") ?? "";
       const folder: SolutionFolderNode = {
         kind: "solutionFolder",
@@ -103,7 +118,15 @@ export function parseSlnxFile(slnxText: string): SolutionTreeNode[] {
         name: stripFolderSlashes(rawName),
         children: [],
       };
-      stack.push(folder);
+      if (isSelfClosing) {
+        if (stack.length > 0) {
+          stack[stack.length - 1].children.push(folder);
+        } else {
+          roots.push(folder);
+        }
+      } else {
+        stack.push(folder);
+      }
     } else if (tagName === "Folder" && closing) {
       const completed = stack.pop();
       if (!completed) {continue;}

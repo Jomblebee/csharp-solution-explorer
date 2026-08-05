@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Empty solution folders were missing from `.slnx` solutions, and a folder declared both explicitly
+  and as a path prefix appeared twice.** A self-closing `<Folder Name="/Empty/" />` was skipped by the
+  parser outright, so a folder holding no projects never reached the tree. And an explicit
+  `<Folder Name="/tests/">` alongside a `<Folder Name="/tests/base/" />` produced two sibling `tests`
+  nodes — the real one and the virtual one built from the path prefix — splitting the folder's
+  contents across them. Self-closing folders now become nodes of their own, and folders sharing a name
+  are merged into one node that keeps the explicit folder's identity.
+
 ## [0.15.0] - 2026-07-27
 
 ### Added

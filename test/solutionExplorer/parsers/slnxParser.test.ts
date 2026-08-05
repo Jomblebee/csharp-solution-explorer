@@ -184,6 +184,78 @@ describe("parseSlnxFile", () => {
     assert.equal((app.children[0] as ProjectNode).relativePath, "src/App/App.csproj");
   });
 
+  it("parses an empty self-closing folder as a folder node", () => {
+    const slnx = `<Solution><Folder Name="/Empty/" /></Solution>`;
+    const result = parseSlnxFile(slnx);
+
+    assert.equal(result.length, 1);
+    assert.equal(result[0].kind, "solutionFolder");
+    const folder = result[0] as SolutionFolderNode;
+    assert.equal(folder.name, "Empty");
+    assert.equal(folder.children.length, 0);
+  });
+
+  it("parses a self-closing folder nested inside another folder", () => {
+    const slnx = `
+<Solution>
+  <Folder Name="/Outer/">
+    <Folder Name="/Inner/" />
+    <Project Path="App/App.csproj" />
+  </Folder>
+</Solution>`;
+    const result = parseSlnxFile(slnx);
+
+    const outer = result[0] as SolutionFolderNode;
+    assert.equal(outer.children.length, 2);
+    assert.equal((outer.children[0] as SolutionFolderNode).kind, "solutionFolder");
+    assert.equal((outer.children[0] as SolutionFolderNode).name, "Inner");
+  });
+
+  it("merges an explicit folder with a path-based folder sharing its name", () => {
+    const slnx = `
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/BenchmarkSuite1/BenchmarkSuite1.csproj" />
+  </Folder>
+  <Folder Name="/tests/base/" />
+  <Folder Name="/tests/core/">
+    <Project Path="tests/core/Core.csproj" />
+  </Folder>
+</Solution>`;
+
+    const result = parseSlnxFile(slnx);
+
+    assert.equal(result.length, 1, "explicit '/tests/' and its path-based children must merge into one node");
+
+    const tests = result[0] as SolutionFolderNode;
+    assert.equal(tests.name, "tests");
+    assert.equal(tests.isVirtual, undefined);
+    assert.equal(tests.children.length, 3);
+    assert.equal((tests.children[0] as ProjectNode).name, "BenchmarkSuite1");
+    assert.equal((tests.children[1] as SolutionFolderNode).name, "base");
+    assert.equal((tests.children[2] as SolutionFolderNode).name, "core");
+  });
+
+  it("merges when the path-based folder is encountered before the explicit folder", () => {
+    const slnx = `
+<Solution>
+  <Folder Name="/tests/base/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/BenchmarkSuite1/BenchmarkSuite1.csproj" />
+  </Folder>
+</Solution>`;
+
+    const result = parseSlnxFile(slnx);
+
+    assert.equal(result.length, 1);
+    const tests = result[0] as SolutionFolderNode;
+    assert.equal(tests.name, "tests");
+    assert.equal(tests.isVirtual, undefined);
+    assert.equal(tests.children.length, 2);
+    assert.equal((tests.children[0] as SolutionFolderNode).name, "base");
+    assert.equal((tests.children[1] as ProjectNode).name, "BenchmarkSuite1");
+  });
+
   it("maintains insertion order between path groups and non-path nodes", () => {
     const slnx = `
 <Solution>
