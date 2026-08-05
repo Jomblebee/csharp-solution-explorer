@@ -14,6 +14,7 @@ import {
 } from "vscode-languageclient/node";
 import { restore } from "../solutionExplorer/dotnetCli.js";
 import { ResolvedServer } from "./roslynDownloader.js";
+import { registerAttachDebuggerHandler, registerRunTestsCommand } from "./runTests.js";
 import { decideHandshake, LoadMode } from "./roslynHandshake.js";
 import { buildServerLaunch, RazorLaunch } from "./roslynServer.js";
 import { ServerStateStore } from "./serverState.js";
@@ -117,6 +118,7 @@ function resolveServerConfig(section: string | undefined): string | null {
  *   without it VS Code shows "command 'roslyn.client.nestedCodeAction' not found" when the group is
  *   picked. It shows the sub-actions as a QuickPick, then resolves + applies the chosen one.
  * - `roslyn.client.fixAllCodeAction` backs "Fix all occurrences" (also reachable from a nested action).
+ * - `dotnet.test.run` backs both the "Run Test" and "Debug Test" CodeLens (see `runTests.ts`).
  *
  * Without a command VS Code shows "command '<id>' not found" on click. Ported (MIT) from vscode-csharp
  * (`serverCommands.ts`, `diagnostics/nestedCodeAction.ts`, `diagnostics/fixAllCodeAction.ts`). Arguments
@@ -149,6 +151,7 @@ export function registerServerCommands(
     vscode.commands.registerCommand("roslyn.client.fixAllCodeAction", (data: unknown) =>
       runFixAllCodeAction(getClient(), data as FixAllData, output),
     ),
+    registerRunTestsCommand(getClient),
   );
 }
 
@@ -271,10 +274,17 @@ async function applyResolvedEdit(
  * has started. Method names are specific to the pinned server version; if a name changes the
  * handler simply never fires, which degrades gracefully rather than breaking the session.
  */
-export function registerRoslynProtocol(client: LanguageClient, state: ServerStateStore): void {
+export function registerRoslynProtocol(
+  client: LanguageClient,
+  state: ServerStateStore,
+  output: vscode.OutputChannel,
+): void {
   client.onNotification("workspace/projectInitializationComplete", () => {
     state.update({ phase: "running", activity: undefined });
   });
+
+  // The server→client half of a "Debug Test" CodeLens run; see runTests.ts.
+  registerAttachDebuggerHandler(client, (message) => output.appendLine(message));
 
   // Roslyn asks the client to restore projects it can't resolve, so hover/diagnostics work for
   // external libraries. We reuse the existing `dotnet restore` wrapper. Params carry the project

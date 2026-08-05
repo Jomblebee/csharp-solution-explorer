@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Clicking the language server's "Run Test" / "Debug Test" CodeLens failed** with
+  `command 'dotnet.test.run' not found`: the Roslyn server points both lenses at that client command,
+  which the extension never registered. It now runs the selected test in the server
+  (`textDocument/runTests`), showing the stages and pass/fail counts in a cancellable progress
+  notification and the log in a **C# Tests (Language Server)** output channel; **Debug Test** attaches
+  the bundled debugger to the test host the server starts, loading the project's assembly so
+  breakpoints in test methods bind. The [Test Explorer](docs/test-explorer.md) is unaffected — it
+  keeps its own `dotnet test` / MTP runs.
+
 - **Empty solution folders were missing from `.slnx` solutions, and a folder declared both explicitly
   and as a path prefix appeared twice.** A self-closing `<Folder Name="/Empty/" />` was skipped by the
   parser outright, so a folder holding no projects never reached the tree. And an explicit
