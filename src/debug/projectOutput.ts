@@ -8,6 +8,7 @@ import { execFile } from "node:child_process";
 import * as path from "node:path";
 import { promisify } from "node:util";
 import { parseCommandLineArgs } from "../solutionExplorer/parsers/launchSettingsReader.js";
+import { msbuildEnv } from "../shared/msbuild.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -92,7 +93,7 @@ export async function queryProjectOutput(
 
   let stdout: string;
   try {
-    ({ stdout } = await execFileAsync("dotnet", args, { windowsHide: true, maxBuffer: MAX_BUFFER }));
+    ({ stdout } = await execFileAsync("dotnet", args, { windowsHide: true, maxBuffer: MAX_BUFFER, env: msbuildEnv() }));
   } catch (err) {
     if ((err as { code?: unknown }).code === "ENOENT") {
       throw new Error("The 'dotnet' CLI was not found on PATH. Install the .NET SDK to debug.");

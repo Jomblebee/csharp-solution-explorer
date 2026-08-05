@@ -292,6 +292,24 @@
             "description": "How much of the test host's log goes into the Test Results panel. Build errors and host crashes are always shown, whatever the level, and the full raw log is always available in the 'C# Tests' output channel. Debug runs are always 'full', because the debugger attaches by reading the host's own output."
           }
         }
+      },
+      {
+        "id": "csharpSolutionExplorer.build",
+        "title": "Build",
+        "order": 4,
+        "properties": {
+          "csharpSolutionExplorer.build.reuseMsBuildNodes": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Let MSBuild worker nodes outlive the build that started them, so a later build can reuse them (the .NET SDK default). Off by default: a reused pool saves about a second per build, but every build that does *not* get reused leaves one process per core behind — each holding 150-250 MB — until it times out, which an edit/build/test loop turns into many gigabytes. When off, the extension passes `MSBUILDDISABLENODEREUSE=1` to every `dotnet` process it starts."
+          },
+          "csharpSolutionExplorer.build.maxCpuCount": {
+            "type": "number",
+            "default": 0,
+            "minimum": 0,
+            "markdownDescription": "Maximum number of projects MSBuild builds in parallel (`-m:N`), for builds started from the Solution Explorer. `0` uses MSBuild's default of one node per CPU core. Lowering this caps both the peak memory of a build and the number of worker processes it can leave behind."
+          }
+        }
       }
     ],
     "breakpoints": [

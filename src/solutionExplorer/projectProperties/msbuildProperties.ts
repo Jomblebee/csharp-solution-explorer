@@ -13,6 +13,7 @@
 import { execFile } from "node:child_process";
 import { EVALUATED_TAGS } from "./propertyCatalog.js";
 import { parseGetPropertyOutput } from "../../debug/projectOutput.js";
+import { msbuildEnv } from "../../shared/msbuild.js";
 
 /** A solution-wide evaluation easily exceeds execFile's 1 MB default. */
 const MAX_BUFFER = 32 * 1024 * 1024;
@@ -78,7 +79,7 @@ function run(args: string[]): Promise<string | undefined> {
     execFile(
       "dotnet",
       args,
-      { windowsHide: true, maxBuffer: MAX_BUFFER, timeout: TIMEOUT_MS },
+      { windowsHide: true, maxBuffer: MAX_BUFFER, timeout: TIMEOUT_MS, env: msbuildEnv() },
       (error, stdout) => {
         // No SDK, a restore error, an evaluation error, or the timeout: all of them mean the panel
         // simply does not learn the evaluated values this time.

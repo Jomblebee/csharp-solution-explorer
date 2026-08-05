@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **MSBuild worker nodes piled up until they held tens of gigabytes of RAM.** Every build, test run
+  and property evaluation starts up to one MSBuild node per CPU core, and with the SDK's default node
+  reuse those nodes outlive the command that started them (150-250 MB each), re-parented away from
+  the extension. Pools that the next build never reuses just accumulate — an afternoon of the
+  edit/build/test loop on a 20-core machine could reach 150+ leftover `dotnet` processes. The
+  extension now passes `MSBUILDDISABLENODEREUSE=1` to every `dotnet` process it starts: builds, test
+  runs (VSTest and MTP), `-getProperty` evaluations, the terminals behind Build/Rebuild/Test/Run and
+  the Roslyn language server. `csharpSolutionExplorer.build.reuseMsBuildNodes` restores the SDK
+  default, and the new `csharpSolutionExplorer.build.maxCpuCount` caps how many projects a build
+  compiles in parallel (`-m:N`). Nodes left over from before are cleared with
+  `dotnet build-server shutdown` — see [Settings](docs/settings.md#msbuild-worker-nodes).
+
 - **Clicking the language server's "Run Test" / "Debug Test" CodeLens failed** with
   `command 'dotnet.test.run' not found`: the Roslyn server points both lenses at that client command,
   which the extension never registered. It now runs the selected test in the server

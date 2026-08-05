@@ -3,6 +3,7 @@ import * as fsp from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { msbuildEnv, msbuildNodeEnv } from "../shared/msbuild.js";
 
 export interface ExternalTerminalOptions {
   /**
@@ -49,7 +50,7 @@ export async function runInExternalTerminal(cwd: string, command: string, opts: 
  * regardless of the user's default shell.
  */
 export function runInIntegratedTerminal(name: string, cwd: string, command: string): void {
-  const terminal = vscode.window.createTerminal({ name, cwd });
+  const terminal = vscode.window.createTerminal({ name, cwd, env: msbuildNodeEnv() });
   terminal.show();
   terminal.sendText(command);
 }
@@ -87,6 +88,8 @@ function runOnWindows(cwd: string, command: string, keepOpenAfterExit: boolean):
     detached: true,
     stdio: "ignore",
     windowsVerbatimArguments: true,
+    // The window runs `dotnet run`, which builds — so it inherits the node-reuse policy too.
+    env: msbuildEnv(),
   });
   child.on("error", reportSpawnError("cmd.exe"));
   child.unref();
@@ -106,7 +109,7 @@ function runOnLinux(cwd: string, command: string, keepOpenAfterExit: boolean): v
 }
 
 function detached(cmd: string, args: string[]): void {
-  const child = spawn(cmd, args, { detached: true, stdio: "ignore" });
+  const child = spawn(cmd, args, { detached: true, stdio: "ignore", env: msbuildEnv() });
   child.on("error", reportSpawnError(cmd));
   child.unref();
 }

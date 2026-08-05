@@ -10,6 +10,7 @@ import { buildTestArgs } from "./dotnetTestArgs.js";
 import { QUIET_ENV } from "./outputFilter.js";
 import type { TestOutputLevel } from "./outputFilter.js";
 import { detachedSpawnOptions } from "../shared/killProcess.js";
+import { msbuildNodeEnv } from "../shared/msbuild.js";
 
 export interface TestRunOutcome {
   /** Whether `dotnet test` exited 0. False also covers a failed build or a failing test. */
@@ -45,7 +46,7 @@ export async function runTests(opts: RunTestsOptions): Promise<TestRunOutcome> {
     const child = spawn("dotnet", args, {
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
-      env: { ...(opts.env ?? process.env), ...QUIET_ENV },
+      env: { ...(opts.env ?? process.env), ...QUIET_ENV, ...msbuildNodeEnv() },
       ...detachedSpawnOptions,
     });
     opts.onSpawn?.(child);

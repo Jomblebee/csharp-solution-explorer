@@ -23,6 +23,7 @@ import {
   type MessageConnection,
 } from "vscode-jsonrpc/node";
 import { build } from "../solutionExplorer/dotnetCli.js";
+import { msbuildNodeEnv } from "../shared/msbuild.js";
 import { makeReporter } from "../shared/httpDownload.js";
 import { queryProjectOutput } from "../debug/projectOutput.js";
 import type { TargetProject } from "../solutionExplorer/workspaceProjects.js";
@@ -224,7 +225,12 @@ function runMtpSession(program: string, params: MtpSessionParams, collected: Mtp
         cwd: path.dirname(program),
         windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"],
-        env: { ...process.env, ...QUIET_ENV, TESTINGPLATFORM_EXIT_PROCESS_ON_UNHANDLED_EXCEPTION: "0" },
+        env: {
+          ...process.env,
+          ...QUIET_ENV,
+          ...msbuildNodeEnv(),
+          TESTINGPLATFORM_EXIT_PROCESS_ON_UNHANDLED_EXCEPTION: "0",
+        },
         ...detachedSpawnOptions,
       });
       const emit = (chunk: Buffer): void => {
