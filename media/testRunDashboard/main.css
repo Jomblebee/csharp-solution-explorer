@@ -1,0 +1,266 @@
+/*
+ * Test Run Dashboard layout. The shell — toolbar, cards, badges, buttons — comes from
+ * shared/panel.css; this file adds only what a run view needs: the hero (bar, stats, ETA), the
+ * project rows and the three lists.
+ *
+ * Colours are `--vscode-testing-*` with a `--vscode-charts-*` fallback, so a theme that styles the
+ * Testing view styles this too, and one that does not still gets sensible chart colours.
+ */
+
+.run-hero {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  flex: none;
+}
+
+/* ---- Progress bar ---- */
+
+.progress {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--vscode-editorWidget-border, var(--vscode-panel-border));
+  overflow: hidden;
+  display: flex;
+}
+
+.progress-seg {
+  height: 100%;
+  width: 0;
+  transition: width 200ms linear;
+}
+
+.progress-rest {
+  flex: 1;
+}
+
+.progress-seg.passed {
+  background: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+}
+
+.progress-seg.failed {
+  background: var(--vscode-testing-iconFailed, var(--vscode-charts-red));
+}
+
+.progress-seg.skipped {
+  background: var(--vscode-testing-iconSkipped, var(--vscode-charts-yellow));
+}
+
+/* A run whose size is not known yet: a moving stripe, never a made-up percentage. */
+.progress.indeterminate {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--vscode-testing-iconQueued, var(--vscode-charts-blue)) 0 10px,
+    transparent 10px 20px
+  );
+  background-size: 28px 100%;
+  animation: run-stripe 900ms linear infinite;
+}
+
+@keyframes run-stripe {
+  to {
+    background-position: 28px 0;
+  }
+}
+
+/* The total is a floor: hatch the tail so the bar cannot read as "nearly done". */
+.progress.lower-bound .progress-rest {
+  flex: 1;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--vscode-panel-border) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+/* ---- Stats ---- */
+
+.run-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 14px;
+}
+
+.stat {
+  min-width: 72px;
+}
+
+.stat-value {
+  font-size: 1.5em;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  font-size: 0.8em;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat.passed .stat-value {
+  color: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+}
+
+.stat.failed .stat-value {
+  color: var(--vscode-testing-iconFailed, var(--vscode-charts-red));
+}
+
+.stat.skipped .stat-value {
+  color: var(--vscode-testing-iconSkipped, var(--vscode-charts-yellow));
+}
+
+.run-eta {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.run-eta-hint {
+  opacity: 0.6;
+  font-size: 0.85em;
+}
+
+/* ---- Rows ---- */
+
+.project-row,
+.test-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.project-row:last-child,
+.test-row:last-child {
+  border-bottom: none;
+}
+
+.row-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-class {
+  opacity: 0.7;
+  font-size: 0.9em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.row-detail {
+  opacity: 0.7;
+  font-size: 0.85em;
+  font-family: var(--vscode-editor-font-family);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.row-duration {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+  min-width: 60px;
+  text-align: right;
+}
+
+.row-delta.slower {
+  color: var(--vscode-testing-iconFailed, var(--vscode-charts-red));
+}
+
+.row-delta.faster {
+  color: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+}
+
+.mini-bar {
+  width: 90px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--vscode-editorWidget-border, var(--vscode-panel-border));
+  overflow: hidden;
+  flex: none;
+}
+
+.mini-bar > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+}
+
+.mini-bar.indeterminate > span {
+  width: 40%;
+  background: var(--vscode-testing-iconQueued, var(--vscode-charts-blue));
+  animation: mini-slide 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes mini-slide {
+  to {
+    transform: translateX(150%);
+  }
+}
+
+/* ---- Outcome marks ---- */
+
+.mark {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.mark.passed {
+  background: var(--vscode-testing-iconPassed, var(--vscode-charts-green));
+}
+
+.mark.failed,
+.mark.errored {
+  background: var(--vscode-testing-iconFailed, var(--vscode-charts-red));
+}
+
+.mark.skipped {
+  background: var(--vscode-testing-iconSkipped, var(--vscode-charts-yellow));
+}
+
+.mark.running {
+  background: var(--vscode-testing-iconQueued, var(--vscode-charts-blue));
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.3;
+  }
+}
+
+.activity-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.note {
+  opacity: 0.7;
+  font-size: 0.9em;
+  padding: 8px 0 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress.indeterminate,
+  .mini-bar.indeterminate > span,
+  .mark.running {
+    animation: none;
+  }
+
+  .progress-seg {
+    transition: none;
+  }
+}

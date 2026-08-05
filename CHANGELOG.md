@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Test Run Dashboard**: starting a run from the Testing view opens a **Test Run** editor tab showing
+  that run live — one stacked progress bar across all projects, the passed/failed/skipped counts, the
+  elapsed time and an estimate of how much is left, over a per-project list, the failures (with a jump
+  to the failing test's source), the slowest tests of the run and a filterable activity feed. **Cancel
+  run**, **Re-run failed** and **Re-run all** go through the same run profile the Testing view uses,
+  and closing the tab does not cancel anything: reopening it mid-run
+  (**C# Solution Explorer: Show Test Run Dashboard**) catches up to the current state. The time
+  estimate extrapolates from the pace since the first result during a first run, and from a per-test
+  duration cache — written to workspace state at the end of every run — from the second run on, so a
+  known suite shows a usable number within the first second; when neither basis holds it says
+  `estimating…` rather than inventing one. Classic VSTest projects cannot report progress before they
+  finish, so their row shows an indeterminate bar with the host's latest output line as a heartbeat
+  and the headline total reads `≥ N` while one is running.
+  `csharpSolutionExplorer.testExplorer.dashboard` chooses `onRun` (default), `onFailure` or `off`.
+
 ### Fixed
 
 - **MSBuild worker nodes piled up until they held tens of gigabytes of RAM.** Every build, test run

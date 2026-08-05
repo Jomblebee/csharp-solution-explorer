@@ -20,13 +20,18 @@ import * as vscode from "vscode";
 import { CANCELLED, resolveRunFramework } from "../solutionExplorer/commandUtils.js";
 import type { TargetProject } from "../solutionExplorer/workspaceProjects.js";
 import { CoverageStore } from "./coverageReport.js";
+import type { TestRunDashboard } from "./dashboard/testRunDashboard.js";
 import { type TestOutputLevel } from "./outputFilter.js";
 import { runProjectSelection } from "./projectTestRun.js";
 import { TestProjectRegistry } from "./testProjectRegistry.js";
-import { groupIncludesByProject, type Selection } from "./testSelection.js";
+import { discoveredLeafIds, groupIncludesByProject, type Selection } from "./testSelection.js";
 import { errorText } from "../shared/errorText.js";
 
-export function createTestController(context: vscode.ExtensionContext, output: vscode.OutputChannel): vscode.TestController {
+export function createTestController(
+  context: vscode.ExtensionContext,
+  output: vscode.OutputChannel,
+  dashboard: TestRunDashboard,
+): vscode.TestController {
   const controller = vscode.tests.createTestController("csharpSolutionExplorer.tests", "C# Tests");
   const registry = new TestProjectRegistry(controller, output);
 
@@ -56,10 +61,13 @@ export function createTestController(context: vscode.ExtensionContext, output: v
     (debug: boolean, coverage: boolean) =>
     async (request: vscode.TestRunRequest, token: vscode.CancellationToken): Promise<void> => {
       const run = controller.createTestRun(request);
+      const entries = [...groupIncludesByProject(controller, request)]
+        .map(([projectItem, selection]) => ({ projectItem, selection, project: registry.get(projectItem.id) }))
+        .filter((e): e is { projectItem: vscode.TestItem; selection: Selection; project: TargetProject } => !!e.project);
+      // The dashboard is opened before anything is resolved, so the first thing the user sees is the
+      // run starting rather than a blank tab appearing several seconds in.
+      const tracker = dashboard.beginRun({ title: runTitle(entries), debug, coverage });
       try {
-        const entries = [...groupIncludesByProject(controller, request)]
-          .map(([projectItem, selection]) => ({ projectItem, selection, project: registry.get(projectItem.id) }))
-          .filter((e): e is { projectItem: vscode.TestItem; selection: Selection; project: TargetProject } => !!e.project);
 
         // Serial pre-pass: resolve each project's target framework first. resolveRunFramework may show a
         // QuickPick, and running the projects in parallel would otherwise stack several prompts at once.
@@ -75,6 +83,13 @@ export function createTestController(context: vscode.ExtensionContext, output: v
           }
           runnable.push({ ...entry, framework });
         }
+        for (const entry of runnable) {
+          tracker?.projectStarted({
+            id: entry.projectItem.id,
+            name: entry.project.name,
+            liveResults: registry.isMtp(entry.projectItem.id),
+          });
+        }
 
         // Coverage needs a per-runner package; offer to add it before running (may abort the run).
         if (coverage && !(await registry.provisionCoverage(runnable))) {
@@ -88,13 +103,19 @@ export function createTestController(context: vscode.ExtensionContext, output: v
               return;
             }
             // Cold start: discover the tree before running so live results have items to attach to.
+            tracker?.projectPhase(projectItem.id, "discovering");
             await registry.ensureDiscovered(projectItem, project, token);
+            const mtp = registry.isMtp(projectItem.id);
+            reportPlan(tracker, projectItem, selection, mtp);
+            // MTP builds the test host before it reports anything; saying so beats a bar stuck at 0%.
+            tracker?.projectPhase(projectItem.id, mtp ? "building" : "running");
             run.started(projectItem);
             try {
               await runProjectSelection(
                 {
                   controller,
                   run,
+                  tracker,
                   projectItem,
                   project,
                   index: registry.index,
@@ -108,10 +129,13 @@ export function createTestController(context: vscode.ExtensionContext, output: v
                   level: readOutputLevel(debug),
                   token,
                 },
-                registry.isMtp(projectItem.id),
+                mtp,
               );
+              tracker?.projectFinished(projectItem.id, true);
             } catch (err) {
               run.errored(projectItem, new vscode.TestMessage(errorText(err)));
+              tracker?.projectErrored(projectItem.id, errorText(err));
+              tracker?.projectFinished(projectItem.id, false);
             }
           }),
         );
@@ -119,10 +143,14 @@ export function createTestController(context: vscode.ExtensionContext, output: v
         coverageStore.publish(run);
       } finally {
         run.end();
+        if (tracker) {
+          void dashboard.endRun(tracker, token.isCancellationRequested);
+        }
       }
     };
 
-  controller.createRunProfile("Run", vscode.TestRunProfileKind.Run, runHandler(false, false), true);
+  const runTests = runHandler(false, false);
+  const runProfile = controller.createRunProfile("Run", vscode.TestRunProfileKind.Run, runTests, true);
   controller.createRunProfile("Debug", vscode.TestRunProfileKind.Debug, runHandler(true, false), true);
   const coverageProfile = controller.createRunProfile(
     "Run with Coverage",
@@ -132,8 +160,98 @@ export function createTestController(context: vscode.ExtensionContext, output: v
   );
   coverageProfile.loadDetailedCoverage = (run, fileCoverage) => Promise.resolve(coverageStore.detailsFor(run, fileCoverage));
 
+  // The dashboard's buttons run through the same handler a click in the Testing view would, so a
+  // re-run from the panel is indistinguishable from any other run.
+  dashboard.setRunner({
+    rerun: async (testIds) => {
+      const include = testIds ? resolveItems(controller, testIds) : undefined;
+      if (include && include.length === 0) {
+        return;
+      }
+      const source = new vscode.CancellationTokenSource();
+      try {
+        await runTests(new vscode.TestRunRequest(include, undefined, runProfile), source.token);
+      } finally {
+        source.dispose();
+      }
+    },
+    reveal: async (testId) => {
+      const item = findItem(controller, testId);
+      if (!item?.uri) {
+        return;
+      }
+      const editor = await vscode.window.showTextDocument(item.uri, { preview: true });
+      if (item.range) {
+        editor.revealRange(item.range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+        editor.selection = new vscode.Selection(item.range.start, item.range.start);
+      }
+    },
+  });
+
   context.subscriptions.push(controller, registry);
   return controller;
+}
+
+/**
+ * Tells the dashboard how many tests a project will run, and which. Only two cases can say so up
+ * front: a filtered selection (exact on either backend) and an MTP project whose tree is discovered.
+ * A classic VSTest project running everything stays unknown until its TRX arrives — reporting a
+ * guess there would turn the progress bar into a lie.
+ */
+function reportPlan(
+  tracker: { projectTotal(id: string, count: number, testIds?: readonly string[]): void } | undefined,
+  projectItem: vscode.TestItem,
+  selection: Selection,
+  mtp: boolean,
+): void {
+  if (!tracker) {
+    return;
+  }
+  if (selection !== "ALL") {
+    const ids = [...selection];
+    tracker.projectTotal(projectItem.id, ids.length, ids);
+    return;
+  }
+  if (mtp) {
+    const ids = discoveredLeafIds(projectItem);
+    tracker.projectTotal(projectItem.id, ids.length, ids);
+  }
+}
+
+/** The dashboard's headline, fixed when the run starts. */
+function runTitle(entries: readonly { selection: Selection }[]): string {
+  const selected = entries.reduce((total, entry) => total + (entry.selection === "ALL" ? 0 : entry.selection.size), 0);
+  if (selected > 0 && entries.every((entry) => entry.selection !== "ALL")) {
+    return `Running ${selected} selected test${selected === 1 ? "" : "s"}`;
+  }
+  return `Running ${entries.length} project${entries.length === 1 ? "" : "s"}`;
+}
+
+/** The items behind a set of ids, skipping any the tree no longer holds (a re-run after a rename). */
+function resolveItems(controller: vscode.TestController, ids: readonly string[]): vscode.TestItem[] {
+  const items: vscode.TestItem[] = [];
+  for (const id of ids) {
+    const item = findItem(controller, id);
+    if (item) {
+      items.push(item);
+    }
+  }
+  return items;
+}
+
+function findItem(controller: vscode.TestController, id: string): vscode.TestItem | undefined {
+  const search = (collection: vscode.TestItemCollection): vscode.TestItem | undefined => {
+    const direct = collection.get(id);
+    if (direct) {
+      return direct;
+    }
+    let found: vscode.TestItem | undefined;
+    collection.forEach((child) => {
+      found ??= search(child.children);
+    });
+    return found;
+  };
+  return search(controller.items);
 }
 
 /**

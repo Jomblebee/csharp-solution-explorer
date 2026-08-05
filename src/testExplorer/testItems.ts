@@ -10,6 +10,8 @@ import * as vscode from "vscode";
 import type { TargetProject } from "../solutionExplorer/workspaceProjects.js";
 import type { MtpTestNode } from "./mtpProtocol.js";
 import { isActionNode, isTerminalState, mtpNodeToResult } from "./mtpResults.js";
+import type { DashboardOutcome, TestRow } from "./dashboard/dashboardProtocol.js";
+import type { TestRunSink } from "./dashboard/testRunTracker.js";
 import { classIdFor, groupByClass, methodIdFor } from "./testTree.js";
 import type { TrxTestResult } from "./trxParser.js";
 import { toCrlf } from "./outputFilter.js";
@@ -26,6 +28,12 @@ export interface TestItemContext {
 /** A context that can also report state, i.e. one belonging to a run rather than to a discovery. */
 export interface TestReportContext extends TestItemContext {
   run: vscode.TestRun;
+  /**
+   * Live aggregator behind the Test Run Dashboard, absent when the dashboard is off. It rides along
+   * on the context so events from projects running concurrently need no run id to be told apart —
+   * the tracker instance *is* the run.
+   */
+  tracker?: TestRunSink;
 }
 
 /**
@@ -102,8 +110,9 @@ export function reportNode(ctx: TestReportContext, node: MtpTestNode): void {
   const state = node["execution-state"];
   if (state === "in-progress") {
     ctx.run.started(item);
+    ctx.tracker?.testStarted({ id: item.id, name: item.label, project: ctx.projectItem.id, startedAt: Date.now() });
   } else if (isTerminalState(state)) {
-    applyResult(ctx.run, item, result);
+    applyResult(ctx, item, result);
   }
 }
 
@@ -113,6 +122,7 @@ export function reportResults(ctx: TestReportContext, results: TrxTestResult[], 
   if (results.length === 0) {
     const message = ok ? "No tests were found in this project." : rawOutput.trim() || "The test run failed.";
     run.errored(projectItem, new vscode.TestMessage(message));
+    ctx.tracker?.projectErrored(projectItem.id, message);
     return;
   }
 
@@ -121,12 +131,13 @@ export function reportResults(ctx: TestReportContext, results: TrxTestResult[], 
     for (const methodNode of classNode.methods) {
       const item = findOrCreateMethod(controller, classItem, methodNode.id, methodNode.method, methodNode.result);
       index.record(methodNode.id, `${classNode.className}.${methodNode.method}`);
-      applyResult(run, item, methodNode.result);
+      applyResult(ctx, item, methodNode.result);
     }
   }
 }
 
-function applyResult(run: vscode.TestRun, item: vscode.TestItem, result: TrxTestResult): void {
+function applyResult(ctx: TestReportContext, item: vscode.TestItem, result: TrxTestResult): void {
+  const { run } = ctx;
   const frame = parseStackFrame(result.stackTrace);
   const declared = fileLocation(result.file, result.line);
   const fromStack = fileLocation(frame?.file, frame?.line);
@@ -137,9 +148,11 @@ function applyResult(run: vscode.TestRun, item: vscode.TestItem, result: TrxTest
     run.appendOutput(toCrlf(result.stdout) + "\r\n", declared ?? fromStack, item);
   }
 
+  let outcome: DashboardOutcome;
   switch (result.outcome) {
     case "Passed":
       run.passed(item, result.durationMs);
+      outcome = "passed";
       break;
     case "Failed": {
       const detail = [result.message, result.stackTrace].filter(Boolean).join("\n\n") || "Test failed.";
@@ -147,15 +160,38 @@ function applyResult(run: vscode.TestRun, item: vscode.TestItem, result: TrxTest
       // The failing frame beats the test's declared location: it is where the assertion blew up.
       message.location = fromStack ?? declared;
       run.failed(item, message, result.durationMs);
+      outcome = "failed";
       break;
     }
     case "NotExecuted":
       run.skipped(item);
+      outcome = "skipped";
       break;
     default:
       run.errored(item, new vscode.TestMessage(result.message ?? "Test did not run."));
+      outcome = "errored";
       break;
   }
+  ctx.tracker?.testFinished(toDashboardRow(ctx, item, result, outcome));
+}
+
+/** One finished test, as the dashboard sees it: no vscode types, no stack trace, no output. */
+function toDashboardRow(
+  ctx: TestReportContext,
+  item: vscode.TestItem,
+  result: TrxTestResult,
+  outcome: DashboardOutcome,
+): TestRow {
+  return {
+    id: item.id,
+    name: result.method,
+    className: result.className,
+    project: ctx.projectItem.id,
+    outcome,
+    durationMs: result.durationMs,
+    message: outcome === "passed" || outcome === "skipped" ? undefined : result.message,
+    hasSource: item.uri !== undefined,
+  };
 }
 
 /** A location at the start of `line` (1-based, as both TRX and stack traces report it). */

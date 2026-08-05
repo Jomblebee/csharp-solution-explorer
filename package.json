@@ -290,6 +290,21 @@
             ],
             "default": "summary",
             "description": "How much of the test host's log goes into the Test Results panel. Build errors and host crashes are always shown, whatever the level, and the full raw log is always available in the 'C# Tests' output channel. Debug runs are always 'full', because the debugger attaches by reading the host's own output."
+          },
+          "csharpSolutionExplorer.testExplorer.dashboard": {
+            "type": "string",
+            "enum": [
+              "onRun",
+              "onFailure",
+              "off"
+            ],
+            "enumDescriptions": [
+              "Open the dashboard beside the editor whenever a test run starts.",
+              "Track every run, but only open the dashboard once a test fails.",
+              "Never open the dashboard automatically; the 'Show Test Run Dashboard' command still opens it."
+            ],
+            "default": "onRun",
+            "description": "When to open the Test Run Dashboard — a live view of a run with a progress bar, a time estimate, a failure list and the slowest tests. Closing its tab does not cancel the run."
           }
         }
       },
@@ -1501,6 +1516,12 @@
         "category": "C# Solution Explorer"
       },
       {
+        "command": "csharpSolutionExplorer.showTestRunDashboard",
+        "title": "Show Test Run Dashboard",
+        "icon": "$(dashboard)",
+        "category": "C# Solution Explorer"
+      },
+      {
         "command": "csharpSolutionExplorer.revealInTree",
         "title": "Show in Solution Explorer",
         "category": "C# Solution Explorer"
@@ -1868,6 +1889,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "csharpSolutionExplorer.showTestRunDashboard",
+          "when": "config.csharpSolutionExplorer.testExplorer.enabled"
+        },
         {
           "command": "csharpSolutionExplorer.revealInFinder",
           "when": "false"

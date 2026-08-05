@@ -40,6 +40,7 @@ export const OPEN_PROJECT_FILE_COMMAND_ID = "csharpSolutionExplorer.openProjectF
 export const OPEN_SETTINGS_COMMAND_ID = "csharpSolutionExplorer.openSettings";
 export const OPEN_OPTIONS_COMMAND_ID = "csharpSolutionExplorer.openOptions";
 export const OPEN_PROJECT_PROPERTIES_COMMAND_ID = "csharpSolutionExplorer.openProjectProperties";
+export const SHOW_TEST_RUN_DASHBOARD_COMMAND_ID = "csharpSolutionExplorer.showTestRunDashboard";
 export const REVEAL_IN_TREE_COMMAND_ID = "csharpSolutionExplorer.revealInTree";
 export const COPY_COMMAND_ID = "csharpSolutionExplorer.copy";
 export const CUT_COMMAND_ID = "csharpSolutionExplorer.cut";

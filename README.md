@@ -41,7 +41,9 @@ Press `F5` to build and debug the startup project directly — no `launch.json`,
 
 C# test projects appear in VS Code's native **Testing** view. Run or debug a whole project, a class, or a single test method — including data-driven cases, which nest under their method — with results, failure messages and clickable stack frames reported per test, and play icons in the editor gutter. **Run with Coverage** collects line coverage and highlights it in the editor; the extension offers to add the coverage package a project is missing.
 
-**[Test Explorer in detail →](docs/test-explorer.md)** — Microsoft.Testing.Platform vs. classic VSTest, single-test debugging, coverage packages, known limits.
+A run also opens a **Test Run Dashboard** as an editor tab: one progress bar over all projects, live counts, an estimate of the time left — sharpened by the per-test durations of earlier runs — plus the failures with a jump to the source and the slowest tests of the run. Closing the tab never cancels the run.
+
+**[Test Explorer in detail →](docs/test-explorer.md)** — Microsoft.Testing.Platform vs. classic VSTest, single-test debugging, coverage packages, the dashboard, known limits.
 
 ## Dependencies & NuGet
 

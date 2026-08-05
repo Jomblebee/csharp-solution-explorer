@@ -9,6 +9,9 @@
 /** A debounced call. `cancel()` drops a pending trailing call; calling again afterwards re-arms it. */
 export type Debounced<A extends unknown[]> = ((...args: A) => void) & { cancel(): void };
 
+/** A throttled call. `flush()` runs a pending trailing call now; `cancel()` drops it. */
+export type Throttled<A extends unknown[]> = ((...args: A) => void) & { cancel(): void; flush(): void };
+
 /** A debounced collector. `cancel()` drops the pending call *and* the items collected so far. */
 export type DebouncedCollector<T> = ((item: T) => void) & { cancel(): void };
 
@@ -27,6 +30,60 @@ export function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: numb
         if (timer) {
           clearTimeout(timer);
           timer = undefined;
+        }
+      },
+    },
+  );
+}
+
+/**
+ * Rate-limits a void-returning function to one call per `ms`, on both edges of the window.
+ *
+ * Debouncing would be wrong for a continuous stream: every event re-arms the timer, so a run
+ * reporting a test every few milliseconds would show nothing at all until it finished. A throttle
+ * lets the first call through immediately and collapses the rest of the window into one trailing
+ * call, which is what keeps a live view live without flooding it.
+ *
+ * `flush()` exists for the end of a stream: the final state must land even if it arrived inside a
+ * window that has not closed yet.
+ */
+export function throttle<A extends unknown[]>(fn: (...args: A) => void, ms: number): Throttled<A> {
+  let timer: NodeJS.Timeout | undefined;
+  let pending: A | undefined;
+
+  const run = (args: A): void => {
+    pending = undefined;
+    // Opening the window before the call, so a re-entrant call from `fn` is throttled like any other.
+    timer = setTimeout(() => {
+      timer = undefined;
+      if (pending) {
+        run(pending);
+      }
+    }, ms);
+    fn(...args);
+  };
+
+  return Object.assign(
+    (...args: A): void => {
+      if (timer) {
+        pending = args;
+        return;
+      }
+      run(args);
+    },
+    {
+      cancel: (): void => {
+        if (timer) {
+          clearTimeout(timer);
+          timer = undefined;
+        }
+        pending = undefined;
+      },
+      flush: (): void => {
+        if (pending) {
+          const args = pending;
+          pending = undefined;
+          fn(...args);
         }
       },
     },

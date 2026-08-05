@@ -43,7 +43,13 @@ export async function runProjectSelection(ctx: RunContext, mtp: boolean): Promis
   const projectDir = path.dirname(project.uri.fsPath);
   const startedAt = Date.now();
   // One sink per run: its filter collapses repeated blank lines, so it carries state across lines.
-  const emit = makeLogSink(run, level);
+  // The dashboard taps the same lines: for a classic VSTest project they are the only sign of life
+  // there is until the TRX lands.
+  const logSink = makeLogSink(run, level);
+  const emit = (line: string): void => {
+    logSink(line);
+    ctx.tracker?.output(ctx.projectItem.id, line);
+  };
   // The run's header and summary always show, whatever the verbosity level drops: they delimit one
   // run in a panel several runs share.
   const announce = (text: string): void => writeLine(run, text);

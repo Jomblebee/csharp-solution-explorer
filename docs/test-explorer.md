@@ -52,6 +52,33 @@ only path that works on the .NET 10 SDK.
   `.fs` or `.vb` file invalidates just that project's test list. The refresh button in the Testing
   view does the same by hand.
 
+## Test Run Dashboard
+
+Starting a run opens a **Test Run** editor tab: one stacked progress bar, the passed/failed/skipped
+counts, the elapsed time and an estimate of how much is left, over a project list, the failures, the
+slowest tests of the run and a live activity feed. It is a view, not a second test runner — every
+number comes from the same run the Testing view is driving, and the buttons (**Cancel run**,
+**Re-run failed**, **Re-run all**) go through the same run profile a click in that view would.
+
+- **Closing the tab does not cancel the run.** The aggregation lives outside the panel, so reopening
+  it mid-run (**C# Solution Explorer: Show Test Run Dashboard**) catches up to the current state
+  instead of starting at zero.
+- **The time estimate has two sources.** Early in a first run it extrapolates from the pace of the
+  tests finished so far, measured from the first result rather than from the start, so a slow build
+  does not poison it. Once the run's tests are known to the duration cache — which is written at the
+  end of every run, per test, into workspace state — it instead sums what those tests cost last
+  time and divides by the number of projects actually executing. That is why the second run of a
+  suite shows a usable estimate within the first second. When neither basis holds it says
+  `estimating…` rather than inventing a number.
+- **Classic VSTest projects cannot be shown live.** They report every result at once when the run
+  finishes, so their row shows an indeterminate bar and the host's latest output line as a
+  heartbeat, and their tests only enter the totals at the end. While such a project is running the
+  headline total reads `≥ N` and the shared estimate is withheld, because a floor cannot be
+  extrapolated from. A filtered selection is exact on either backend and does count.
+- `csharpSolutionExplorer.testExplorer.dashboard` decides when the tab opens: `onRun` (the default),
+  `onFailure` — track everything, but only surface the panel once something fails — or `off`, which
+  skips the aggregation entirely and leaves the command as the only way in.
+
 ## Known limits
 
 Classic VSTest projects have no discovery step — the extension cannot ask `dotnet test` what
