@@ -7,6 +7,10 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { WorkspaceEdit as LspWorkspaceEdit } from "vscode-languageclient";
 import {
+  CloseAction,
+  CloseHandlerResult,
+  ErrorAction,
+  ErrorHandlerResult,
   LanguageClient,
   LanguageClientOptions,
   RevealOutputChannelOn,
@@ -33,6 +37,11 @@ const EXCLUDE_GLOB = "**/{node_modules,bin,obj,.git,.vs}/**";
  * the static selector too registers a second set of providers on top of those, so every Razor feature
  * runs twice (duplicate CodeLens/hover). This matches dotnet/vscode-csharp, whose Roslyn client
  * selector is `['csharp']` regardless of cohosting.
+ *
+ * `onCrash` is invoked when the server process dies on its own. We deliberately answer the framework
+ * with `DoNotRestart` and drive the restart from the controller instead: the framework's own restart
+ * only re-establishes the connection, and Roslyn would come back up without the `solution/open`
+ * handshake — a running server with nothing loaded, i.e. no diagnostics or IntelliSense.
  */
 export function createLanguageClient(
   server: ResolvedServer,
@@ -40,6 +49,7 @@ export function createLanguageClient(
   logDir: string,
   outputChannel: vscode.LogOutputChannel,
   razor?: RazorLaunch,
+  onCrash?: () => void,
 ): LanguageClient {
   const launch = buildServerLaunch(server, logLevel, logDir, razor);
   // Roslyn's build host runs design-time builds, which start MSBuild worker nodes of their own —
@@ -56,6 +66,21 @@ export function createLanguageClient(
     // failures already get explicit showErrorMessage calls in languageServerController.ts, so this
     // just silences framework noise while still logging to the output channel.
     revealOutputChannelOn: RevealOutputChannelOn.Never,
+    errorHandler: {
+      // Transport-level errors: keep going for a few (a single failed write is survivable), then let
+      // the client shut the connection down, which lands in `closed` below.
+      error: (error, _message, count): ErrorHandlerResult => {
+        outputChannel.appendLine(`[C# Language Server] Connection error: ${error.message}`);
+        return count !== undefined && count > 3
+          ? { action: ErrorAction.Shutdown, handled: true }
+          : { action: ErrorAction.Continue, handled: true };
+      },
+      // The server exited (crash/abort). Never let the framework restart it — see the doc comment.
+      closed: (): CloseHandlerResult => {
+        onCrash?.();
+        return { action: CloseAction.DoNotRestart, handled: true };
+      },
+    },
     middleware: {
       // Roslyn pulls its options via workspace/configuration using editorconfig-style section names.
       // We answer only the background-analysis scope keys (from our diagnosticsScope setting) and let
