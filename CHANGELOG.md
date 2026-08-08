@@ -4,7 +4,7 @@ All notable changes to the "csharp-solution-explorer" extension will be document
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.16.0] - 2026-08-08
 
 ### Added
 
@@ -24,6 +24,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `csharpSolutionExplorer.testExplorer.dashboard` chooses `onRun` (default), `onFailure` or `off`.
 
 ### Fixed
+
+- **A crashing C# language server stayed dead for the rest of the session.** An unhandled exception in
+  a Roslyn request handler aborts the server process (`Server process exited with signal SIGABRT`);
+  the LSP client then logged `Connection to server got closed. Server will not be restarted.` and the
+  window was left without IntelliSense or diagnostics until the user restarted the server by hand. The
+  extension now watches for the server dying on its own and brings the session back up itself —
+  including the `solution/open` handshake, which the LSP client's own reconnect skips, so the server
+  would otherwise return with nothing loaded. Recovery is capped at four restarts inside three minutes
+  with a growing backoff (1 s → 3 s → 10 s → 30 s); past that the server stays down with a **Restart**
+  / **Show Logs** notification instead of looping. Deliberate stops, restarts and startup failures are
+  not counted as crashes, and an explicit **Restart Server** clears the history.
 
 - **MSBuild worker nodes piled up until they held tens of gigabytes of RAM.** Every build, test run
   and property evaluation starts up to one MSBuild node per CPU core, and with the SDK's default node

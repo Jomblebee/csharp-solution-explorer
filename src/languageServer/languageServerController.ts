@@ -7,6 +7,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { LanguageClient } from "vscode-languageclient/node";
+import { CrashTracker } from "./crashPolicy.js";
 import { detectRid } from "./rid.js";
 import {
   createLanguageClient,
@@ -49,6 +50,12 @@ export class LanguageServerController {
   private razorManager: HtmlDocumentManager | undefined;
   /** Per-client Razor cohost handlers; disposed when the client stops. */
   private razorEndpoints: vscode.Disposable | undefined;
+  /** Bumped for every launched client, so a crash from an already-replaced client is ignored. */
+  private generation = 0;
+  /** Rolling crash history that decides whether a dead server is brought back up. */
+  private readonly crashes = new CrashTracker();
+  /** Pending backoff before an automatic restart. */
+  private crashTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -71,6 +78,10 @@ export class LanguageServerController {
   }
 
   async restart(): Promise<void> {
+    // An explicit restart is the user's "try again": forget the crash history so a server that keeps
+    // crashing gets its full allowance of automatic recoveries again.
+    this.cancelCrashRestart();
+    this.crashes.reset();
     this.state.update({ phase: "restarting", activity: "Restarting…" });
     await this.start();
   }
@@ -81,6 +92,8 @@ export class LanguageServerController {
    * setting. Use for ad-hoc control from the status-bar menu; use the setting for a durable off.
    */
   async stop(): Promise<void> {
+    this.cancelCrashRestart();
+    this.crashes.reset();
     await this.stopClient();
     this.state.set({ phase: "stopped", detail: "Stopped from the status-bar menu." });
     await this.setRunningContext(false);
@@ -105,6 +118,7 @@ export class LanguageServerController {
   }
 
   private async doStart(): Promise<void> {
+    this.cancelCrashRestart();
     await this.stopClient();
     const config = vscode.workspace.getConfiguration("csharpSolutionExplorer.languageServer");
 
@@ -255,10 +269,72 @@ export class LanguageServerController {
     logDir: string,
     razor: RazorLaunch | undefined,
   ): Promise<LanguageClient> {
-    const client = createLanguageClient(server, logLevel, logDir, this.output, razor);
+    const generation = ++this.generation;
+    const client = createLanguageClient(server, logLevel, logDir, this.output, razor, () =>
+      this.handleCrash(generation),
+    );
     this.client = client;
     await client.start();
     return client;
+  }
+
+  /**
+   * The server process died on its own (Roslyn aborts the process on an unhandled exception in a
+   * request handler — the log then ends in "Server process exited with signal SIGABRT"). Without this
+   * the session simply stays dead until the user notices and restarts by hand.
+   *
+   * A full `start()` is used rather than the LSP client's built-in reconnect, because the server needs
+   * the `solution/open` handshake again — a reconnected server with nothing loaded gives no
+   * diagnostics or IntelliSense.
+   */
+  private handleCrash(generation: number): void {
+    // Ignore a crash reported by a client we already replaced (e.g. the Razor attempt we dropped), and
+    // one during startup — `doStart` reports those as a failed start, and restarting on them would
+    // loop over a server that cannot come up at all.
+    if (generation !== this.generation || this.starting) {
+      return;
+    }
+    // Any further close from this dead client is stale.
+    this.generation++;
+    const decision = this.crashes.record(Date.now());
+    if (decision.kind === "giveUp") {
+      void this.reportCrashGiveUp(decision.crashes, decision.windowMs);
+      return;
+    }
+    this.output.appendLine(
+      `[C# Language Server] Server crashed; restarting in ${decision.delayMs} ms (attempt ${decision.attempt}).`,
+    );
+    this.state.update({ phase: "restarting", activity: "Server crashed — restarting…", detail: undefined });
+    this.crashTimer = setTimeout(() => {
+      this.crashTimer = undefined;
+      void this.start();
+    }, decision.delayMs);
+  }
+
+  /** Leaves the server down after too many crashes and offers the manual ways out. */
+  private async reportCrashGiveUp(crashes: number, windowMs: number): Promise<void> {
+    const minutes = Math.round(windowMs / 60_000);
+    const detail = `The server crashed ${crashes} times within ${minutes} minutes and was not restarted again.`;
+    this.output.appendLine(`[C# Language Server] ${detail}`);
+    this.state.update({ phase: "failed", activity: undefined, detail });
+    await this.setRunningContext(false);
+    const pick = await vscode.window.showErrorMessage(
+      `C# language server: ${detail}`,
+      "Restart",
+      "Show Logs",
+    );
+    if (pick === "Restart") {
+      await this.restart();
+    } else if (pick === "Show Logs") {
+      this.showLogs();
+    }
+  }
+
+  private cancelCrashRestart(): void {
+    if (this.crashTimer) {
+      clearTimeout(this.crashTimer);
+      this.crashTimer = undefined;
+    }
   }
 
   /** Registers the Razor cohost endpoints (on success) and reflects the outcome in the status. */
@@ -307,6 +383,8 @@ export class LanguageServerController {
     const client = this.client;
     this.client = undefined;
     if (client) {
+      // Deliberate stop: a close reported for this client must not count as a crash.
+      this.generation++;
       try {
         await client.stop();
       } catch {
@@ -336,6 +414,7 @@ export class LanguageServerController {
   }
 
   async dispose(): Promise<void> {
+    this.cancelCrashRestart();
     await this.stopClient();
     await this.setRunningContext(false);
     this.output.dispose();
