@@ -1979,7 +1979,7 @@
   "dependencies": {
     "minimatch": "^10.2.6",
     "vscode-jsonrpc": "^9.0.1",
-    "vscode-languageclient": "^10.1.0",
+    "vscode-languageclient": "^10.1.2",
     "yauzl": "^3.4.0"
   },
   "devDependencies": {
